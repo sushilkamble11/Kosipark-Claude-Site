@@ -598,6 +598,86 @@ export function normaliseDays(data, room) {
   return out;
 }
 
+/**
+ * Per-night availability for ONE room type, with real counts.
+ *
+ * The calendars used to read /bestavailablerates, which answers only
+ * "RoomAvailable: true/false" — no numbers — so the "1 left" badge the UI
+ * already knew how to draw could never fire. /availabilities carries
+ * Availabilities[] per room type: one entry per night with Closed and an
+ * integer ForSale. That is the count, and it is specific to the category
+ * asked for, which is the point: three chalets left says nothing about
+ * whether a powered site is free.
+ *
+ * calendarMode asks GuestPoint to include closed and sold-out dates too,
+ * otherwise the sold-out nights simply vanish from the response and the grid
+ * cannot tell "full" from "not returned".
+ *
+ * Returns the same shape as normaliseDays so the calendars are unchanged
+ * apart from which call they make.
+ */
+export async function availabilityCalendar({ room, fromDate, toDate, numAdults = 2, numChildren = 0 }) {
+  const data = await request("GET", "/availabilities", {
+    params: {
+      arrivalDate: fromDate, departureDate: toDate,
+      numAdults, numChildren, calendarMode: true,
+      roomTypes: toRoomTypeIds(room)
+    },
+    cacheKind: "availabilities"
+  });
+
+  const prop = data && data.Properties && data.Properties[0];
+  if (!prop) return {};
+  learnRoomTypes(prop.RoomTypes);
+
+  // Scoping by roomTypes should return one type, but never trust that.
+  const wantId = roomTypeIdFor(room) || room;
+  const rt = (prop.RoomTypes || []).find(
+    r => (r.Id || r.RoomTypeId) === wantId || slugForRoomType(r) === room
+  ) || (prop.RoomTypes || [])[0];
+  if (!rt) return {};
+
+  const out = {};
+
+  // Counts and closures, per night.
+  (rt.Availabilities || []).forEach(a => {
+    if (!a || !a.Date) return;
+    const forSale = typeof a.ForSale === "number" ? a.ForSale : null;
+    out[a.Date] = {
+      rate: null, strikeRate: null, discountReason: "",
+      count: forSale,
+      soldOut: a.Closed === true || forSale === 0,
+      closed: a.Closed === true || forSale === 0,
+      minStay: null, maxStay: null,
+      closedToArrival: false, closedToDeparture: false
+    };
+  });
+
+  // The cheapest plan's nightly rate and restrictions, merged on top.
+  //
+  // Only plans that actually carry Rates are eligible. Sorting on a summed
+  // total puts a plan with no rates at zero — the cheapest thing in the list
+  // — and the calendar then shows no prices at all while looking like it
+  // worked. Filter first, sort second.
+  const priced = (rt.RatePlans || []).filter(p => Array.isArray(p.Rates) && p.Rates.length);
+  const total = p => p.Rates.reduce((sum, x) => sum + num(x.SellRate), 0);
+  const cheapest = priced.slice().sort((a, b) => total(a) - total(b))[0];
+  (cheapest && cheapest.Rates ? cheapest.Rates : []).forEach(r => {
+    if (!r || !r.Date) return;
+    const day = out[r.Date] || (out[r.Date] = { count: null, soldOut: false, closed: false });
+    const sell = num(r.SellRate);
+    day.rate = sell > 0 ? sell : null;
+    day.strikeRate = r.StrikeOutRate !== undefined ? num(r.StrikeOutRate) : null;
+    day.discountReason = r.DiscountReason || "";
+    day.minStay = num(r.MinStayArrival) || day.minStay || null;
+    day.closedToArrival = r.ClosedToArrival === true;
+    day.closedToDeparture = r.ClosedToDeparture === true;
+    if (r.Closed === true) { day.soldOut = true; day.closed = true; }
+  });
+
+  return out;
+}
+
 /* ---------- Room type registry ----------
  * The site's URLs, calendars and cart all speak slugs ("cedar-cabin").
  * GuestPoint speaks external ids. This is the only place the two meet: ids are
@@ -824,9 +904,35 @@ async function mockResponse(method, path, params, body) {
           const maxFail = nights > 21;
           const ok = !closedOut && guests <= rt.maxOccupancy && !minFail && !ctaFail && !maxFail;
           const stay = perNight * nights;
+          // Per-night arrays, so the calendars have something shaped like the
+          // real payload to read: a count per night and a rate per night.
+          const nightList = [];
+          for (let n = 0; n < Math.max(1, nights); n++) {
+            const d = new Date(params.arrivalDate);
+            d.setDate(d.getDate() + n);
+            nightList.push(d.toISOString().slice(0, 10));
+          }
+          // A deterministic count per night per type — low for some, so the
+          // "1 left" badge is exercised, and stable across reloads.
+          const forSaleOn = iso => {
+            const seed = snowSeed((new Date(iso).getDate() + i) % 9);
+            const m = new Date(iso).getMonth() + 1;
+            const peak = m >= 6 && m <= 9;
+            return closedOut ? 0 : Math.max(0, peak ? Math.min(seed, 3) - 1 : seed);
+          };
+
+          const ratesFor = factor => nightList.map(iso => ({
+            Date: iso,
+            SellRate: String(Math.round(mockRateFor(slug, iso) * factor)),
+            Closed: !ok,
+            ClosedToArrival: iso === params.arrivalDate ? ctaFail : false,
+            ClosedToDeparture: false,
+            MinStayArrival: iso === params.arrivalDate ? typeMin : 0
+          }));
+
           const plans = [{
             Id: "standard", Name: "Standard rate", Description: "Our most flexible rate",
-            Total: String(stay),
+            Total: String(stay), Rates: ratesFor(1),
             CancellationText: "Free changes 15+ days out",
             PolicyText: "Deposit of 50% or one full night's tariff, whichever is higher. Cancellation fees apply within 14 days."
           }];
@@ -835,6 +941,7 @@ async function mockResponse(method, path, params, body) {
             plans.push({
               Id: "midweek", Name: "Midweek saver", Description: "Arrive Mon–Wed and save 12%",
               Total: String(Math.round(stay * 0.88)), Saving: String(Math.round(stay * 0.12)),
+              Rates: ratesFor(0.88),
               CancellationText: "Free changes 15+ days out",
               PolicyText: "Deposit of 50% or one night's tariff. Same cancellation terms as the standard rate."
             });
@@ -842,6 +949,7 @@ async function mockResponse(method, path, params, body) {
           plans.push({
             Id: "advance", Name: "Book early, pay less", Description: "Non-refundable, paid in full today",
             Total: String(Math.round(stay * 0.82)), Saving: String(Math.round(stay * 0.18)),
+            Rates: ratesFor(0.82),
             CancellationText: "Non-refundable",
             PolicyText: "Full payment at booking. Non-refundable and non-amendable under any circumstances."
           });
@@ -849,6 +957,7 @@ async function mockResponse(method, path, params, body) {
             plans.push({
               Id: "weekly", Name: "Stay 7, pay 6", Description: "Minimum 7 nights",
               Total: String(Math.round(perNight * (nights - 1))), Saving: String(perNight), MinNights: 7,
+              Rates: ratesFor((nights - 1) / Math.max(1, nights)),
               CancellationText: "Free changes 15+ days out",
               PolicyText: "One night free on stays of seven nights or longer. Standard deposit and cancellation terms."
             });
@@ -857,6 +966,9 @@ async function mockResponse(method, path, params, body) {
             Id: slug,
             Name: rt.name,
             RoomImages: mockRoomImages(rt.name, i),
+            Availabilities: nightList.map(iso => ({
+              Date: iso, Closed: !ok, ForSale: ok ? forSaleOn(iso) : 0
+            })),
             MaxOccupancy: rt.maxOccupancy,
             Bedrooms: isSite ? 0 : (slug.indexOf("three") > -1 ? 3 : slug.indexOf("two") > -1 ? 2 : 1),
             Cars: 1,
