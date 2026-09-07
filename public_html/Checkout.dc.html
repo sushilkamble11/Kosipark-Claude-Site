@@ -45,9 +45,15 @@
         <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#74836A; margin:0">Complete your booking</p>
         <h1 style="font:300 clamp(24px,3vw,35px)/1.06 Petrona, Georgia, serif; letter-spacing:-0.02em; color:#1D3730; margin:12px 0 0">{{ headline }}</h1>
 
-        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:22px">
+        <div style="display:flex; align-items:flex-start; margin-top:26px; max-width:520px">
           <sc-for list="{{ steps }}" as="st" hint-placeholder-count="3">
-            <button type="button" onClick="{{ st.go }}" style="{{ st.style }}">{{ st.label }}</button>
+            <div style="{{ st.itemStyle }}">
+              <div style="{{ st.connectorStyle }}"></div>
+              <div style="display:flex; flex-direction:column; align-items:center; gap:7px; flex:0 0 auto">
+                <button type="button" onClick="{{ st.go }}" aria-label="{{ st.label }}" aria-current="{{ st.current }}" style="{{ st.dotStyle }}">{{ st.mark }}</button>
+                <span style="{{ st.labelStyle }}">{{ st.shortLabel }}</span>
+              </div>
+            </div>
           </sc-for>
         </div>
 
@@ -99,7 +105,7 @@
               <div style="background:#FFFFFF; border:1px solid rgba(29,55,48,0.10); border-radius:16px; padding:clamp(20px,3vw,30px)">
                 <h2 style="font:400 19px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:0">Guest details</h2>
                 <p style="font:400 14.5px/1.7 Figtree, sans-serif; color:#6C6862; margin:10px 0 20px">The lead guest must be 18 or older and present at check-in with photo ID.</p>
-                <div style="display:grid; gap:12px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 220px), 1fr))">
+                <div style="display:grid; gap:16px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 260px), 1fr))">
                   <sc-for list="{{ fields }}" as="f" hint-placeholder-count="6">
                     <label style="{{ f.wrapStyle }}">
                       <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A">{{ f.label }}</span>
@@ -149,7 +155,7 @@
                     <button type="button" onClick="{{ toggleUnit }}" style="border:0; background:transparent; font:600 12px/1 Figtree, sans-serif; letter-spacing:.08em; color:#96592A; cursor:pointer; padding:6px 0">{{ unitToggleLabel }}</button>
                   </div>
                   <p style="font:400 13.5px/1.6 Figtree, sans-serif; color:#6C6862; margin:8px 0 14px">We'll allocate a site that fits. If nothing suits your dimensions we'll call you within one business day. Measure from the towbar tip to the rear-most point, including bike racks and spare wheels.</p>
-                  <div style="display:grid; gap:12px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 160px), 1fr))">
+                  <div style="display:grid; gap:16px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 260px), 1fr))">
                     <label style="display:flex; flex-direction:column; gap:6px; padding:12px 18px; border-radius:13px; background:#F3ECE0; border:1px solid rgba(29,55,48,0.08)">
                       <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A">Type *</span>
                       <select value="{{ eqType }}" onChange="{{ onEqType }}" style="border:0; background:transparent; outline:none; font:500 15.5px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0">
@@ -177,7 +183,7 @@
                   </label>
                   <button type="button" onClick="{{ toggleGuide }}" style="border:0; background:transparent; font:600 12.5px/1 Figtree, sans-serif; letter-spacing:.06em; color:#96592A; cursor:pointer; padding:14px 0 0">{{ guideLabel }}</button>
                   <div style="{{ guideStyle }}">
-                    <div style="display:grid; gap:18px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 220px), 1fr)); align-items:start">
+                    <div style="display:grid; gap:18px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 260px), 1fr)); align-items:start">
                       <div>
                         <p style="font:600 12px/1.5 Figtree, sans-serif; color:#292724; margin:0 0 4px">Length</p>
                         <p style="font:400 12.5px/1.5 Figtree, sans-serif; color:#6C6862; margin:0 0 12px">Measure overall length, including the drawbar.</p>
@@ -224,7 +230,7 @@
               <div style="background:#FFFFFF; border:1px solid rgba(29,55,48,0.10); border-radius:16px; padding:clamp(20px,3vw,30px)">
                 <h2 style="font:400 19px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:0">{{ payHeading }}</h2>
                 <p style="font:400 14.5px/1.7 Figtree, sans-serif; color:#6C6862; margin:10px 0 18px">Choose how much to pay today. A 2% card surcharge applies either way and is shown separately below.</p>
-                <div style="display:grid; gap:10px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 240px), 1fr))">
+                <div style="display:grid; gap:16px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 260px), 1fr))">
                   <sc-for list="{{ payOptions }}" as="po" hint-placeholder-count="2">
                     <button type="button" onClick="{{ po.pick }}" style="{{ po.style }}">
                       <span style="display:flex; align-items:baseline; justify-content:space-between; gap:12px">
@@ -238,7 +244,7 @@
                 </div>
                 <p style="font:400 13.5px/1.7 Figtree, sans-serif; color:#8B877E; margin:16px 0 20px">{{ policyText }}</p>
 
-                <div style="display:grid; gap:12px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 200px), 1fr))">
+                <div style="display:grid; gap:16px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 260px), 1fr))">
                   <label style="grid-column:1/-1; display:flex; flex-direction:column; gap:7px; padding:14px 18px; border-radius:14px; background:#F3ECE0; border:1px solid rgba(29,55,48,0.08)">
                     <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A">Name on card</span>
                     <input value="{{ cardName }}" onChange="{{ onCardName }}" placeholder="A. Nguyen" style="border:0; background:transparent; outline:none; font:500 16px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0" />
@@ -675,9 +681,9 @@ class Component extends DCLogic {
     }
 
     const stepDefs = [
-      { key: "details", label: "1 · Booking details" },
-      { key: "options", label: "2 · Options" },
-      { key: "review", label: "3 · Payment" }
+      { key: "details", label: "Booking details", short: "Details" },
+      { key: "options", label: "Options",         short: "Options" },
+      { key: "review",  label: "Payment",         short: "Payment" }
     ];
 
     const fields = [
@@ -739,12 +745,32 @@ class Component extends DCLogic {
         }
       })),
 
-      steps: stepDefs.map((d, i) => ({
+      // Numbered circles rather than three wide pills: the pills wrapped onto
+      // two rows on a phone and read as tabs you could jump between, when in
+      // fact the details step gates the rest. A tick for what is done, a ring
+      // for where you are, grey for what is ahead.
+      steps: stepDefs.map((d, i) => {
+        const at = stepDefs.findIndex(x => x.key === s.step);
+        const done = i < at, current = i === at;
+        return {
         label: d.label,
-        style: "border:1px solid " + (s.step === d.key ? "rgba(29,55,48,0.55)" : "rgba(29,55,48,0.14)") +
-          "; background:" + (s.step === d.key ? "#1D3730" : "transparent") +
-          "; color:" + (s.step === d.key ? "#FCFAF6" : "#56534C") +
-          "; font:600 12px/1 Figtree, sans-serif; letter-spacing:.08em; border-radius:999px; padding:14px 18px; cursor:pointer",
+        shortLabel: d.short,
+        current: current ? "step" : "false",
+        mark: done ? "✓" : String(i + 1),
+        itemStyle: "display:flex; align-items:center; gap:0; " + (i === 0 ? "flex:0 0 auto" : "flex:1 1 auto"),
+        connectorStyle: i === 0
+          ? "display:none"
+          : "flex:1 1 auto; height:0; border-top:1.5px dashed " +
+            (done || current ? "rgba(29,55,48,0.45)" : "rgba(29,55,48,0.16)") +
+            "; margin:0 8px; position:relative; top:-11px",
+        dotStyle: "width:38px; height:38px; border-radius:999px; cursor:pointer; flex:0 0 auto; " +
+          "display:flex; align-items:center; justify-content:center; " +
+          "font:600 14px/1 Figtree, sans-serif; transition:background .15s ease; " +
+          (done   ? "background:#1D3730; color:#FCFAF6; border:1.5px solid #1D3730"
+                  : current ? "background:#FCFAF6; color:#1D3730; border:1.5px solid #1D3730"
+                  : "background:transparent; color:#A6A29A; border:1.5px solid rgba(29,55,48,0.18)"),
+        labelStyle: "font:600 10.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; white-space:nowrap; color:" +
+          (done || current ? "#1D3730" : "#A6A29A"),
         go: () => {
           // no route forward may skip the details checks
           if (d.key !== "details") {
@@ -754,7 +780,8 @@ class Component extends DCLogic {
           if (d.key === "review" && !s.validated) { this.goReview(); return; }
           this.setState({ step: d.key, error: "" });
         }
-      })),
+        };
+      }),
 
       onExtras: s.step === "options",
       onDetails: s.step === "details",
