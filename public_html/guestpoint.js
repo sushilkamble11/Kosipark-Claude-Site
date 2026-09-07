@@ -151,9 +151,14 @@ async function request(method, path, { params, body, cacheKind } = {}) {
   let payload = null;
   try { payload = await res.json(); } catch (e) {}
 
-  if (res.status === 503 && !notConfigured) {
-    notConfigured = true;
-    console.info("[guestpoint] booking service not configured yet — showing sample data");
+  // Every 503 falls back, not just the first. The pages fire several calls at
+  // once on load, so they are all in flight before any of them has learned the
+  // service is unconfigured — guarding this on the flag left the rest throwing.
+  if (res.status === 503) {
+    if (!notConfigured) {
+      notConfigured = true;
+      console.info("[guestpoint] booking service not configured yet — showing sample data");
+    }
     announceSample();
     const mocked = await mockResponse(method, path, params, body);
     if (key && ttl) cacheSet(key, mocked);
@@ -690,7 +695,7 @@ export async function getPropertyContent() {
       cacheKind: "beprofilefields"      // reuse the 24-hour bucket
     });
   } catch (e) {
-    console.warn("[guestpoint] content fetch failed; placeholders stay in place", e);
+    console.info("[guestpoint] no property content yet — placeholders will be drawn");
     return (PROPERTY_META = { images: [], rooms: {}, failed: true });
   }
 
