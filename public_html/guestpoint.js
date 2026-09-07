@@ -706,6 +706,13 @@ export async function getPropertyContent() {
   const prop = (data && data.Properties && data.Properties[0]) || {};
   learnRoomTypes(prop.RoomTypes);
 
+  // Fixture photos exist to prove the pipeline in local development. On a real
+  // host serving sample data because the key is missing, they would put
+  // "GuestPoint photo 1" in front of a guest — so drop them there and let
+  // gp-images draw its captioned panels instead, which say what shot belongs
+  // in each slot. Explicit local mock keeps the fixtures.
+  const sampleOnLiveHost = notConfigured && !CONFIG.mock;
+
   PROPERTY_META = {
     id: prop.Id || null,
     name: prop.Name || "",
@@ -718,8 +725,8 @@ export async function getPropertyContent() {
             ? { lat: parseFloat(prop.Latitude), lng: parseFloat(prop.Longitude),
                 zoom: parseInt(prop.ZoomLevel, 10) || 14 }
             : null,
-    images: normaliseImages(prop.PropertyImages),
-    rooms: Object.fromEntries(Array.from(IMAGES_BY_SLUG.entries())),
+    images: sampleOnLiveHost ? [] : normaliseImages(prop.PropertyImages),
+    rooms: sampleOnLiveHost ? {} : Object.fromEntries(Array.from(IMAGES_BY_SLUG.entries())),
     failed: false
   };
   return PROPERTY_META;
