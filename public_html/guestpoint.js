@@ -151,10 +151,14 @@ async function request(method, path, { params, body, cacheKind } = {}) {
   let payload = null;
   try { payload = await res.json(); } catch (e) {}
 
-  // Every 503 falls back, not just the first. The pages fire several calls at
-  // once on load, so they are all in flight before any of them has learned the
+  // Two shapes mean "no credentials yet": the proxy's 200 marker (what it sends
+  // now — quiet, because the browser does not log a 200) and a 503 (older
+  // proxy builds, and any deploy where the two are briefly out of step).
+  //
+  // Every one of them falls back, not just the first. The pages fire several
+  // calls at once on load, so they are all in flight before any has learned the
   // service is unconfigured — guarding this on the flag left the rest throwing.
-  if (res.status === 503) {
+  if (res.status === 503 || (payload && payload.Unconfigured === true)) {
     if (!notConfigured) {
       notConfigured = true;
       console.info("[guestpoint] booking service not configured yet — showing sample data");
