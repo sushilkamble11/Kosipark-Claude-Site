@@ -120,11 +120,16 @@ if ($origin !== '') {
     if (in_array($origin, $allowed, true)) header("Access-Control-Allow-Origin: $origin");
 }
 
-if ($API_KEY === '' || str_starts_with($API_KEY, 'REPLACE_WITH')) {
-    fail(503, 'Booking service is not configured yet.', 'api_key missing in config.php');
-}
-if ($PROPERTY_ID === '' || str_starts_with($PROPERTY_ID, 'REPLACE_WITH')) {
-    fail(503, 'Booking service is not configured yet.', 'property_id missing in config.php');
+// "No credentials yet" is a deliberate state, not a failure, so it answers 200
+// with a marker the client understands. A 503 here was honest but noisy: the
+// browser logs every 4xx/5xx to the console whatever the page does about it,
+// so a site waiting on credentials looked broken to anyone who opened devtools.
+// Real faults still use real status codes.
+if ($API_KEY === '' || str_starts_with($API_KEY, 'REPLACE_WITH')
+    || $PROPERTY_ID === '' || str_starts_with($PROPERTY_ID, 'REPLACE_WITH')) {
+    send(200, ['Unconfigured' => true,
+               'Message' => 'Booking service is not configured yet.'],
+              ['Cache-Control' => 'no-store']);
 }
 
 // PATH_INFO is what follows /api/gp — fall back to parsing REQUEST_URI when
