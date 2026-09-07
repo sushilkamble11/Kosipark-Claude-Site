@@ -172,6 +172,7 @@ class Component extends DCLogic {
 
   stay(nights, total) {
     return {
+      id: this.gp.newCartItemId(),
       roomTypeId: this.props.room || "two-bedroom-chalet",
       name: this.props.label || "Stay",
       ratePlanId: "standard",

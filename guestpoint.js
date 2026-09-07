@@ -512,6 +512,19 @@ export function writeCart(items) {
   return items;
 }
 
+let cartIdSequence = 0;
+/**
+ * One id per deliberate selection. The id travels to checkout in the URL, so
+ * reloading that URL is idempotent while choosing the same room again creates
+ * a genuinely separate unit in the booking.
+ */
+export function newCartItemId() {
+  const random = typeof globalThis !== "undefined" && globalThis.crypto && typeof globalThis.crypto.randomUUID === "function"
+    ? globalThis.crypto.randomUUID()
+    : Math.random().toString(36).slice(2);
+  return "stay:" + Date.now().toString(36) + ":" + (cartIdSequence++).toString(36) + ":" + random;
+}
+
 export function addToCart(item) {
   const now = Date.now();
   // Read the raw store, not readCart(): adding a stay must never be the thing
@@ -524,7 +537,11 @@ export function addToCart(item) {
   } catch (e) { items = []; }
 
   const id = item.id || (item.roomTypeId + ":" + item.arrival + ":" + item.departure + ":" + now);
-  const exists = items.some(i => i.roomTypeId === item.roomTypeId && i.arrival === item.arrival && i.departure === item.departure);
+  // A supplied id identifies one click/selection and makes checkout reloads
+  // safe. Legacy callers without an id keep the old same-stay protection.
+  const exists = item.id
+    ? items.some(i => i.id === item.id)
+    : items.some(i => i.roomTypeId === item.roomTypeId && i.arrival === item.arrival && i.departure === item.departure);
   if (exists) return readCart();
   items.push({ ...item, id, addedAt: now, pricedAt: item.pricedAt || now });
   // Still browsing, so the whole selection stays alive together rather than
@@ -953,10 +970,11 @@ export function nameForRoom(slug) {
       || String(slug).replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 }
 
-/** Is this exact stay already in the booking? Returns it, or null. */
-export function cartHas({ roomTypeId, arrival, departure }) {
-  return readCart().find(i =>
-    i.roomTypeId === roomTypeId && i.arrival === arrival && i.departure === departure) || null;
+/** Is this exact selection already in the booking? Returns it, or null. */
+export function cartHas({ id, roomTypeId, arrival, departure }) {
+  return readCart().find(i => id
+    ? i.id === id
+    : i.roomTypeId === roomTypeId && i.arrival === arrival && i.departure === departure) || null;
 }
 
 /** What the registry currently knows. Handy in the console when going live. */
