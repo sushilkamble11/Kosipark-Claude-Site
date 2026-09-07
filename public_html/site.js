@@ -45,4 +45,47 @@
       setTimeout(retry, 120);
     })();
   }
+
+  /* ---------- Sample-data notice ----------
+   * Until GuestPoint credentials are in place the site serves fixtures so it
+   * can be reviewed. Rates, availability and photos are then all invented, and
+   * an invented rate on a page with a Book button is the kind of thing that
+   * ends up in a complaint. So say it, once, plainly, wherever it applies.
+   *
+   * guestpoint.js fires this event the first time it serves a fixture; it never
+   * fires once real credentials answer.
+   */
+  function showSampleBanner() {
+    if (document.getElementById("kosipark-sample-note")) return;
+    var bar = document.createElement("div");
+    bar.id = "kosipark-sample-note";
+    bar.setAttribute("role", "status");
+    bar.style.cssText = [
+      "position:fixed", "left:0", "right:0", "bottom:0", "z-index:9999",
+      "background:#96592A", "color:#FCFAF6",
+      "font:600 12.5px/1.45 Figtree, system-ui, sans-serif",
+      "letter-spacing:.02em", "text-align:center",
+      "padding:11px 44px 11px 16px",
+      "box-shadow:0 -8px 24px -18px rgba(18,39,32,0.9)"
+    ].join(";");
+    bar.textContent =
+      "Preview — rates, availability and photos on this page are sample data, " +
+      "not live. Call 02 6456 2224 to book.";
+
+    var close = document.createElement("button");
+    close.type = "button";
+    close.setAttribute("aria-label", "Dismiss");
+    close.textContent = "\u00d7";
+    close.style.cssText = [
+      "position:absolute", "top:50%", "right:12px", "transform:translateY(-50%)",
+      "background:none", "border:0", "color:#FCFAF6", "font-size:20px",
+      "line-height:1", "cursor:pointer", "padding:4px 8px"
+    ].join(";");
+    close.addEventListener("click", function () { bar.remove(); });
+    bar.appendChild(close);
+
+    (document.body || document.documentElement).appendChild(bar);
+  }
+
+  window.addEventListener("kosipark:sample-data", showSampleBanner);
 })();

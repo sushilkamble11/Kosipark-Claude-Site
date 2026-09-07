@@ -124,17 +124,23 @@ await page.goto(BASE + "/", { waitUntil: "networkidle" });
 await sleep(1200);
 const home = await page.evaluate(() => {
   const slots = [...document.querySelectorAll("image-slot")];
+  const wired = slots.filter(s => s.hasAttribute("gp-room") || s.hasAttribute("gp-property"));
   return {
     total: slots.length,
-    wired: slots.filter(s => s.hasAttribute("gp-room") || s.hasAttribute("gp-property")).length,
+    wired: wired.length,
     filled: slots.filter(s => (s.getAttribute("src") || "").length > 0).length,
-    untouched: slots.filter(s => !s.hasAttribute("gp-room") && !s.hasAttribute("gp-property")
-                                 && !s.getAttribute("src")).length,
+    empty: slots.filter(s => !(s.getAttribute("src") || "").length).length,
+    // A wired slot must show the API's photo, not a fallback panel.
+    wiredFromApi: wired.filter(s => !s.hasAttribute("data-kosipark-placeholder")
+                                    && (s.getAttribute("src") || "").length > 0).length,
+    panels: slots.filter(s => s.hasAttribute("data-kosipark-placeholder")).length,
+    unlabelled: slots.filter(s => !(s.getAttribute("alt") || "").length).length,
   };
 });
-line(home.filled > 0, "home: GuestPoint photos fill their slots", JSON.stringify(home));
-line(home.filled === home.wired, "home: every wired slot got a photo", JSON.stringify(home));
-line(home.untouched > 0, "home: unwired slots keep their placeholder", `${home.untouched} left alone`);
+line(home.wiredFromApi === home.wired, "home: every API-wired slot shows its GuestPoint photo", JSON.stringify(home));
+line(home.empty === 0, "home: no slot is left as a grey hole", `${home.empty} empty`);
+line(home.panels > 0, "home: unmapped slots get a designed panel", `${home.panels} panels`);
+line(home.unlabelled === 0, "home: every slot has alt text", `${home.unlabelled} missing`);
 
 await page.goto(BASE + "/accommodation/cedar-cabin", { waitUntil: "networkidle" });
 await sleep(1200);
@@ -147,6 +153,8 @@ const room = await page.evaluate(() => {
   };
 });
 line(room.filled >= 3, "room page: photos resolved by id convention", JSON.stringify(room.ids));
+line(room.ids.every(id => /^r-cedar-cabin-[123]$/.test(id)),
+     "room page: slot ids match the requested room", JSON.stringify(room.ids));
 line(room.captions.length >= 3, "room page: GuestPoint captions become alt text", room.captions[0] || "");
 
 // --- fragment links still scroll under <base href="/"> ---------------------

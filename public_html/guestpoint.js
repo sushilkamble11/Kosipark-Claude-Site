@@ -130,6 +130,13 @@ async function request(method, path, { params, body, cacheKind } = {}) {
   }
 
   if (CONFIG.mock) {
+    announceSample();
+    const mocked = await mockResponse(method, path, params, body);
+    if (key && ttl) cacheSet(key, mocked);
+    return mocked;
+  }
+
+  if (notConfigured) {                     // already learned there are no credentials
     const mocked = await mockResponse(method, path, params, body);
     if (key && ttl) cacheSet(key, mocked);
     return mocked;
@@ -144,6 +151,15 @@ async function request(method, path, { params, body, cacheKind } = {}) {
   let payload = null;
   try { payload = await res.json(); } catch (e) {}
 
+  if (res.status === 503 && !notConfigured) {
+    notConfigured = true;
+    console.info("[guestpoint] booking service not configured yet — showing sample data");
+    announceSample();
+    const mocked = await mockResponse(method, path, params, body);
+    if (key && ttl) cacheSet(key, mocked);
+    return mocked;
+  }
+
   if (!res.ok) {
     const err = new Error((payload && (payload.message || payload.error)) || "GuestPoint request failed (" + res.status + ")");
     err.status = res.status;
@@ -154,6 +170,29 @@ async function request(method, path, { params, body, cacheKind } = {}) {
   const data = payload && payload.data !== undefined ? payload.data : payload;
   if (key && ttl) cacheSet(key, data);
   return data;
+}
+
+/**
+ * Before credentials exist the proxy answers 503 "not configured yet". Without
+ * this the site would sit there throwing console errors with every rate, every
+ * calendar and every photo blank — unreviewable. So the first 503 flips the
+ * client into mock mode for the rest of the page, and the site fills with
+ * clearly-sample data instead. The banner in site.js says so out loud, so a
+ * sample rate is never mistaken for a real one.
+ *
+ * This only ever triggers on 503 from our own proxy. A real GuestPoint error —
+ * a bad key, a network fault, a rejected reservation — still surfaces as an
+ * error, because quietly serving invented prices over a live booking engine is
+ * the one thing this must never do.
+ */
+let notConfigured = false;
+let announced = false;
+export function isUnconfigured() { return notConfigured || CONFIG.mock; }
+
+function announceSample() {
+  if (announced) return;
+  announced = true;
+  try { window.dispatchEvent(new CustomEvent("kosipark:sample-data")); } catch (e) {}
 }
 
 /* ---------- Endpoints ---------- */

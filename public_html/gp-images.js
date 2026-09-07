@@ -21,12 +21,83 @@
 (function () {
   "use strict";
 
+
+  /* ---------- Designed placeholders ----------
+   * A slot GuestPoint has no photo for used to render as a grey void with a
+   * broken-image glyph — sixty of them down the page, which read as a broken
+   * site rather than a site awaiting photography. These draw a panel in the
+   * park's own colours with the caption saying what belongs there, so an empty
+   * slot looks deliberate and doubles as the shot list.
+   *
+   * Deliberately not a stock photo: an invented picture of a cabin nobody has
+   * stayed in is worse than an honest blank.
+   */
+  var TONES = [
+    ["#1D3730", "#122720"],   // forest
+    ["#3A4E3C", "#22322A"],
+    ["#5B4630", "#3A2C1E"],   // bark
+    ["#74836A", "#4C5C40"],   // sage
+    ["#96592A", "#6B3E1C"]    // copper
+  ];
+
+  function hashOf(str) {
+    var h = 0;
+    for (var i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
+    return Math.abs(h);
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  // Wrap the caption by width rather than character count, so long captions
+  // do not overflow the panel.
+  function wrap(text, perLine, maxLines) {
+    var words = String(text).split(/\s+/), lines = [], line = "";
+    for (var i = 0; i < words.length; i++) {
+      var next = line ? line + " " + words[i] : words[i];
+      if (next.length > perLine && line) { lines.push(line); line = words[i]; }
+      else line = next;
+      if (lines.length === maxLines) break;
+    }
+    if (line && lines.length < maxLines) lines.push(line);
+    return lines;
+  }
+
+  function placeholderFor(caption, seed) {
+    var t = TONES[hashOf(seed || caption || "x") % TONES.length];
+    var lines = wrap(caption || "Photograph to come", 34, 3);
+    var startY = 300 - (lines.length - 1) * 19;
+    var text = lines.map(function (l, i) {
+      return '<text x="400" y="' + (startY + i * 38) + '" text-anchor="middle" ' +
+             'font-family="Georgia, serif" font-size="27" fill="#EDE4D4">' + esc(l) + '</text>';
+    }).join("");
+
+    var svg =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="560" viewBox="0 0 800 560">' +
+        '<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">' +
+          '<stop offset="0" stop-color="' + t[0] + '"/><stop offset="1" stop-color="' + t[1] + '"/>' +
+        '</linearGradient></defs>' +
+        '<rect width="800" height="560" fill="url(#g)"/>' +
+        // A ridgeline, echoing the logo — quiet, not a placeholder icon.
+        '<path d="M0 470 L150 372 L250 424 L400 300 L530 400 L650 340 L800 440 L800 560 L0 560 Z" ' +
+          'fill="rgba(252,250,246,0.07)"/>' +
+        '<path d="M0 505 L190 420 L330 470 L470 380 L620 450 L800 390 L800 560 L0 560 Z" ' +
+          'fill="rgba(252,250,246,0.05)"/>' +
+        text +
+      '</svg>';
+    return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+  }
+
   var CONVENTION = /^(?:r|av)-(.+)-(\d+)$/;
   var loaded = null;          // promise for the one content fetch
   var content = null;         // { images: [...], rooms: { slug: [...] } }
+  var resolved = false;       // has the content fetch finished, either way?
   var filled = new WeakSet(); // slots already resolved, so re-renders are cheap
 
   function wanted(el) {
+    // Slots with no API mapping still get a designed placeholder, so return a
+    // request that resolves to nothing rather than bailing out.
     var room = el.getAttribute("gp-room");
     if (room) return { room: room, index: parseInt(el.getAttribute("gp-index") || "0", 10) || 0 };
     if (el.hasAttribute("gp-property")) {
@@ -34,11 +105,11 @@
     }
     var m = CONVENTION.exec(el.id || "");
     if (m) return { room: m[1], index: Math.max(0, parseInt(m[2], 10) - 1) };
-    return null;
+    return { room: null, index: -1 };   // no mapping — placeholder only
   }
 
   function pick(req) {
-    if (!content) return null;
+    if (!content || req.index < 0) return null;
     var list = req.room ? (content.rooms && content.rooms[req.room]) || []
                         : content.images || [];
     return list[req.index] || null;
@@ -49,7 +120,21 @@
     var req = wanted(el);
     if (!req) return;
     var img = pick(req);
-    if (!img || !img.url) return;      // no photo for this one — placeholder stays
+    if (!img || !img.url) {
+      // Wait for the fetch before giving up on this slot — otherwise the first
+      // sweep claims every slot with a panel and the real photos, arriving a
+      // moment later, find nothing left to fill.
+      if (!resolved) return;
+      // GuestPoint has nothing for this slot. Draw the designed panel from the
+      // slot's own caption rather than leaving a grey hole.
+      var cap = el.getAttribute("placeholder") || "";
+      if (!cap) return;
+      filled.add(el);
+      el.setAttribute("alt", cap);
+      el.setAttribute("src", placeholderFor(cap, el.id || cap));
+      el.setAttribute("data-kosipark-placeholder", "");
+      return;
+    }
     filled.add(el);
     // A caption is real alt text: it is what the property wrote about the photo.
     if (img.caption) {
@@ -73,13 +158,16 @@
       .then(function (gp) { return gp.getPropertyContent(); })
       .then(function (meta) {
         content = meta && !meta.failed ? meta : null;
-        if (content) sweep(document);
+        resolved = true;
+        sweep(document);          // fills what we have, draws panels for the rest
         return content;
       })
       .catch(function (err) {
         // Deliberately quiet in the page: placeholders are a fine fallback.
-        console.warn("[gp-images] photos unavailable, placeholders kept", err);
+        console.info("[gp-images] no photos from GuestPoint — drawing placeholders");
         content = null;
+        resolved = true;
+        sweep(document);
         return null;
       });
     return loaded;
@@ -95,7 +183,7 @@
       if (pending) return;
       pending = requestAnimationFrame(function () {
         pending = null;
-        if (content) sweep(document);
+        sweep(document);
       });
     }).observe(document.documentElement, { childList: true, subtree: true });
   }
