@@ -115,8 +115,12 @@ class Component extends DCLogic {
     const end = new Date(start.getFullYear(), start.getMonth() + this.monthCount(), 0);
     this.setState({ loading: true });
     try {
-      const data = await this.gp.bestAvailableRates({ fromDate: Component.iso(start), toDate: Component.iso(end), roomType: room });
-      const days = this.gp.normaliseDays(data, room);
+      // Per-category counts: /availabilities carries ForSale per night for
+      // this room type, which /bestavailablerates does not.
+      const days = await this.gp.availabilityCalendar({
+        room, fromDate: Component.iso(start), toDate: Component.iso(end),
+        numAdults: Number(this.props.adults) || 2
+      });
       this.setState({ days, loading: false, ratesFailed: Object.keys(days).length === 0 });
     } catch (e) {
       this.setState({ days: {}, loading: false, ratesFailed: true });
