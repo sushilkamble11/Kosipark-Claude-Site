@@ -465,7 +465,11 @@ class Component extends DCLogic {
       this.gp = gp;
       let cart = gp.readCart();
       const q = new URLSearchParams(window.location.search);
-      if (!cart.length && q.get("room") && Number(q.get("total")) > 0) {
+      // Was `!cart.length && ...`, which meant a stay named in the URL was only
+      // ever added when the cart was empty — so "Add another", pick a second
+      // cabin, and it silently vanished. addToCart already ignores a duplicate
+      // of the same type and dates, so the guard was doing nothing but harm.
+      if (q.get("room") && Number(q.get("total")) > 0) {
         const p = this.params();
         cart = gp.addToCart({
           roomTypeId: p.room, name: NAMES[p.room] || p.room, ratePlanId: p.plan,
