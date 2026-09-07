@@ -16,3 +16,7 @@ Thumbs.db
 # Test artefacts
 test/shots/
 node_modules/
+
+# Added through GitHub"'s web UI: a PAT cannot push workflow files
+# without the workflow scope, and this one is deliberately minimal.
+.github/
