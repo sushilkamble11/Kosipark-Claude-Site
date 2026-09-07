@@ -68,13 +68,14 @@ const memory = new Map();
 const LS_PREFIX = "gp:";
 
 function cacheGet(key, ttl) {
+  const live = e => Date.now() - e.ts < (e.sample ? Math.min(ttl, SAMPLE_TTL) : ttl);
   const hit = memory.get(key);
-  if (hit && Date.now() - hit.ts < ttl) return hit.value;
+  if (hit && live(hit)) return hit.value;
   try {
     const raw = localStorage.getItem(LS_PREFIX + key);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Date.now() - parsed.ts < ttl) {
+      if (live(parsed)) {
         memory.set(key, parsed);
         return parsed.value;
       }
@@ -84,8 +85,16 @@ function cacheGet(key, ttl) {
   return null;
 }
 
+/**
+ * Sample data must not be cached for the real TTL. beprofilefields is a 24-hour
+ * bucket, so a visitor who loaded the site before the API key was installed
+ * would keep seeing invented rates and placeholder photos for a day after it
+ * went live. Fixtures get a minute; real answers keep their full lifetime.
+ */
+const SAMPLE_TTL = 60 * 1000;
+
 function cacheSet(key, value) {
-  const entry = { value, ts: Date.now() };
+  const entry = { value, ts: Date.now(), sample: notConfigured || CONFIG.mock };
   memory.set(key, entry);
   try { localStorage.setItem(LS_PREFIX + key, JSON.stringify(entry)); } catch (e) {}
 }
