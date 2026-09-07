@@ -28,6 +28,26 @@ line(cedarCounts !== unpCounts, "counts differ between categories",
      `cedar=[${cedarCounts}] unpowered=[${unpCounts}]`);
 line(dates.some(d => cedar[d].count !== cedar[dates[0]].count), "counts vary night to night");
 
+/* A whole month at a time — what the calendar page actually asks for.
+   This is where it broke: a month-long window was judged as a month-long
+   BOOKING, tripped the maximum-stay rule, and came back with every night
+   closed. The page then showed the entire park sold out, every month, with
+   no way for a guest to tell it was a bug. A calendar sweep is not a stay. */
+for (const [from, to, label] of [
+  ["2026-10-01", "2026-10-31", "a calendar month"],
+  ["2026-09-01", "2026-10-31", "two months at once"],
+  ["2026-11-01", "2026-11-04", "a short stay-length window"],
+]) {
+  const cal = await gp.availabilityCalendar({ room: "cedar-cabin", fromDate: from, toDate: to, numAdults: 2 });
+  const ds = Object.keys(cal);
+  const priced = ds.filter(d => typeof cal[d].rate === "number" && cal[d].rate > 0).length;
+  const open = ds.filter(d => !cal[d].soldOut).length;
+  line(ds.length > 0 && priced === ds.length,
+       `${label} prices every night`, `${priced}/${ds.length} priced`);
+  line(open > ds.length / 2,
+       `${label} is not blanket sold out`, `${open}/${ds.length} open`);
+}
+
 srv.kill();
 console.log(fails === 0 ? "\nAll checks passed." : `\n${fails} failed.`);
 process.exit(fails === 0 ? 0 : 1);

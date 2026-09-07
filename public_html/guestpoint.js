@@ -245,6 +245,149 @@ export function getExtras(roomStays) {
   return request("POST", "/extras", { body: { RoomStays: roomStays }, cacheKind: "extras" });
 }
 
+/* ---------- Extras, as the Booking Engine actually returns them ----------
+ *
+ * The checkout was reading UnitPrice / PerPerson / Nights off each extra.
+ * None of those exist in the spec — they were invented by our own mock, so
+ * every extra would have priced at NaN the moment a real key was plugged in.
+ *
+ * BookingExtraOutput really carries:
+ *   PriceType     perNight | perBooking | perPerson | perPersonPerNight | perRoom
+ *   CheckoutType  service (taken once or not at all) | quantity (choose how many)
+ *   MaxItems      0 means no limit
+ *   Prices[]      { Id, Name, Price } — per-guest-type for the perPerson kinds,
+ *                 a single unnamed entry for the rest
+ *   RatePlans[]   the rate plans this extra is offered on
+ *
+ * This turns that into something a page can render and total without knowing
+ * any of it, and tolerates the older mock shape so nothing breaks mid-change.
+ */
+
+const PER_PERSON_TYPES = ["perPerson", "perPersonPerNight"];
+const PER_NIGHT_TYPES = ["perNight", "perPersonPerNight"];
+
+function unitLabelFor(priceType) {
+  switch (priceType) {
+    case "perPersonPerNight": return "per person, per night";
+    case "perPerson":         return "per person";
+    case "perNight":          return "per night";
+    case "perRoom":           return "per room";
+    default:                  return "each";      // perBooking
+  }
+}
+
+/**
+ * @param {Array} list      raw /extras payload
+ * @param {object} ctx      { nights, adults, children, ratePlanId }
+ * @returns {Array} one entry per extra, priced and ready to render
+ */
+export function normaliseExtras(list, ctx) {
+  const c = ctx || {};
+  const nights = Math.max(1, Number(c.nights) || 1);
+  const adults = Math.max(0, Number(c.adults) || 0);
+  const children = Math.max(0, Number(c.children) || 0);
+
+  return (Array.isArray(list) ? list : [])
+    // An extra is only on offer for the rate plans it lists. No list means all.
+    .filter(x => {
+      if (!c.ratePlanId || !Array.isArray(x.RatePlans) || !x.RatePlans.length) return true;
+      return x.RatePlans.indexOf(c.ratePlanId) > -1;
+    })
+    .map(x => {
+      // Fall back to the old mock keys so a stale payload still prices.
+      const priceType = x.PriceType || (x.PerPerson ? "perPersonPerNight"
+                                      : Number(x.Nights) > 1 ? "perNight" : "perBooking");
+      const rawPrices = Array.isArray(x.Prices) && x.Prices.length
+        ? x.Prices
+        : [{ Id: 0, Name: "", Price: x.UnitPrice }];
+
+      const perPerson = PER_PERSON_TYPES.indexOf(priceType) > -1;
+      const perNight = PER_NIGHT_TYPES.indexOf(priceType) > -1;
+
+      // "0 means no limit" is not the same as "offer them fifty". Cap a
+      // per-person extra at the party size and anything else at something a
+      // guest could plausibly want, so the stepper has a real ceiling.
+      const declaredMax = Number(x.MaxItems) || 0;
+      const naturalMax = perPerson ? Math.max(1, adults + children) : 10;
+      const max = x.CheckoutType === "service" ? 1
+                : declaredMax > 0 ? declaredMax
+                : naturalMax;
+
+      const prices = rawPrices.map((pr, i) => {
+        const name = (pr.Name || "").trim();
+        // The per-guest-type prices arrive named Adult / Child. Default each
+        // line's suggested count to how many of that type are actually staying.
+        const suggested = !perPerson ? 0
+          : /child/i.test(name) ? children
+          : /adult/i.test(name) ? adults
+          : adults + children;
+        return {
+          id: String(pr.Id !== undefined ? pr.Id : i),
+          name,
+          price: num(pr.Price) || 0,
+          suggested,
+          max: perPerson ? Math.max(1, suggested || adults + children) : max
+        };
+      });
+
+      const single = prices.length === 1 && !prices[0].name;
+
+      return {
+        id: x.Id,
+        name: x.Name,
+        description: x.Description || "",
+        image: (Array.isArray(x.Images) && x.Images[0] && x.Images[0].URL) || "",
+        priceType,
+        checkoutType: x.CheckoutType || "quantity",
+        isService: x.CheckoutType === "service",
+        perPerson,
+        perNight,
+        max,
+        prices,
+        /** One price and no guest types — the page can show a single stepper. */
+        single,
+        unitPrice: single ? prices[0].price : 0,
+        unitLabel: unitLabelFor(priceType),
+        displayOrder: Number(x.DisplayOrder) || 0
+      };
+    })
+    .sort((a, b) => a.displayOrder - b.displayOrder);
+}
+
+/**
+ * What a chosen extra costs.
+ * @param {object} extra   an entry from normaliseExtras
+ * @param {object} counts  { [priceId]: n } — for a single-price extra, { "0": n }
+ * @param {number} nights
+ */
+export function extraCost(extra, counts, nights) {
+  if (!extra) return 0;
+  const n = extra.perNight ? Math.max(1, Number(nights) || 1) : 1;
+  return extra.prices.reduce((sum, pr) => {
+    const qty = Math.max(0, Number((counts || {})[pr.id]) || 0);
+    return sum + pr.price * qty * n;
+  }, 0);
+}
+
+/** Total for every chosen extra. `chosen` is { [extraId]: { [priceId]: n } }. */
+export function extrasTotal(extras, chosen, nights) {
+  return (extras || []).reduce(
+    (sum, x) => sum + extraCost(x, (chosen || {})[x.id], nights), 0);
+}
+
+/** The Extras[] shape a room stay carries back to GuestPoint. */
+export function extrasForBooking(extras, chosen) {
+  const out = [];
+  (extras || []).forEach(x => {
+    const counts = (chosen || {})[x.id] || {};
+    const entries = x.prices
+      .map(pr => ({ PriceId: Number(pr.id), Count: Math.max(0, Number(counts[pr.id]) || 0) }))
+      .filter(e => e.Count > 0);
+    if (entries.length) out.push({ Id: x.id, Counts: entries });
+  });
+  return out;
+}
+
 /** 5. GET /beprofilefields — the extra guest fields this property collects. */
 export function getProfileFields({ includeInactive } = {}) {
   return request("GET", "/beprofilefields", { params: { includeInactive }, cacheKind: "beprofilefields" });
@@ -707,6 +850,30 @@ export async function availabilityCalendar({ room, fromDate, toDate, numAdults =
     if (r.Closed === true) { day.soldOut = true; day.closed = true; }
   });
 
+  /* A calendar with counts but no prices renders as a solid wall of "Sold
+     out", which is the worst possible lie to tell a guest looking for a
+     free night. It has happened twice already — once from rate plans sorted
+     on an empty Rates array, once from a month-long window tripping a
+     stay-length rule — so rather than trust the availabilities payload to
+     always carry rates, fall back to the endpoint whose whole job is the
+     per-night price. */
+  const anyPriced = Object.keys(out).some(d => typeof out[d].rate === "number");
+  if (!anyPriced && Object.keys(out).length) {
+    try {
+      const bar = await bestAvailableRates({ fromDate, toDate, roomType: room, numAdults, numChildren });
+      const days = normaliseDays(bar, room);
+      Object.keys(out).forEach(date => {
+        const d = days[date];
+        if (!d || typeof d.rate !== "number") return;
+        out[date].rate = d.rate;
+        if (out[date].minStay == null) out[date].minStay = d.minStay;
+        // Availability still comes from /availabilities, which is the endpoint
+        // that actually counts rooms. Only the price is borrowed.
+        if (d.soldOut === false && out[date].count === null) out[date].soldOut = false;
+      });
+    } catch (e) { /* leave the calendar as it was; it is still readable */ }
+  }
+
   return out;
 }
 
@@ -753,6 +920,8 @@ function learnRoomTypes(list) {
     if (id) { SLUG_BY_ID.set(id, slug); ID_BY_SLUG.set(slug, id); }
     const imgs = normaliseImages(rt.RoomImages || rt.Images || rt.RoomTypeImages);
     if (imgs.length) IMAGES_BY_SLUG.set(slug, imgs);
+    // Whatever the property calls it is what every page must call it.
+    rememberRoomName(slug, rt.Name || rt.RoomTypeName);
   });
 }
 
@@ -766,6 +935,29 @@ export function roomTypeIdFor(slugOrId) {
 
 /** GuestPoint external id -> slug. */
 export function slugForRoomTypeId(id) { return SLUG_BY_ID.get(id) || null; }
+
+/* The pages used to keep their own slug-to-name tables. They drifted: the
+   results card offered an "Unpowered Site" and the checkout put an "Unpowered
+   Tent Site" in the booking, so a guest could not tell whether the thing they
+   picked was the thing they got. Worse, a hardcoded table is wrong by
+   definition once real data arrives — GuestPoint names these types, not us.
+   One function, and the live name wins. */
+const LEARNED_NAMES = new Map();
+export function rememberRoomName(slug, name) {
+  if (slug && name) LEARNED_NAMES.set(slug, String(name));
+}
+export function nameForRoom(slug) {
+  if (!slug) return "";
+  return LEARNED_NAMES.get(slug)
+      || (ROOM_TYPES[slug] && ROOM_TYPES[slug].name)
+      || String(slug).replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+}
+
+/** Is this exact stay already in the booking? Returns it, or null. */
+export function cartHas({ roomTypeId, arrival, departure }) {
+  return readCart().find(i =>
+    i.roomTypeId === roomTypeId && i.arrival === arrival && i.departure === departure) || null;
+}
 
 /** What the registry currently knows. Handy in the console when going live. */
 export function roomTypeMap() {
@@ -868,17 +1060,79 @@ export async function imagesFor(slug) {
  * local preview shows the photo pipeline working — slots filled, captions
  * carried through — without fetching anything or shipping stock imagery.
  */
+/* Sample photography.
+ *
+ * These used to be a flat colour block with the scene name set in 46px across
+ * the middle. On a card that read as a label; stretched across a 1440px hero
+ * it became two lines of grey text over the top of the home page, and the
+ * first thing anyone saw was placeholder furniture. Since every photo on the
+ * site is one of these until a GuestPoint key is in place, that was the site.
+ *
+ * They are drawn as landscapes now — a sky, a ridgeline, a treeline — with no
+ * text at all. The page already carries a plain banner saying the data is
+ * sample, so the pictures do not need to shout it, and a quiet mountain
+ * silhouette is honest about being a drawing rather than pretending to be a
+ * photograph of a cabin nobody has stayed in.
+ */
 function mockImage(label, tone, seq) {
-  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800">' +
-    '<rect width="1200" height="800" fill="' + tone + '"/>' +
-    '<text x="600" y="392" text-anchor="middle" font-family="Georgia, serif" font-size="46" fill="#FCFAF6">' +
-      label.replace(/&/g, "&amp;").replace(/</g, "&lt;") + '</text>' +
-    '<text x="600" y="446" text-anchor="middle" font-family="Helvetica, sans-serif" font-size="22" fill="rgba(252,250,246,0.62)">' +
-      'GuestPoint photo ' + seq + '</text></svg>';
+  // Deterministic per scene, so a given slot looks the same on every reload.
+  let h = 0;
+  for (let i = 0; i < label.length; i++) h = (h * 31 + label.charCodeAt(i)) | 0;
+  h = Math.abs(h) + seq * 7;
+
+  const SKIES = [
+    ["#26404A", "#4C6B6B"], ["#1D3730", "#3F5A4A"], ["#3A3B4E", "#6B6A78"],
+    ["#5B4630", "#96784E"], ["#22323F", "#57707A"], ["#122720", "#33493C"]
+  ];
+  const sky = SKIES[h % SKIES.length];
+  const far = ["#4A5D57", "#55665C", "#5E6E66"][h % 3];
+  const mid = ["#33463E", "#2C3F38", "#3A4E43"][(h >> 2) % 3];
+  const near = ["#1C2C26", "#17251F", "#20302A"][(h >> 3) % 3];
+
+  // A ridgeline built from the hash, so no two scenes share a skyline.
+  const ridge = (base, amp, seed) => {
+    const pts = [];
+    for (let x = 0; x <= 1200; x += 100) {
+      const n = Math.sin((x / 1200) * Math.PI * 2 * (1 + (seed % 3)) + seed) * amp;
+      const n2 = Math.sin((x / 1200) * Math.PI * 5 + seed * 1.7) * (amp / 3);
+      pts.push(x + " " + Math.round(base + n + n2));
+    }
+    return "M0 800 L0 " + Math.round(base) + " L" + pts.join(" L") + " L1200 800 Z";
+  };
+
+  const orbY = 150 + (h % 90);
+  const orbX = 200 + (h % 800);
+  const isNight = (h % 5) === 0;
+
+  const svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">' +
+      '<defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop offset="0" stop-color="' + sky[0] + '"/>' +
+        '<stop offset="1" stop-color="' + sky[1] + '"/>' +
+      '</linearGradient></defs>' +
+      '<rect width="1200" height="800" fill="url(#s)"/>' +
+      '<circle cx="' + orbX + '" cy="' + orbY + '" r="' + (isNight ? 26 : 44) + '" ' +
+        'fill="' + (isNight ? "rgba(237,228,212,0.55)" : "rgba(252,244,224,0.30)") + '"/>' +
+      '<path d="' + ridge(430, 60, h) + '" fill="' + far + '" opacity="0.85"/>' +
+      '<path d="' + ridge(540, 46, h + 3) + '" fill="' + mid + '"/>' +
+      '<path d="' + ridge(650, 30, h + 7) + '" fill="' + near + '"/>' +
+      // A suggestion of snow gums along the near ridge.
+      '<g fill="' + near + '" opacity="0.9">' +
+        [0, 1, 2, 3, 4, 5].map(function (i) {
+          const x = 90 + ((h * (i + 3)) % 1050);
+          const t = 34 + ((h + i * 13) % 40);
+          return '<path d="M' + x + ' 800 L' + x + ' ' + (760 - t) +
+                 ' M' + (x - 12) + ' ' + (772 - t) + ' L' + x + ' ' + (752 - t) +
+                 ' L' + (x + 12) + ' ' + (772 - t) + '" stroke="' + near +
+                 '" stroke-width="5" fill="none" stroke-linecap="round"/>';
+        }).join("") +
+      '</g>' +
+    '</svg>';
+
   return {
     URL: "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg),
     Sequence: String(seq),
-    Captions: { en: label + " — photo " + seq }
+    Captions: { en: label }
   };
 }
 
@@ -931,10 +1185,16 @@ async function mockResponse(method, path, params, body) {
           const arrMonth = new Date(params.arrivalDate).getMonth() + 1;
           const arrDow = new Date(params.arrivalDate).getDay();
           const typeMin = (arrMonth >= 6 && arrMonth <= 9 && (arrDow === 5 || arrDow === 6)) ? 2 : 1;
-          const minFail = nights < typeMin;
-          const ctaFail = arrMonth >= 6 && arrMonth <= 9 && arrDow === 6 && !isSite;
-          const maxFail = nights > 21;
-          const ok = !closedOut && guests <= rt.maxOccupancy && !minFail && !ctaFail && !maxFail;
+          // calendarMode asks "what is each night doing?", not "book me this
+          // stay". Judging a 30-night calendar window as a 30-night booking
+          // tripped the max-stay rule and closed every night on the page —
+          // the whole park showed as sold out for every month. Stay-level
+          // rules apply to a proposed stay, never to a calendar sweep.
+          const calendarMode = params.calendarMode === true || params.calendarMode === "true";
+          const minFail = !calendarMode && nights < typeMin;
+          const ctaFail = !calendarMode && arrMonth >= 6 && arrMonth <= 9 && arrDow === 6 && !isSite;
+          const maxFail = !calendarMode && nights > 21;
+          const ok = !closedOut && (calendarMode || guests <= rt.maxOccupancy) && !minFail && !ctaFail && !maxFail;
           const stay = perNight * nights;
           // Per-night arrays, so the calendars have something shaped like the
           // real payload to read: a count per night and a rate per night.
@@ -953,14 +1213,27 @@ async function mockResponse(method, path, params, body) {
             return closedOut ? 0 : Math.max(0, peak ? Math.min(seed, 3) - 1 : seed);
           };
 
-          const ratesFor = factor => nightList.map(iso => ({
-            Date: iso,
-            SellRate: String(Math.round(mockRateFor(slug, iso) * factor)),
-            Closed: !ok,
-            ClosedToArrival: iso === params.arrivalDate ? ctaFail : false,
-            ClosedToDeparture: false,
-            MinStayArrival: iso === params.arrivalDate ? typeMin : 0
-          }));
+          const ratesFor = factor => nightList.map(iso => {
+            const d = new Date(iso);
+            const m = d.getMonth() + 1, dow = d.getDay();
+            const nightClosed = calendarMode
+              ? (closedOut || d.getDate() % 17 === 0)
+              : !ok;
+            return {
+              Date: iso,
+              SellRate: String(Math.round(mockRateFor(slug, iso) * factor)),
+              Closed: nightClosed,
+              // Per-night restrictions in calendar mode, so the grid can show
+              // which nights you may actually arrive on.
+              ClosedToArrival: calendarMode
+                ? (m >= 6 && m <= 9 && dow === 6 && !isSite)
+                : (iso === params.arrivalDate ? ctaFail : false),
+              ClosedToDeparture: false,
+              MinStayArrival: calendarMode
+                ? ((m >= 6 && m <= 9 && (dow === 5 || dow === 6)) ? 2 : 1)
+                : (iso === params.arrivalDate ? typeMin : 0)
+            };
+          });
 
           const plans = [{
             Id: "standard", Name: "Standard rate", Description: "Our most flexible rate",
@@ -998,9 +1271,14 @@ async function mockResponse(method, path, params, body) {
             Id: slug,
             Name: rt.name,
             RoomImages: mockRoomImages(rt.name, i),
-            Availabilities: nightList.map(iso => ({
-              Date: iso, Closed: !ok, ForSale: ok ? forSaleOn(iso) : 0
-            })),
+            Availabilities: nightList.map(iso => {
+              // In calendar mode each night stands on its own: a scattering of
+              // genuinely full nights, not a blanket closure.
+              const nightClosed = calendarMode
+                ? (closedOut || new Date(iso).getDate() % 17 === 0)
+                : !ok;
+              return { Date: iso, Closed: nightClosed, ForSale: nightClosed ? 0 : forSaleOn(iso) };
+            }),
             MaxOccupancy: rt.maxOccupancy,
             Bedrooms: isSite ? 0 : (slug.indexOf("three") > -1 ? 3 : slug.indexOf("two") > -1 ? 2 : 1),
             Cars: 1,
@@ -1055,15 +1333,52 @@ async function mockResponse(method, path, params, body) {
   }
 
   if (path === "/extras") {
-    const nights = body && body.RoomStays && body.RoomStays[0]
-      ? nightsBetween(body.RoomStays[0].Arrival, body.RoomStays[0].Departure) : 1;
+    // Shaped exactly like BookingExtraOutput. It used to invent UnitPrice /
+    // PerPerson / Nights, which meant the checkout was written against fields
+    // the real Booking Engine has never returned — every extra would have
+    // priced at NaN on the first live key. The sample data now lies about the
+    // prices only, never about the shape.
+    const one = (price) => [{ Id: 0, Name: "", Price: String(price) }];
+    const perGuest = (adult, child) => [
+      { Id: 0, Name: "Adult", Price: String(adult) },
+      { Id: 1, Name: "Child", Price: String(child) }
+    ];
     return [
-      { Id: "drying-room", Name: "Drying room access", Description: "Per person, per night — applies to the full stay", UnitPrice: "5", Nights: nights, PerPerson: true },
-      { Id: "extra-vehicle", Name: "Additional vehicle", Description: "Per night, registered at reception", UnitPrice: "20", Nights: nights },
-      { Id: "firewood", Name: "Premium seasoned firewood", Description: "Per bag, collected from reception", UnitPrice: "20", Nights: 1 },
-      { Id: "ev-charging", Name: "EV charging surcharge", Description: "Required to charge from your site supply", UnitPrice: "25", Nights: 1 },
-      { Id: "early-checkin", Name: "Early check-in (before 1pm)", UnitPrice: "30", Nights: 1 },
-      { Id: "late-checkout", Name: "Late checkout (until midday)", UnitPrice: "30", Nights: 1 }
+      { Id: "drying-room", Name: "Drying room access",
+        Description: "Somewhere warm for boots and jackets overnight.",
+        ExtraType: "checkout", CheckoutType: "quantity", MaxItems: 0,
+        PriceType: "perPersonPerNight", DisplayOrder: 1, Images: null,
+        Prices: perGuest(5, 3), RatePlans: [] },
+      { Id: "firewood", Name: "Premium seasoned firewood",
+        Description: "A bag of dry hardwood, collected from reception.",
+        ExtraType: "checkout", CheckoutType: "quantity", MaxItems: 6,
+        PriceType: "perBooking", DisplayOrder: 2, Images: null,
+        Prices: one(20), RatePlans: [] },
+      { Id: "extra-vehicle", Name: "Additional vehicle",
+        Description: "A second car on your site, registered at reception.",
+        ExtraType: "checkout", CheckoutType: "quantity", MaxItems: 3,
+        PriceType: "perNight", DisplayOrder: 3, Images: null,
+        Prices: one(20), RatePlans: [] },
+      { Id: "linen-pack", Name: "Linen and towel pack",
+        Description: "Made-up beds and bath towels, per person.",
+        ExtraType: "checkout", CheckoutType: "quantity", MaxItems: 0,
+        PriceType: "perPerson", DisplayOrder: 4, Images: null,
+        Prices: perGuest(35, 25), RatePlans: [] },
+      { Id: "ev-charging", Name: "EV charging",
+        Description: "Charge from your site supply for the stay.",
+        ExtraType: "checkout", CheckoutType: "service", MaxItems: 1,
+        PriceType: "perNight", DisplayOrder: 5, Images: null,
+        Prices: one(25), RatePlans: [] },
+      { Id: "early-checkin", Name: "Early check-in, from 11am",
+        Description: "Subject to the cabin being ready.",
+        ExtraType: "checkout", CheckoutType: "service", MaxItems: 1,
+        PriceType: "perBooking", DisplayOrder: 6, Images: null,
+        Prices: one(30), RatePlans: [] },
+      { Id: "late-checkout", Name: "Late checkout, until midday",
+        Description: "Two extra hours on your last morning.",
+        ExtraType: "checkout", CheckoutType: "service", MaxItems: 1,
+        PriceType: "perBooking", DisplayOrder: 7, Images: null,
+        Prices: one(30), RatePlans: [] }
     ];
   }
 

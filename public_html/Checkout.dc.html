@@ -59,6 +59,7 @@
 
         <div style="display:grid; gap:clamp(20px,3vw,40px); grid-template-columns:repeat(auto-fit, minmax(min(100%, 300px), 1fr)); margin-top:clamp(22px,3vw,34px); align-items:start">
           <div style="min-width:0; grid-column:span 2">
+            <p style="{{ noticeStyle }}" onClick="{{ dismissNotice }}">{{ notice }}</p>
             <p style="{{ holdStyle }}">{{ holdText }}</p>
 
             <sc-if value="{{ onExtras }}" hint-placeholder-val="{{ false }}">
@@ -78,18 +79,37 @@
                 <p style="font:400 14.5px/1.7 Figtree, sans-serif; color:#6C6862; margin:10px 0 20px">Optional. Everything here is confirmed with your booking, not charged separately on arrival.</p>
                 <div style="display:grid; gap:1px; border-radius:16px; overflow:hidden">
                   <sc-for list="{{ extras }}" as="x" hint-placeholder-count="4">
-                    <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; padding:16px 18px; background:#F3ECE0; box-shadow:0 0 0 1px rgba(29,55,48,0.08)">
-                      <span style="display:flex; flex-direction:column; gap:4px; min-width:0; flex:1 1 200px">
-                        <span style="font:600 15px/1.3 Figtree, sans-serif; color:#292724">{{ x.name }}</span>
-                        <span style="font:400 13px/1.5 Figtree, sans-serif; color:#8B877E">{{ x.detail }}</span>
-                      </span>
-                      <span style="display:flex; align-items:center; gap:14px">
-                        <span style="font:500 14px/1 Figtree, sans-serif; color:#4C5C40; white-space:nowrap">{{ x.lineTotal }}</span>
-                        <span style="display:flex; align-items:center; gap:4px">
-                          <button type="button" onClick="{{ x.dec }}" style="width:38px; height:38px; border-radius:999px; border:1px solid rgba(29,55,48,0.18); background:transparent; color:#1D3730; font:400 18px/1 Figtree, sans-serif; cursor:pointer">−</button>
-                          <span style="min-width:24px; text-align:center; font:600 15px/1 Figtree, sans-serif; color:#1D3730">{{ x.count }}</span>
-                          <button type="button" onClick="{{ x.inc }}" style="width:38px; height:38px; border-radius:999px; border:1px solid rgba(29,55,48,0.18); background:transparent; color:#1D3730; font:400 18px/1 Figtree, sans-serif; cursor:pointer">+</button>
+                    <div style="display:flex; flex-wrap:wrap; gap:14px; align-items:flex-start; justify-content:space-between; padding:16px 18px; background:#F3ECE0; box-shadow:0 0 0 1px rgba(29,55,48,0.08)">
+                      <span style="display:flex; gap:14px; min-width:0; flex:1 1 240px; align-items:flex-start">
+                        <!-- The photo rides on the style string, not an src.
+                             An <img> with an unbound or empty src asks the
+                             server for the page again on every render. -->
+                        <span role="img" aria-label="{{ x.name }}" style="{{ x.photoStyle }}"></span>
+                        <span style="display:flex; flex-direction:column; gap:4px; min-width:0">
+                          <span style="font:600 15px/1.3 Figtree, sans-serif; color:#292724">{{ x.name }}</span>
+                          <span style="font:400 13px/1.5 Figtree, sans-serif; color:#8B877E">{{ x.detail }}</span>
+                          <span style="font:500 12.5px/1.5 Figtree, sans-serif; color:#4C5C40">{{ x.priceSummary }}</span>
                         </span>
+                      </span>
+                      <span style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; justify-content:flex-end">
+                        <span style="font:600 14px/1 Figtree, sans-serif; color:#4C5C40; white-space:nowrap">{{ x.lineTotal }}</span>
+                        <sc-if value="{{ x.isService }}" hint-placeholder-val="{{ false }}">
+                          <button type="button" onClick="{{ x.toggle }}" style="{{ x.switchStyle }}">{{ x.switchLabel }}</button>
+                        </sc-if>
+                        <sc-if value="{{ x.isQuantity }}" hint-placeholder-val="{{ true }}">
+                          <span style="display:flex; flex-direction:column; gap:8px; align-items:flex-end">
+                            <sc-for list="{{ x.lines }}" as="ln" hint-placeholder-count="2">
+                              <span style="display:flex; align-items:center; gap:10px">
+                                <span style="font:500 12px/1 Figtree, sans-serif; color:#8B877E; white-space:nowrap">{{ ln.label }}</span>
+                                <span style="display:flex; align-items:center; gap:4px">
+                                  <button type="button" onClick="{{ ln.dec }}" aria-label="Fewer" style="width:36px; height:36px; border-radius:999px; border:1px solid rgba(29,55,48,0.18); background:transparent; color:#1D3730; font:400 18px/1 Figtree, sans-serif; cursor:pointer">−</button>
+                                  <span style="min-width:22px; text-align:center; font:600 15px/1 Figtree, sans-serif; color:#1D3730">{{ ln.count }}</span>
+                                  <button type="button" onClick="{{ ln.inc }}" aria-label="More" style="width:36px; height:36px; border-radius:999px; border:1px solid rgba(29,55,48,0.18); background:transparent; color:#1D3730; font:400 18px/1 Figtree, sans-serif; cursor:pointer">+</button>
+                                </span>
+                              </span>
+                            </sc-for>
+                          </span>
+                        </sc-if>
                       </span>
                     </div>
                   </sc-for>
@@ -344,21 +364,10 @@
 
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{}">
-const NAMES = {
-  "three-bedroom-chalet": "Three Bedroom Chalet",
-  "two-bedroom-chalet-upgraded": "Two Bedroom Chalet — Upgraded",
-  "two-bedroom-chalet": "Two Bedroom Chalet",
-  "cedar-cabin": "Cedar Cabin",
-  "caravan-site": "Caravan Site",
-  "camper-trailer-site": "Camper Trailer Site",
-  "motorhome-site": "Motorhome Site",
-  "unpowered-site": "Unpowered Tent Site"
-};
-
 class Component extends DCLogic {
   state = {
     step: "details", unit: "m", payMode: "deposit", guideOpen: false, eqType: "", eqLength: "", eqWidth: "", sitePref: "",
-    addBefore: false, addAfter: false, quotes: null, ackSurcharge: false, extras: [], counts: {}, profileFields: [], answers: {},
+    addBefore: false, addAfter: false, quotes: null, ackSurcharge: false, extras: [], counts: {}, profileFields: [], answers: {}, notice: "",
     firstName: "", lastName: "", email: "", mobile: "", address: "", city: "", postcode: "",
     cardName: "", cardNumber: "", cardExpiry: "", cardCvv: "",
     marketing: false, consent: false, error: "", busy: false, validated: null, booked: null, cart: [], loaded: false
@@ -465,6 +474,11 @@ class Component extends DCLogic {
     });
   }
 
+  /** One name per room type, and it is the one the guest was shown. */
+  roomName(slug) {
+    return this.gp ? this.gp.nameForRoom(slug) : String(slug || "");
+  }
+
   async componentDidMount() {
     try {
       const gp = await import("./guestpoint.js");
@@ -475,35 +489,51 @@ class Component extends DCLogic {
       // ever added when the cart was empty — so "Add another", pick a second
       // cabin, and it silently vanished. addToCart already ignores a duplicate
       // of the same type and dates, so the guard was doing nothing but harm.
+      let notice = "";
       if (q.get("room") && Number(q.get("total")) > 0) {
         const p = this.params();
-        cart = gp.addToCart({
-          roomTypeId: p.room, name: NAMES[p.room] || p.room, ratePlanId: p.plan,
+        const stay = {
+          roomTypeId: p.room, name: this.roomName(p.room), ratePlanId: p.plan,
           arrival: p.arrival, departure: p.departure, nights: this.nights(),
           adults: p.adults, children: p.children, infants: p.infants, total: p.total
-        });
+        };
+        // Adding the same type for the same nights is a no-op, and it used to
+        // be a SILENT one: the guest went back, searched, chose, landed here
+        // and saw one stay where they expected two, with nothing to explain
+        // it. Whatever happens, say so.
+        const already = gp.cartHas(stay);
+        if (already) {
+          notice = stay.name + " for these nights is already in your booking. " +
+                   "To add a second one, choose different dates — or call reception on 02 6456 2224 " +
+                   "and they'll put two on the one booking.";
+        } else {
+          cart = gp.addToCart(stay);
+          if (cart.length > 1) {
+            notice = stay.name + " added — " + cart.length + " stays in your booking.";
+          }
+        }
       }
-      this.setState({ cart, loaded: true });
-      const [extras, profileFields] = await Promise.all([
+      this.setState({ cart, loaded: true, notice });
+      const [rawExtras, profileFields] = await Promise.all([
         gp.getExtras([this.roomStay()]),
         gp.getProfileFields()
       ]);
-      this.setState({ extras: extras || [], profileFields: profileFields || [] });
+      const pp = this.params();
+      const extras = gp.normaliseExtras(rawExtras, {
+        nights: this.nights(), adults: pp.adults, children: pp.children, ratePlanId: pp.plan
+      });
+      this.setState({ extras, profileFields: profileFields || [] });
       this.loadExtendQuotes();
     } catch (e) {
       this.setState({ error: e.message || "Couldn't load booking options." });
     }
   }
 
+  /* counts is { [extraId]: { [priceId]: n } } — a per-person extra carries a
+     count for each guest type, which is what GuestPoint expects back. */
   extrasTotal() {
-    const p = this.params();
-    return (this.state.extras || []).reduce((sum, x) => {
-      const c = this.state.counts[x.Id] || 0;
-      if (!c) return sum;
-      const unit = parseFloat(x.UnitPrice || "0");
-      const nights = x.Nights || 1;
-      return sum + unit * c * nights;
-    }, 0);
+    if (!this.gp) return 0;
+    return this.gp.extrasTotal(this.state.extras, this.state.counts, this.nights());
   }
 
   totals() {
@@ -518,11 +548,37 @@ class Component extends DCLogic {
     return { stay, extras, total, deposit, surcharge: deposit * 0.02, dueToday, dueSurcharge: dueToday * 0.02 };
   }
 
-  bump(id, delta, max) {
+  bump(extraId, priceId, delta, max) {
     this.setState(s => {
-      const next = Math.max(0, Math.min(max, (s.counts[id] || 0) + delta));
-      return { counts: { ...s.counts, [id]: next }, validated: null };
+      const forExtra = s.counts[extraId] || {};
+      const next = Math.max(0, Math.min(max, (forExtra[priceId] || 0) + delta));
+      return {
+        counts: { ...s.counts, [extraId]: { ...forExtra, [priceId]: next } },
+        validated: null
+      };
     });
+  }
+
+  /** A service extra is on or off. Turning it on takes the suggested counts. */
+  toggleService(extra) {
+    this.setState(s => {
+      const on = this.extraChosen(extra, s.counts);
+      const counts = { ...s.counts };
+      if (on) delete counts[extra.id];
+      else {
+        const next = {};
+        extra.prices.forEach(pr => { next[pr.id] = extra.perPerson ? Math.max(0, pr.suggested) : 1; });
+        // A per-person service with nobody of that type still has to mean something.
+        if (!Object.keys(next).some(k => next[k] > 0)) next[extra.prices[0].id] = 1;
+        counts[extra.id] = next;
+      }
+      return { counts, validated: null };
+    });
+  }
+
+  extraChosen(extra, counts) {
+    const forExtra = (counts || this.state.counts)[extra.id] || {};
+    return Object.keys(forExtra).some(k => forExtra[k] > 0);
   }
 
   reservation() {
@@ -535,11 +591,8 @@ class Component extends DCLogic {
     const profile = (s.profileFields || []).filter(f => s.answers[f.ExternalId]).map(f => ({
       Id: f.ExternalId, Name: f.Name, Type: f.FieldType, Value: s.answers[f.ExternalId]
     }));
-    const extras = (s.extras || []).filter(x => s.counts[x.Id]).map(x => ({
-      Id: x.Id, Name: x.Name, Nights: x.Nights || 1,
-      Counts: [{ Count: s.counts[x.Id] }],
-      Total: String(parseFloat(x.UnitPrice || "0") * (s.counts[x.Id] || 0) * (x.Nights || 1))
-    }));
+    // Spec: Extras[] carries the extra's Id and one Counts entry per price.
+    const extras = this.gp ? this.gp.extrasForBooking(s.extras, s.counts) : [];
     return {
       Adults: p.adults, Children: p.children, Infants: p.infants,
       RoomStays: this.roomStays(),
@@ -708,18 +761,43 @@ class Component extends DCLogic {
       };
     }));
 
+    // An extra's price shape decides how it is offered: a one-off service is a
+    // switch, everything else a stepper — and a per-person extra gets one line
+    // per guest type, because that is how GuestPoint prices and bills it.
     const extras = (s.extras || []).map(x => {
-      const count = s.counts[x.Id] || 0;
-      const unit = parseFloat(x.UnitPrice || "0");
-      const nightsFor = x.Nights || 1;
-      const max = x.PerPerson ? (p.adults + p.children) : 6;
+      const chosen = this.extraChosen(x);
+      const cost = this.gp ? this.gp.extraCost(x, s.counts[x.id], nights) : 0;
+      const priceSummary = x.single
+        ? money(x.unitPrice) + " " + x.unitLabel
+        : x.prices.filter(pr => pr.price > 0)
+                  .map(pr => pr.name + " " + money(pr.price)).join(" · ") + " " + x.unitLabel;
       return {
-        name: x.Name,
-        detail: (x.Description ? x.Description + " · " : "") + money(unit) + (x.PerPerson ? " per person per night" : (nightsFor > 1 ? " per night" : " each")),
-        count,
-        lineTotal: count ? money(unit * count * nightsFor) : "",
-        inc: () => this.bump(x.Id, 1, max),
-        dec: () => this.bump(x.Id, -1, max)
+        name: x.name,
+        detail: x.description,
+        priceSummary,
+        photoStyle: x.image
+          ? "width:64px; height:64px; border-radius:12px; flex:0 0 auto; background:#EFEDE7 center/cover no-repeat url(" +
+            JSON.stringify(x.image) + ")"
+          : "display:none",
+        lineTotal: cost ? money(cost) : "",
+        // A service: taken once or not at all.
+        isService: x.isService,
+        switchLabel: chosen ? "Added" : "Add",
+        switchStyle: "border:0; border-radius:999px; cursor:pointer; padding:13px 20px; white-space:nowrap; " +
+          "font:600 12px/1 Figtree, sans-serif; letter-spacing:.08em; " +
+          (chosen ? "background:#1D3730; color:#FCFAF6" : "background:#E9EEE3; color:#1D3730"),
+        toggle: () => this.toggleService(x),
+        // A quantity: one stepper, or one per guest type.
+        isQuantity: !x.isService,
+        lines: x.isService ? [] : x.prices.filter(pr => pr.price > 0).map(pr => {
+          const n = ((s.counts[x.id] || {})[pr.id]) || 0;
+          return {
+            label: pr.name || "How many",
+            count: String(n),
+            inc: () => this.bump(x.id, pr.id, 1, pr.max),
+            dec: () => this.bump(x.id, pr.id, -1, pr.max)
+          };
+        })
       };
     });
 
@@ -727,9 +805,15 @@ class Component extends DCLogic {
       isEmpty: s.loaded && items.length === 0 && s.step !== "done",
       notDone: s.step !== "done" && items.length > 0,
       isDone: s.step === "done",
-      roomName: NAMES[p.room] || p.room,
-      headline: items.length > 1 ? items.length + " stays in one booking" : (items[0] ? items[0].name : NAMES[p.room] || p.room),
+      roomName: this.roomName(p.room),
+      headline: items.length > 1 ? items.length + " stays in one booking" : (items[0] ? items[0].name : this.roomName(p.room)),
       stayCount: items.length > 1 ? items.length + " stays" : "1 stay",
+      notice: s.notice || "",
+      noticeStyle: s.notice
+        ? "margin:0 0 16px; padding:14px 16px; border-radius:12px; background:#E9EEE3; " +
+          "font:500 13.5px/1.6 Figtree, sans-serif; color:#3A4E3C; animation:riseIn .18s ease both"
+        : "display:none",
+      dismissNotice: () => this.setState({ notice: "" }),
       stays: items.map((it, i) => ({
         name: it.name,
         total: money(Number(it.total) + (i === 0 ? this.extensionCost() : 0)),

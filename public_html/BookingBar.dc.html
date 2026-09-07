@@ -18,7 +18,7 @@
 <div data-booking="{{ uid }}" style="font-family:Figtree, system-ui, sans-serif; background:#FFFFFF; border-radius:18px; padding:8px; box-shadow:0 26px 60px -28px rgba(18,39,32,0.55); border:1px solid rgba(29,55,48,0.08)">
   <div style="display:flex; flex-wrap:wrap; align-items:flex-start; gap:8px">
 
-    <div style="flex:2 1 340px; min-width:0; position:relative; display:flex; flex-wrap:wrap; align-items:flex-start; gap:8px">
+    <div style="flex:3 1 340px; min-width:0; position:relative; display:flex; flex-wrap:wrap; align-items:flex-start; gap:8px">
       <button type="button" onClick="{{ dates.openIn }}" style="{{ dates.inStyle }}">
         <span style="font:700 9.5px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#8B877E">Check in</span>
         <span style="font:400 18px/1.2 Petrona, Georgia, serif; color:#1D3730; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ dates.inLabel }}</span>
@@ -63,7 +63,7 @@
       </sc-if>
     </div>
 
-    <div style="flex:1 1 180px; min-width:0; position:relative; display:flex; flex-direction:column">
+    <div style="flex:1 1 150px; min-width:0; max-width:230px; position:relative; display:flex; flex-direction:column">
       <button type="button" onClick="{{ guests.toggle }}" style="{{ guests.fieldStyle }}">
         <span style="font:700 9.5px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#8B877E">Guests</span>
         <span style="font:400 18px/1.2 Petrona, Georgia, serif; color:#1D3730; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%">{{ guests.label }}</span>
@@ -88,7 +88,7 @@
       </sc-if>
     </div>
 
-    <button type="button" onClick="{{ submit }}" style="flex:1 1 190px; min-width:0; min-height:66px; border:0; border-radius:12px; background:#96592A; color:#FCFAF6; font:700 12.5px/1.3 Figtree, sans-serif; letter-spacing:.12em; text-transform:uppercase; cursor:pointer; padding:16px 22px" style-hover="background:#1D3730">{{ submitLabel }}</button>
+    <button type="button" onClick="{{ submit }}" style="{{ submitStyle }}" style-hover="background:#1D3730">{{ submitLabel }}</button>
   </div>
   <p style="{{ resultStyle }}">{{ resultText }}</p>
 </div>
@@ -274,6 +274,13 @@ class Component extends DCLogic {
         window.location.href = (this.props.action || "/book") + "?" + p.toString();
       },
       submitLabel: this.props.submitLabel || "Check Availability",
+      // Sized to its label on a wide bar, full width once the fields stack.
+      // It used to take a fixed quarter of the row, which on desktop made a
+      // brown slab wider than the check-in and check-out fields put together.
+      submitStyle: "border:0; border-radius:12px; min-height:66px; cursor:pointer; " +
+        "background:#96592A; color:#FCFAF6; font:700 12.5px/1.3 Figtree, sans-serif; " +
+        "letter-spacing:.12em; text-transform:uppercase; padding:16px 30px; white-space:nowrap; " +
+        (s.w < 720 ? "flex:1 1 100%; min-width:0" : "flex:0 0 auto"),
       resultText,
       resultStyle: (s.searched && !this.props.onSubmit)
         ? "margin:12px 8px 4px; font:500 13.5px/1.5 Figtree, sans-serif; color:#4C5C40; animation:riseIn .2s ease both"
