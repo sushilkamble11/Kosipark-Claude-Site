@@ -68,9 +68,13 @@
       "padding:11px 44px 11px 16px",
       "box-shadow:0 -8px 24px -18px rgba(18,39,32,0.9)"
     ].join(";");
-    bar.textContent =
-      "Preview — rates, availability and photos on this page are sample data, " +
-      "not live. Call 02 6456 2224 to book.";
+    // Three lines of banner on a 390px phone covers the content it is warning
+    // about. Same meaning, fewer words, where there is less room.
+    var narrow = window.matchMedia && window.matchMedia("(max-width: 560px)").matches;
+    bar.textContent = narrow
+      ? "Preview — sample data, not live. Call 02 6456 2224."
+      : "Preview — rates, availability and photos on this page are sample data, " +
+        "not live. Call 02 6456 2224 to book.";
 
     var close = document.createElement("button");
     close.type = "button";
