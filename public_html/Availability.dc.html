@@ -407,6 +407,7 @@ class Component extends DCLogic {
 
       const goTo = planId => {
         const q = new URLSearchParams({
+          selection: this.gp.newCartItemId(),
           room: r.slug, plan: planId,
           arrival: p.arrival, departure: p.departure,
           adults: String(p.adults), children: String(p.children), infants: String(p.infants),
@@ -423,6 +424,7 @@ class Component extends DCLogic {
           : "display:none",
         upgradeGo: up ? (() => {
           const q = new URLSearchParams({
+            selection: this.gp.newCartItemId(),
             room: up.slug, plan: up.planId,
             arrival: p.arrival, departure: p.departure,
             adults: String(p.adults), children: String(p.children), infants: String(p.infants),
