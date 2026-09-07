@@ -11,11 +11,11 @@
  * editing. The files in /vendor are byte-identical to unpkg's: their SHA-384
  * hashes match the integrity values support.js pins.
  *
- * This must run BEFORE support.js, so it is a plain <script>, not deferred.
+* This must run BEFORE support.js, so it is a plain <script>, not deferred.
  */
 window.__resources = Object.assign(window.__resources || {}, {
   "https://unpkg.com/react@18.3.1/umd/react.production.min.js":
-    "/vendor/react-18.3.1.production.min.js",
+    "/lib/react-18.3.1.production.min.js",
   "https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js":
-    "/vendor/react-dom-18.3.1.production.min.js"
+    "/lib/react-dom-18.3.1.production.min.js"
 });
