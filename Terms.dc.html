@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<base href="/">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/vendor-map.js"></script>
+<script src="./support.js"></script>
+<script src="/site.js" defer></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Petrona:wght@300;400;500;600&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #FCFAF6; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #1D3730; text-decoration: none; border-bottom: 1px solid rgba(185,121,63,0.5); }
+  a:hover { color: #96592A; }
+</style>
+</helmet>
+
+<div style="background:#FCFAF6; color:#292724; font-family:Figtree, system-ui, sans-serif">
+  <dc-import name="SiteNav" active="terms" book-href="/accommodation" hint-size="100%,84px"></dc-import>
+
+  <section data-screen-label="Terms head" style="max-width:1320px; margin:0 auto; padding:clamp(26px,3.6vw,50px) clamp(20px,5vw,56px) 0">
+    <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#74836A; margin:0">Guest Information</p>
+    <h1 style="font:300 clamp(26px,3.8vw,42px)/1.05 Petrona, Georgia, serif; letter-spacing:-0.02em; color:#1D3730; margin:14px 0 0; max-width:22ch; text-wrap:balance">Terms &amp; Conditions</h1>
+    <p style="font:400 clamp(14px,1.4vw,16px)/1.75 Figtree, sans-serif; color:#56534C; margin:16px 0 0; max-width:60ch">By making a booking you accept these terms. All cancellation and amendment requests must be submitted through our <a href="/manage">online form</a> only. Last updated July 2026.</p>
+    <div style="background:#F3ECE0; border-radius:14px; padding:20px 22px; margin-top:24px; max-width:70ch">
+      <p style="font:500 15px/1.7 Figtree, sans-serif; color:#292724; margin:0">Booked via Booking.com, Airbnb, Expedia or another OTA? The agent's terms apply — contact them directly for any changes or cancellations. We cannot alter or refund OTA bookings.</p>
+    </div>
+  </section>
+
+  <section data-screen-label="Quick summary" style="max-width:1320px; margin:0 auto; padding:clamp(36px,5vw,64px) clamp(20px,5vw,56px) 0">
+    <h2 style="font:400 clamp(24px,3vw,34px)/1.15 Petrona, Georgia, serif; color:#1D3730; margin:0">Quick summary</h2>
+    <div style="display:grid; gap:clamp(14px,2vw,20px); grid-template-columns:repeat(auto-fit, minmax(min(100%, 270px), 1fr)); margin-top:22px">
+      <div style="background:#FFFFFF; border:1px solid rgba(29,55,48,0.08); border-radius:14px; padding:24px">
+        <h3 style="font:400 18.5px/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Deposit</h3>
+        <ul style="list-style:none; margin:12px 0 0; padding:0; display:grid; gap:9px">
+          <li style="font:400 14.5px/1.6 Figtree, sans-serif; color:#56534C">50% of the total booking or one full night's tariff, whichever is higher</li>
+          <li style="font:400 14.5px/1.6 Figtree, sans-serif; color:#56534C">7+ days out: deposit at booking, balance charged 8 days prior</li>
+          <li style="font:400 14.5px/1.6 Figtree, sans-serif; color:#56534C">Under 7 days: full payment at booking, non-refundable</li>
+          <li style="font:400 14.5px/1.6 Figtree, sans-serif; color:#56534C">Card payments incur a 2% surcharge</li>
+        </ul>
+      </div>
+      <div style="background:#FFFFFF; border:1px solid rgba(29,55,48,0.08); border-radius:14px; padding:24px">
+        <h3 style="font:400 18.5px/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Cancellation</h3>
+        <ul style="list-style:none; margin:12px 0 0; padding:0; display:grid; gap:9px">
+          <li style="font:400 14.5px/1.6 Figtree, sans-serif; color:#56534C">15+ days: we retain the greater of 10% or one night</li>
+          <li style="font:400 14.5px/1.6 Figtree, sans-serif; color:#56534C">8–14 days: we retain the greater of 50% or one night</li>
+          <li style="font:400 14.5px/1.6 Figtree, sans-serif; color:#56534C">Within 7 days: 100% non-refundable</li>
+          <li style="font:400 14.5px/1.6 Figtree, sans-serif; color:#56534C">Fees are based on the full night's tariff regardless of deposit paid</li>
+        </ul>
+      </div>
+      <div style="background:#FFFFFF; border:1px solid rgba(29,55,48,0.08); border-radius:14px; padding:24px">
+        <h3 style="font:400 18.5px/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Amendments</h3>
+        <ul style="list-style:none; margin:12px 0 0; padding:0; display:grid; gap:9px">
+          <li style="font:400 14.5px/1.6 Figtree, sans-serif; color:#56534C">15+ days outside snow season: free, like-for-like, if available</li>
+          <li style="font:400 14.5px/1.6 Figtree, sans-serif; color:#56534C">8–14 days: the greater of $50, 10% of tariff, or one night</li>
+          <li style="font:400 14.5px/1.6 Figtree, sans-serif; color:#56534C">Under 7 days: no amendments permitted</li>
+          <li style="font:400 14.5px/1.6 Figtree, sans-serif; color:#56534C">Snow season: no free amendments, none within 14 days</li>
+        </ul>
+      </div>
+      <div style="background:#FFFFFF; border:1px solid rgba(29,55,48,0.08); border-radius:14px; padding:24px">
+        <h3 style="font:400 18.5px/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Arrival &amp; bond</h3>
+        <ul style="list-style:none; margin:12px 0 0; padding:0; display:grid; gap:9px">
+          <li style="font:400 14.5px/1.6 Figtree, sans-serif; color:#56534C">Check-in from 3pm, check-out by 10am</li>
+          <li style="font:400 14.5px/1.6 Figtree, sans-serif; color:#56534C">Early check-in before 1pm $30 · late checkout to midday $30</li>
+          <li style="font:400 14.5px/1.6 Figtree, sans-serif; color:#56534C">Cabins: $100 security bond, refunded 7–14 days after departure</li>
+          <li style="font:400 14.5px/1.6 Figtree, sans-serif; color:#56534C">Quiet hours 10pm to 6am</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section data-screen-label="Full terms" style="max-width:1320px; margin:0 auto; padding:clamp(40px,6vw,80px) clamp(20px,5vw,56px) clamp(38px,5.2vw,70px)">
+    <div style="max-width:76ch; display:grid; gap:clamp(22px,3vw,34px)">
+
+      <div>
+        <h2 style="font:400 clamp(19px,2.2vw,24px)/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Age restrictions &amp; parental consent</h2>
+        <p style="font:400 14.5px/1.75 Figtree, sans-serif; color:#56534C; margin:12px 0 0">The lead guest must be 18 or older at check-in. Guests under 18 must be accompanied by a parent or legal guardian throughout their stay. If a minor stays without their parent or guardian, we require written email consent before arrival, including the parent's full name and contact details, confirmation they authorise the stay, the name of the supervising adult, and acknowledgment of these terms. We reserve the right to refuse check-in or cancel without refund if consent is not provided.</p>
+      </div>
+
+      <div>
+        <h2 style="font:400 clamp(19px,2.2vw,24px)/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Deposit &amp; payment — standard rates</h2>
+        <p style="font:400 14.5px/1.75 Figtree, sans-serif; color:#56534C; margin:12px 0 0">The deposit is 50% of the total booking or one full night's tariff, whichever is higher. Booking 7 or more days before arrival, the deposit is taken at booking and the balance charged 8 days prior. Booking within 7 days of arrival, full payment is taken at booking and is non-refundable. If the balance payment fails you have 24 hours to resolve it; if unresolved the booking is cancelled and all amounts paid are forfeited. Card payments incur a 2% surcharge.</p>
+      </div>
+
+      <div>
+        <h2 style="font:400 clamp(19px,2.2vw,24px)/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Promotional, discounted &amp; Stay-and-Save rates</h2>
+        <p style="font:400 14.5px/1.75 Figtree, sans-serif; color:#56534C; margin:12px 0 0">Full payment is required at booking. These rates are non-refundable and non-amendable under any circumstances.</p>
+      </div>
+
+      <div>
+        <h2 style="font:400 clamp(19px,2.2vw,24px)/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Minimum stay requirements</h2>
+        <ul style="list-style:none; margin:12px 0 0; padding:0; display:grid; gap:10px">
+          <li style="font:400 14.5px/1.7 Figtree, sans-serif; color:#56534C">Winter weekends (June–September, any stay including a Friday, Saturday or Sunday night): 2-night minimum.</li>
+          <li style="font:400 14.5px/1.7 Figtree, sans-serif; color:#56534C">20 December – 5 January: 3-night minimum.</li>
+          <li style="font:400 14.5px/1.7 Figtree, sans-serif; color:#56534C">Easter and NSW winter school holidays: 2-night minimum.</li>
+          <li style="font:400 14.5px/1.7 Figtree, sans-serif; color:#56534C">Snow season runs from the June long weekend through 30 September.</li>
+        </ul>
+      </div>
+
+      <div>
+        <h2 style="font:400 clamp(19px,2.2vw,24px)/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Amendment policy</h2>
+        <p style="font:400 14.5px/1.75 Figtree, sans-serif; color:#56534C; margin:12px 0 0">Submit all amendment requests through our <a href="/manage">online form</a> only. Submitting the form does not confirm any change — your booking remains under the original terms until you receive written confirmation from us.</p>
+        <p style="font:600 13px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; color:#74836A; margin:20px 0 0">Outside snow season (October – early June)</p>
+        <ul style="list-style:none; margin:12px 0 0; padding:0; display:grid; gap:10px">
+          <li style="font:400 14.5px/1.7 Figtree, sans-serif; color:#56534C">15+ days: free like-for-like amendment (same rate type and accommodation) if available.</li>
+          <li style="font:400 14.5px/1.7 Figtree, sans-serif; color:#56534C">8–14 days: transfer fee of the greater of $50, 10% of total tariff, or one full night's tariff.</li>
+          <li style="font:400 14.5px/1.7 Figtree, sans-serif; color:#56534C">Under 7 days: no amendments permitted.</li>
+        </ul>
+        <p style="font:600 13px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; color:#74836A; margin:20px 0 0">Snow season (June long weekend – 30 September)</p>
+        <ul style="list-style:none; margin:12px 0 0; padding:0; display:grid; gap:10px">
+          <li style="font:400 14.5px/1.7 Figtree, sans-serif; color:#56534C">No free amendments at any time.</li>
+          <li style="font:400 14.5px/1.7 Figtree, sans-serif; color:#56534C">Date moves permitted within the same snow season only, subject to availability, with a transfer fee of the greater of $50, 10% of total tariff, or one full night's tariff.</li>
+          <li style="font:400 14.5px/1.7 Figtree, sans-serif; color:#56534C">No amendments within 14 days of arrival. Bookings cannot be moved to a different season or the following year.</li>
+          <li style="font:400 14.5px/1.7 Figtree, sans-serif; color:#56534C">Chalets and cabins: Saturday check-in or check-out is not permitted during snow season.</li>
+        </ul>
+        <p style="font:400 14.5px/1.75 Figtree, sans-serif; color:#56534C; margin:16px 0 0">Any amendment that reduces the total booking value or stay length will be treated as a cancellation, and cancellation fees will apply.</p>
+      </div>
+
+      <div>
+        <h2 style="font:400 clamp(19px,2.2vw,24px)/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Site allocation</h2>
+        <p style="font:400 14.5px/1.75 Figtree, sans-serif; color:#56534C; margin:12px 0 0">Specific sites may be requested but are not guaranteed. We will do our best to accommodate your request. Allocation is at management discretion and may change up to arrival.</p>
+      </div>
+
+      <div>
+        <h2 style="font:400 clamp(19px,2.2vw,24px)/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Equipment details</h2>
+        <p style="font:400 14.5px/1.75 Figtree, sans-serif; color:#56534C; margin:12px 0 0">You must declare the type and dimensions of your caravan, motorhome, camper trailer, van or tent, including drawbar length. Sites are allocated on that basis. If your equipment differs materially from what was declared we may be unable to accommodate you, and no refund applies. Awnings are not permitted on motorhome sites due to site width.</p>
+      </div>
+
+      <div>
+        <h2 style="font:400 clamp(19px,2.2vw,24px)/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Rate plans</h2>
+        <p style="font:400 14.5px/1.75 Figtree, sans-serif; color:#56534C; margin:12px 0 0">More than one rate plan may be offered for the same accommodation, each with its own deposit, cancellation and amendment conditions. The conditions shown against the rate you select at the time of booking prevail over the general terms above.</p>
+      </div>
+
+      <div>
+        <h2 style="font:400 clamp(19px,2.2vw,24px)/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Incomplete bookings</h2>
+        <p style="font:400 14.5px/1.75 Figtree, sans-serif; color:#56534C; margin:12px 0 0">If you enter your contact details but do not complete a booking, we may retain those details and contact you once about your enquiry. You can opt out at any time by replying to that message or emailing <a href="mailto:stay@kosipark.com.au">stay@kosipark.com.au</a>.</p>
+      </div>
+
+      <div>
+        <h2 style="font:400 clamp(19px,2.2vw,24px)/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Occupancy &amp; guest count</h2>
+        <p style="font:400 14.5px/1.75 Figtree, sans-serif; color:#56534C; margin:12px 0 0">Maximum occupancy applies to all guests including adults, children (2–15) and infants (under 2). Infants are free but count toward the limit. Unapproved extra guests or exceeding the limit may result in additional charges and/or eviction without refund.</p>
+      </div>
+
+      <div>
+        <h2 style="font:400 clamp(19px,2.2vw,24px)/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Parking &amp; vehicles</h2>
+        <p style="font:400 14.5px/1.75 Figtree, sans-serif; color:#56534C; margin:12px 0 0">One vehicle per site or cabin is included. Additional vehicles are $20 per night, registered at reception on check-in. All vehicles must be registered at the office with make, model, colour and registration number. Park only in designated areas; the speed limit is 10 km/h throughout the park. Oversized or unroadworthy vehicles require prior approval. An automated boom gate is coming soon — only registered vehicles will be granted access.</p>
+      </div>
+
+      <div>
+        <h2 style="font:400 clamp(19px,2.2vw,24px)/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Electric vehicle charging</h2>
+        <p style="font:400 14.5px/1.75 Figtree, sans-serif; color:#56534C; margin:12px 0 0">Charging is only permitted where the EV charging surcharge has been selected and paid. Guests must use the power supply allocated to their accommodation or powered site and provide their own safe, suitable charging cable and extension lead — no separate charger, power point or charging bay is provided. Charging is subject to available electrical capacity and may be stopped at our discretion if it creates a safety risk or overload.</p>
+      </div>
+
+      <div>
+        <h2 style="font:400 clamp(19px,2.2vw,24px)/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Drying room</h2>
+        <p style="font:400 14.5px/1.75 Figtree, sans-serif; color:#56534C; margin:12px 0 0">Drying room access is $5 per person per night and must be added for the full duration of your booking at the time of booking or amendment. It cannot be added for selected nights only. To add access, email <a href="mailto:stay@kosipark.com.au">stay@kosipark.com.au</a> or use our <a href="/manage">online form</a>.</p>
+      </div>
+
+      <div>
+        <h2 style="font:400 clamp(19px,2.2vw,24px)/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Check-in &amp; check-out</h2>
+        <p style="font:400 14.5px/1.75 Figtree, sans-serif; color:#56534C; margin:12px 0 0">Check-in is from 3pm and check-out by 10am. Early check-in before 1pm is $30 and late checkout until midday is $30; requests must be made at least 24 hours in advance and are subject to availability.</p>
+        <p style="font:400 14.5px/1.75 Figtree, sans-serif; color:#56534C; margin:14px 0 0">Failure to vacate by 10am without prior arrangement is charged as one additional night at the standard nightly rate; after midday, an additional full night. If the site or cabin is required for incoming guests and you have not vacated, you will be charged and asked to leave immediately. Leave your cabin or site clean — remove all rubbish, wash and return all dishes, and report any damage to reception. Excessive cleaning may result in bond deductions.</p>
+      </div>
+
+      <div>
+        <h2 style="font:400 clamp(19px,2.2vw,24px)/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Firewood &amp; fires</h2>
+        <p style="font:400 14.5px/1.75 Figtree, sans-serif; color:#56534C; margin:12px 0 0">Premium seasoned firewood is $20 per bag, available at reception during office hours. Collecting or burning timber from Kosciuszko National Park is illegal under the National Parks and Wildlife Act and carries substantial fines. Use designated firepits only, never leave fires unattended, and extinguish them completely before leaving. During total fire bans or extreme fire danger (typically November to April) all firepits are closed — check current restrictions at <a href="https://www.rfs.nsw.gov.au">rfs.nsw.gov.au</a> before lighting any fire. Breaches may result in fines, eviction and liability for firefighting costs.</p>
+      </div>
+
+      <div>
+        <h2 style="font:400 clamp(19px,2.2vw,24px)/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Pets</h2>
+        <p style="font:400 14.5px/1.75 Figtree, sans-serif; color:#56534C; margin:12px 0 0">Pets are strictly prohibited in all accommodation and throughout the park, in accordance with National Parks and Wildlife Service regulations. Breach of this policy may result in immediate cancellation, removal from the premises and forfeiture of all monies paid including the security bond.</p>
+      </div>
+
+      <div>
+        <h2 style="font:400 clamp(19px,2.2vw,24px)/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Quiet hours</h2>
+        <p style="font:400 14.5px/1.75 Figtree, sans-serif; color:#56534C; margin:12px 0 0">Quiet hours are 10pm to 6am — no loud music, voices or generators, and minimal vehicle movements. First breach: warning. Second breach: $300 fine. Continued breaches: eviction without refund.</p>
+      </div>
+
+      <div>
+        <h2 style="font:400 clamp(19px,2.2vw,24px)/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Wi-Fi &amp; mobile coverage</h2>
+        <p style="font:400 14.5px/1.75 Figtree, sans-serif; color:#56534C; margin:12px 0 0">Telstra coverage is excellent via our on-site tower; other carriers may have limited or no coverage in the alpine region. Wi-Fi is provided via paid vouchers at reception and relies on satellite and shared backhaul links, so speeds may vary during peak times.</p>
+      </div>
+
+      <div>
+        <h2 style="font:400 clamp(19px,2.2vw,24px)/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Health, safety &amp; the alpine environment</h2>
+        <p style="font:400 14.5px/1.75 Figtree, sans-serif; color:#56534C; margin:12px 0 0">Follow all government and park protocols. Visibly ill guests may be required to leave at their own cost. No smoking or vaping indoors, and emergency contact details must be provided at check-in.</p>
+        <p style="font:400 14.5px/1.75 Figtree, sans-serif; color:#56534C; margin:14px 0 0">Conditions change rapidly — snow, wind and rain can occur year-round. Walking paths may include uneven surfaces, rocks and steep areas. Observe native animals, snakes and insects from a distance, and do not feed or approach them. The nearest hospital is Cooma, approximately 60 km away. Guests are responsible for their own safety during outdoor activities and should bring appropriate clothing and equipment. In an emergency, dial 000.</p>
+      </div>
+
+      <div>
+        <h2 style="font:400 clamp(19px,2.2vw,24px)/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Security bond, damage &amp; CCTV</h2>
+        <p style="font:400 14.5px/1.75 Figtree, sans-serif; color:#56534C; margin:12px 0 0">A $100 bond is charged at check-in for cabins, refunded within 7–14 days after departure provided there is no damage, excessive cleaning, missing items, policy breaches or unpaid charges. We will retain the bond and invoice any costs exceeding it. You are responsible for any damage, loss, excessive cleaning or missing items caused during your stay. CCTV operates in public areas for safety and security; by staying you consent to CCTV monitoring. We are not liable for third-party acts or theft of personal belongings.</p>
+      </div>
+
+      <div>
+        <h2 style="font:400 clamp(19px,2.2vw,24px)/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Park facilities &amp; lost property</h2>
+        <p style="font:400 14.5px/1.75 Figtree, sans-serif; color:#56534C; margin:12px 0 0">Follow all signs and staff directions, and use facilities at your own risk. Label all food in the camp kitchen fridge with your name and departure date — unlabelled food will be discarded without notice, and all items must be removed on checkout. Damage to facilities may be charged and deducted from your security bond.</p>
+        <p style="font:400 14.5px/1.75 Figtree, sans-serif; color:#56534C; margin:14px 0 0">We are not responsible for loss, theft or damage to personal items. Perishables are disposed of immediately; non-perishables are held at reception for 7 days, then donated to local charities.</p>
+      </div>
+
+      <div>
+        <h2 style="font:400 clamp(19px,2.2vw,24px)/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">National park compliance</h2>
+        <p style="font:400 14.5px/1.75 Figtree, sans-serif; color:#56534C; margin:12px 0 0">Kosciuszko Tourist Park operates within Kosciuszko National Park under the National Parks and Wildlife Act 1974 (NSW). By staying with us you agree to comply with all NPWS regulations; respect and protect native flora, fauna and natural features; not feed, harass or disturb wildlife; not remove or damage plants, rocks or natural materials; report any damage to park property; and follow all park signage and ranger directions. Vehicle entry fees apply and are the guest's responsibility — check current rates at <a href="https://www.nationalparks.nsw.gov.au">nationalparks.nsw.gov.au</a>. Breaches may result in NPWS fines, eviction without refund and legal action by NPWS.</p>
+      </div>
+
+      <div>
+        <h2 style="font:400 clamp(19px,2.2vw,24px)/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Weather, natural events &amp; force majeure</h2>
+        <p style="font:400 14.5px/1.75 Figtree, sans-serif; color:#56534C; margin:12px 0 0">Kosciuszko is an alpine environment with extreme and unpredictable weather, and we are not liable for weather conditions affecting your stay. No refunds are provided for rain, snow, cold weather or adverse conditions impacting outdoor activities. In the event of bushfire evacuations, emergency road closures, floods or natural disasters we are not liable and no refunds will be provided; guest safety is our priority and we follow all emergency service directives. We are not liable for events beyond our reasonable control including fires, floods, earthquakes, pandemics or government orders — at our discretion we may offer a refund, credit or alternative dates. Check road conditions and NPWS alerts before travelling, and note that travel insurance is strongly recommended for all bookings.</p>
+      </div>
+
+      <div>
+        <h2 style="font:400 clamp(19px,2.2vw,24px)/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Reservation transfer, privacy &amp; governing law</h2>
+        <p style="font:400 14.5px/1.75 Figtree, sans-serif; color:#56534C; margin:12px 0 0">Bookings are non-transferable without our prior written approval, and the named guest must be present at check-in with valid photo ID. Your data is handled per our privacy policy and used for bookings, security and opt-in marketing; we do not share data except as required by law.</p>
+        <p style="font:400 14.5px/1.75 Figtree, sans-serif; color:#56534C; margin:14px 0 0">These terms are governed by the laws of New South Wales, Australia. Contact us first to resolve any issue; if unresolved within 14 days you may contact <a href="https://www.fairtrading.nsw.gov.au/">NSW Fair Trading</a>. All disputes are subject to the exclusive jurisdiction of NSW courts. This does not exclude rights under Australian Consumer Law that cannot be excluded.</p>
+        <p style="font:500 15px/1.8 Figtree, sans-serif; color:#292724; margin:18px 0 0">By completing a booking, you confirm you have read, understood and agree to these Terms &amp; Conditions.</p>
+      </div>
+
+      <div style="background:#E9EEE3; border-radius:16px; padding:24px">
+        <p style="font:400 15px/1.7 Figtree, sans-serif; color:#4C5C40; margin:0">Questions about any of the above: <a href="tel:0264562224">02 6456 2224</a> or <a href="mailto:stay@kosipark.com.au">stay@kosipark.com.au</a>. To change or cancel a booking, use the <a href="/manage">manage booking form</a>.</p>
+      </div>
+    </div>
+  </section>
+
+  <dc-import name="SiteFooter" hint-size="100%,420px"></dc-import>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}"></script>
+</body>
+</html>

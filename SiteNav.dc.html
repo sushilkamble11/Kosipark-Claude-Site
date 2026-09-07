@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/vendor-map.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Petrona:wght@300;400;500;600&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  @keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+</style>
+</helmet>
+
+<div style="font-family:Figtree, system-ui, sans-serif">
+  <div style="{{ spacerStyle }}"></div>
+  <header ref="{{ headerRef }}" style="position:fixed; top:0; left:0; right:0; z-index:200; background:rgba(252,250,246,0.94); backdrop-filter:blur(14px); border-bottom:1px solid rgba(29,55,48,0.10)">
+    <div style="max-width:1320px; margin:0 auto; padding:11px clamp(16px,4vw,48px); display:flex; align-items:center; gap:clamp(14px,3vw,34px); justify-content:space-between">
+      <a href="/" style="display:block; flex:0 0 auto; text-decoration:none">
+        <img src="assets/kosipark-logo.png" alt="Kosciuszko Tourist Park" style="height:clamp(38px,4.6vw,48px); width:auto; display:block" />
+      </a>
+      <nav style="{{ navStyle }}">
+        <sc-for list="{{ links }}" as="l" hint-placeholder-count="5">
+          <a href="{{ l.href }}" style="{{ l.style }}">{{ l.label }}</a>
+        </sc-for>
+      </nav>
+      <div style="display:flex; align-items:center; gap:clamp(10px,1.6vw,18px)">
+        <div data-weather="sawpit-creek" style="{{ weatherStyle }}">
+          <sc-if value="{{ isSnow }}" hint-placeholder-val="{{ false }}">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6E8A93" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+              <path d="M12 3v18M4.2 7.5l15.6 9M19.8 7.5l-15.6 9"></path>
+            </svg>
+          </sc-if>
+          <sc-if value="{{ isSun }}" hint-placeholder-val="{{ true }}">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#96592A" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="4.4"></circle>
+              <path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.5 5.5l1.6 1.6M16.9 16.9l1.6 1.6M18.5 5.5l-1.6 1.6M7.1 16.9l-1.6 1.6"></path>
+            </svg>
+          </sc-if>
+          <sc-if value="{{ isNight }}" hint-placeholder-val="{{ false }}">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#5E6E7A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20 14.2A8.2 8.2 0 0 1 9.8 4a8.4 8.4 0 1 0 10.2 10.2Z"></path>
+            </svg>
+          </sc-if>
+          <sc-if value="{{ isRain }}" hint-placeholder-val="{{ false }}">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6E8A93" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+              <path d="M6.8 14.6h10.4a3.5 3.5 0 0 0 0-7 5.3 5.3 0 0 0-10.2 1.1 3 3 0 0 0-.2 5.9Z"></path>
+              <path d="M9 18.4l-.7 2M13 18.4l-.7 2M17 18.4l-.7 2"></path>
+            </svg>
+          </sc-if>
+          <sc-if value="{{ isCloud }}" hint-placeholder-val="{{ false }}">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#74836A" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+              <path d="M6.5 17.5h11a3.8 3.8 0 0 0 0-7.6 5.6 5.6 0 0 0-10.8 1.2 3.2 3.2 0 0 0-.2 6.4Z"></path>
+            </svg>
+          </sc-if>
+          <span style="font:600 13.5px/1 Figtree, sans-serif; color:#1D3730; letter-spacing:.01em">{{ tempLabel }}</span>
+        </div>
+        <a href="tel:0264562224" style="{{ phoneStyle }}">02 6456 2224</a>
+        <div data-cart="1" style="position:relative; flex:0 0 auto">
+          <button type="button" onClick="{{ toggleCart }}" aria-label="Your booking" style="{{ cartBtnStyle }}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4 6h2.2l2.2 9.4a1.6 1.6 0 0 0 1.6 1.2h7.3a1.6 1.6 0 0 0 1.6-1.2L20.5 9H7"></path>
+              <circle cx="10.2" cy="20" r="1.2"></circle>
+              <circle cx="17.6" cy="20" r="1.2"></circle>
+            </svg>
+            <span style="{{ cartLabelStyle }}">{{ cartLabel }}</span>
+            <span style="{{ cartBadgeStyle }}">{{ cartCount }}</span>
+          </button>
+          <sc-if value="{{ cartOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute; z-index:220; top:calc(100% + 12px); right:0; width:min(92vw, 330px); background:#FCFAF6; border:1px solid rgba(29,55,48,0.12); border-radius:16px; box-shadow:0 30px 60px -22px rgba(18,39,32,0.45); padding:16px; animation:riseIn .18s ease both">
+              <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px">
+                <p style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A; margin:0">Your booking</p>
+                <p style="{{ cartTimerStyle }}">{{ cartTimer }}</p>
+              </div>
+              <sc-if value="{{ cartEmpty }}" hint-placeholder-val="{{ true }}">
+                <p style="font:400 13.5px/1.6 Figtree, sans-serif; color:#6C6862; margin:12px 0 0">Nothing held yet. Pick your nights on any cabin, chalet or site and they'll show up here.</p>
+              </sc-if>
+              <sc-if value="{{ cartHasItems }}" hint-placeholder-val="{{ false }}">
+                <div style="display:grid; gap:8px; margin-top:12px">
+                  <sc-for list="{{ cartItems }}" as="ci" hint-placeholder-count="1">
+                    <div style="background:#F3ECE0; border-radius:11px; padding:12px 14px">
+                      <div style="display:flex; gap:10px; align-items:baseline; justify-content:space-between">
+                        <span style="font:500 13.5px/1.3 Figtree, sans-serif; color:#1D3730">{{ ci.name }}</span>
+                        <span style="font:500 13px/1.3 Figtree, sans-serif; color:#292724; white-space:nowrap">{{ ci.total }}</span>
+                      </div>
+                      <p style="font:400 12px/1.5 Figtree, sans-serif; color:#6C6862; margin:5px 0 0">{{ ci.detail }}</p>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="display:flex; gap:14px; justify-content:space-between; align-items:baseline; margin-top:12px; padding-top:10px; border-top:1px solid rgba(29,55,48,0.1)">
+                  <span style="font:500 13px/1 Figtree, sans-serif; color:#8B877E">Total</span>
+                  <span style="font:400 18px/1 Petrona, Georgia, serif; color:#1D3730">{{ cartSum }}</span>
+                </div>
+              </sc-if>
+              <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:14px">
+                <a href="/book/checkout" style="{{ cartCheckoutStyle }}">Checkout</a>
+                <a href="/#book" onClick="{{ closeCart }}" style="border:1px solid rgba(29,55,48,0.18); color:#1D3730; font:600 12px/1 Figtree, sans-serif; letter-spacing:.06em; padding:15px 18px; border-radius:999px">Add another</a>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+        <button type="button" onClick="{{ toggleMenu }}" style="{{ menuBtnStyle }}" aria-label="Menu">
+          <span style="display:block; width:18px; height:1.5px; background:#1D3730"></span>
+          <span style="display:block; width:18px; height:1.5px; background:#1D3730"></span>
+        </button>
+      </div>
+    </div>
+    <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="border-top:1px solid rgba(29,55,48,0.10); padding:8px clamp(16px,4vw,48px) 22px; display:flex; flex-direction:column; background:#FCFAF6">
+        <sc-for list="{{ links }}" as="l" hint-placeholder-count="5">
+          <a href="{{ l.href }}" onClick="{{ closeMenu }}" style="font:400 21px/1 Petrona, Georgia, serif; color:#1D3730; padding:15px 0; border-bottom:1px solid rgba(29,55,48,0.08)">{{ l.label }}</a>
+        </sc-for>
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; padding:18px 0 0">
+          <a href="tel:0264562224" style="font:600 12px/1 Figtree, sans-serif; letter-spacing:.12em; text-transform:uppercase; color:#74836A">Call 02 6456 2224</a>
+          <span style="font:600 12px/1 Figtree, sans-serif; letter-spacing:.06em; color:#1D3730">{{ tempLabel }} · Sawpit Creek</span>
+        </div>
+      </div>
+    </sc-if>
+  </header>
+
+  <div style="{{ stickyStyle }}">
+    <a href="tel:0264562224" style="display:flex; flex-direction:column; gap:3px; min-width:0; text-decoration:none">
+      <span style="font:700 9px/1 Figtree, sans-serif; letter-spacing:.18em; text-transform:uppercase; color:#A9B995">Sawpit Creek · Jindabyne</span>
+      <span style="font:500 14px/1.2 Figtree, sans-serif; color:#FCFAF6">02 6456 2224</span>
+    </a>
+    <a href="{{ bookHref }}" style="background:#96592A; color:#FCFAF6; font:700 13px/1 Figtree, sans-serif; letter-spacing:.08em; text-transform:uppercase; padding:16px 22px; border-radius:999px; white-space:nowrap">Book Now</a>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1200,&quot;height&quot;:200},&quot;active&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;home&quot;,&quot;stay&quot;,&quot;do&quot;,&quot;gallery&quot;,&quot;contact&quot;],&quot;default&quot;:&quot;home&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;bookHref&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;/accommodation#book&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;stickyBookBar&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;liveWeather&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Weather&quot;},&quot;temperature&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:4,&quot;min&quot;:-20,&quot;max&quot;:45,&quot;unit&quot;:&quot;°C&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Weather&quot;},&quot;weather&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;sun&quot;,&quot;cloud&quot;,&quot;rain&quot;,&quot;snow&quot;],&quot;default&quot;:&quot;sun&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Weather&quot;}}">
+class Component extends DCLogic {
+  state = { menuOpen: false, w: typeof window !== "undefined" ? window.innerWidth : 1200, barH: 76, liveTemp: null, liveCond: null, cartOpen: false, cart: [], cartMs: 0 };
+
+  /** Fallback only: real sunrise/sunset when we have them, a conservative window otherwise. */
+  static daylightFrom(daily) {
+    try {
+      const rise = new Date(daily.sunrise[0]).getTime();
+      const set = new Date(daily.sunset[0]).getTime();
+      const now = Date.now();
+      if (rise && set) return now >= rise && now < set;
+    } catch (e) {}
+    const h = new Date().getHours();
+    return h >= 7 && h < 17;
+  }
+
+  static codeToCondition(c, isDay) {
+    if (c === 0 || c === 1) return isDay === false ? "night" : "sun";
+    if ([71, 73, 75, 77, 85, 86].indexOf(c) > -1) return "snow";
+    if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 99].indexOf(c) > -1) return "rain";
+    return "cloud";
+  }
+
+  async loadWeather() {
+    if (this.props.liveWeather === false) return;
+    // v2: cache the raw reading, never the derived icon — day turns to night inside a cache window
+    const KEY = "kosipark-weather-sawpit-v2";
+    try {
+      const cached = JSON.parse(localStorage.getItem(KEY) || "null");
+      if (cached && Date.now() - cached.ts < 900000 && typeof cached.code === "number") {
+        this.setState({ liveTemp: cached.t, liveCond: Component.codeToCondition(cached.code, cached.day) });
+        return;
+      }
+    } catch (e) {}
+    try {
+      const url = "https://api.open-meteo.com/v1/forecast?latitude=-36.3519&longitude=148.5647&current=temperature_2m,weather_code,is_day&daily=sunrise,sunset&timezone=Australia%2FSydney";
+      const r = await fetch(url);
+      if (!r.ok) return;
+      const d = await r.json();
+      const t = Math.round(d.current.temperature_2m);
+      const code = d.current.weather_code;
+      const day = d.current.is_day === undefined
+        ? Component.daylightFrom(d.daily)
+        : d.current.is_day === 1;
+      this.setState({ liveTemp: t, liveCond: Component.codeToCondition(code, day) });
+      try { localStorage.setItem(KEY, JSON.stringify({ t, code, day, ts: Date.now() })); } catch (e) {}
+    } catch (e) {}
+  }
+  headerRef = React.createRef();
+
+  measure() {
+    const el = this.headerRef.current;
+    if (!el) return;
+    const first = el.firstElementChild;
+    const h = Math.round((first || el).getBoundingClientRect().height);
+    if (h && h !== this.state.barH) this.setState({ barH: h });
+  }
+
+  componentDidMount() {
+    this._onResize = () => { this.setState({ w: window.innerWidth }); this.measure(); };
+    window.addEventListener("resize", this._onResize);
+    this.measure();
+    setTimeout(() => this.measure(), 300);
+    this.loadWeather();
+    this._wt = setInterval(() => this.loadWeather(), 900000);
+    import("./guestpoint.js").then(gp => {
+      this.gp = gp;
+      const sync = () => this.setState({ cart: gp.readCart(), cartMs: gp.cartExpiresIn() });
+      sync();
+      this._ct = setInterval(sync, 1000);
+      window.addEventListener("storage", sync);
+      this._sync = sync;
+    }).catch(() => {});
+    this._onDocDown = e => {
+      if (this.state.cartOpen && (!e.target.closest || !e.target.closest("[data-cart]"))) this.setState({ cartOpen: false });
+    };
+    document.addEventListener("mousedown", this._onDocDown);
+  }
+  componentDidUpdate() { this.measure(); }
+  componentWillUnmount() {
+    window.removeEventListener("resize", this._onResize);
+    document.removeEventListener("mousedown", this._onDocDown);
+    if (this._sync) window.removeEventListener("storage", this._sync);
+    clearInterval(this._wt);
+    clearInterval(this._ct);
+  }
+
+  renderVals() {
+    const w = this.state.w;
+    const narrow = w < 1180;
+    const s = this.state;
+    const cart = s.cart || [];
+    const fmtShort = v => { const p = (v || "").split("-"); return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString("en-AU", { day: "numeric", month: "short" }); };
+    const cond = this.state.liveCond ?? (this.props.weather ?? "sun");
+    const temp = this.state.liveTemp ?? (this.props.temperature ?? 4);
+    const active = this.props.active || "home";
+    const defs = [
+      { key: "home", label: "Home", href: "/" },
+      { key: "stay", label: "Accommodation", href: "/accommodation" },
+      { key: "do", label: "Attractions", href: "/attractions" },
+      { key: "gallery", label: "Gallery", href: "/gallery" },
+      { key: "contact", label: "Contact & Map", href: "/contact" },
+      { key: "manage", label: "Manage booking", href: "/manage" }
+    ];
+    return {
+      links: defs.map(d => ({
+        label: d.label,
+        href: d.href,
+        style: "font:500 13.5px/1 Figtree, sans-serif; letter-spacing:.01em; white-space:nowrap; padding-bottom:4px; " +
+          (d.key === active ? "color:#1D3730; border-bottom:1.5px solid #96592A" : "color:#56534C; border-bottom:1.5px solid transparent")
+      })),
+      weatherStyle: w < 760
+        ? "display:none"
+        : "display:flex; align-items:center; gap:7px; padding:0 2px",
+      cartOpen: s.cartOpen,
+      toggleCart: () => this.setState(x => ({ cartOpen: !x.cartOpen, menuOpen: false })),
+      closeCart: () => this.setState({ cartOpen: false }),
+      cartCount: String(cart.length),
+      cartLabel: cart.length ? (cart.length === 1 ? "1 stay held" : cart.length + " stays held") : "Book now",
+      cartLabelStyle: w < 620 ? "display:none" : "font:600 12.5px/1 Figtree, sans-serif; letter-spacing:.06em; white-space:nowrap",
+      cartBtnStyle: "display:flex; align-items:center; gap:9px; border:0; cursor:pointer; padding:" +
+        (w < 620 ? "13px 15px" : "13px 20px") + "; border-radius:999px; white-space:nowrap; background:" +
+        (cart.length ? "#96592A" : "#1D3730") + "; color:#FCFAF6",
+      cartBadgeStyle: cart.length
+        ? "min-width:20px; height:20px; display:flex; align-items:center; justify-content:center; border-radius:999px; background:#FCFAF6; color:#96592A; font:700 11px/1 Figtree, sans-serif; padding:0 5px"
+        : "display:none",
+      cartEmpty: cart.length === 0,
+      cartHasItems: cart.length > 0,
+      cartItems: cart.map(i => ({
+        name: i.name,
+        total: "$" + Math.round(Number(i.total) || 0),
+        detail: fmtShort(i.arrival) + " → " + fmtShort(i.departure) + " · " + (i.nights || 1) + ((i.nights || 1) === 1 ? " night" : " nights")
+      })),
+      cartSum: "$" + cart.reduce((sum, i) => sum + (Number(i.total) || 0), 0),
+      cartTimer: cart.length && s.cartMs > 0
+        ? "Held " + Math.floor(s.cartMs / 60000) + ":" + String(Math.floor((s.cartMs % 60000) / 1000)).padStart(2, "0")
+        : "",
+      cartTimerStyle: (cart.length && s.cartMs > 0)
+        ? "font:600 10px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; color:#96592A; margin:0"
+        : "display:none",
+      cartCheckoutStyle: cart.length
+        ? "background:#1D3730; color:#FCFAF6; font:700 12px/1 Figtree, sans-serif; letter-spacing:.08em; text-transform:uppercase; padding:16px 22px; border-radius:999px"
+        : "display:none",
+      isSun: cond === "sun",
+      isNight: cond === "night",
+      isSnow: cond === "snow",
+      isCloud: cond === "cloud",
+      isRain: cond === "rain",
+      tempLabel: temp + "°C",
+      headerRef: this.headerRef,
+      spacerStyle: "height:" + this.state.barH + "px",
+      bookHref: this.props.bookHref || "/accommodation#book",
+      menuOpen: this.state.menuOpen,
+      toggleMenu: () => this.setState(p => ({ menuOpen: !p.menuOpen })),
+      closeMenu: () => this.setState({ menuOpen: false }),
+      taglineStyle: w < 560
+        ? "display:none"
+        : "font:600 9.5px/1.5 Figtree, sans-serif; letter-spacing:.18em; text-transform:uppercase; color:#74836A; padding-left:14px; border-left:1px solid rgba(29,55,48,0.14)",
+      navStyle: narrow ? "display:none" : "display:flex; align-items:center; gap:clamp(16px,2vw,26px); flex:1 1 auto; justify-content:center",
+      phoneStyle: w < 1320 ? "display:none" : "font:500 13.5px/1 Figtree, sans-serif; letter-spacing:.01em; color:#56534C; white-space:nowrap; padding:8px 0",
+      menuBtnStyle: narrow
+        ? "display:flex; flex-direction:column; justify-content:center; gap:5px; align-items:center; width:46px; height:46px; border-radius:12px; border:1px solid rgba(29,55,48,0.18); background:transparent; cursor:pointer"
+        : "display:none",
+      stickyStyle: (narrow && (this.props.stickyBookBar ?? true))
+        ? "position:fixed; z-index:190; left:10px; right:10px; bottom:10px; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 10px 10px 18px; border-radius:999px; background:rgba(18,39,32,0.96); backdrop-filter:blur(12px); box-shadow:0 16px 40px -14px rgba(18,39,32,0.7)"
+        : "display:none"
+    };
+  }
+}
+
+</script>
+</body>
+</html>

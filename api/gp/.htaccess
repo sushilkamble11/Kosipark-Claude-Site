@@ -1,0 +1,16 @@
+# Route every /api/gp/... request into index.php, keeping the path in PATH_INFO.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /api/gp/
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^(.*)$ index.php/$1 [L,QSA]
+</IfModule>
+
+# The key lives in config.php. It must never be served, whatever the routing does.
+<FilesMatch "^(config\.php|config\.sample\.php)$">
+  Require all denied
+</FilesMatch>
+
+<IfModule mod_headers.c>
+  Header set X-Robots-Tag "noindex, nofollow"
+</IfModule>

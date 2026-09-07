@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /book/checkout
+Disallow: /manage
+Disallow: /api/
+
+Sitemap: https://kosipark.com.au/sitemap.xml

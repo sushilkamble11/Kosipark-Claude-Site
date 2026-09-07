@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<base href="/">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/vendor-map.js"></script>
+<script src="./support.js"></script>
+<script src="/site.js" defer></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Petrona:wght@300;400;500;600&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #FCFAF6; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #1D3730; text-decoration: none; }
+  a:hover { color: #96592A; }
+  @keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+</style>
+</helmet>
+
+<div style="background:#FCFAF6; color:#292724; font-family:Figtree, system-ui, sans-serif; min-height:100vh">
+  <dc-import name="SiteNav" active="manage" book-href="/accommodation" hint-size="100%,84px"></dc-import>
+
+  <section data-screen-label="Manage booking" style="max-width:1320px; width:100%; margin:0 auto; padding:clamp(26px,3.6vw,50px) clamp(20px,5vw,56px) clamp(38px,5.2vw,70px)">
+    <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#74836A; margin:0">Your Reservation</p>
+    <h1 style="font:300 clamp(26px,3.8vw,42px)/1.05 Petrona, Georgia, serif; letter-spacing:-0.02em; color:#1D3730; margin:14px 0 0; max-width:20ch; text-wrap:balance">Manage your booking</h1>
+    <p style="font:400 clamp(14px,1.4vw,16px)/1.75 Figtree, sans-serif; color:#56534C; margin:16px 0 0; max-width:56ch">Look up your stay to request a date change, adjust guest numbers or cancel. All amendment and cancellation requests are handled through this form only.</p>
+
+    <div style="display:grid; gap:clamp(20px,3vw,40px); grid-template-columns:repeat(auto-fit, minmax(min(100%, 320px), 1fr)); margin-top:clamp(26px,4vw,44px); align-items:start">
+      <div style="min-width:0">
+
+        <sc-if value="{{ showFind }}" hint-placeholder-val="{{ true }}">
+          <div style="background:#FFFFFF; border:1px solid rgba(29,55,48,0.10); border-radius:16px; padding:clamp(20px,3vw,32px); box-shadow:0 22px 50px -34px rgba(18,39,32,0.45)">
+            <h2 style="font:400 19px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:0">Find your booking</h2>
+            <p style="font:400 14.5px/1.7 Figtree, sans-serif; color:#6C6862; margin:10px 0 22px">Enter the reference from your confirmation email and the surname it was booked under.</p>
+            <div style="display:flex; flex-direction:column; gap:12px">
+              <label style="display:flex; flex-direction:column; gap:7px; padding:14px 18px; border-radius:14px; background:#F3ECE0; border:1px solid rgba(29,55,48,0.08)">
+                <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.18em; text-transform:uppercase; color:#74836A">Booking reference</span>
+                <input value="{{ refValue }}" onChange="{{ onRefChange }}" placeholder="KTP-48213" style="border:0; background:transparent; outline:none; font:500 17px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0" />
+              </label>
+              <label style="display:flex; flex-direction:column; gap:7px; padding:14px 18px; border-radius:14px; background:#F3ECE0; border:1px solid rgba(29,55,48,0.08)">
+                <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.18em; text-transform:uppercase; color:#74836A">Surname</span>
+                <input value="{{ nameValue }}" onChange="{{ onNameChange }}" placeholder="Nguyen" style="border:0; background:transparent; outline:none; font:500 17px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0" />
+              </label>
+              <button type="button" onClick="{{ find }}" style="min-height:62px; border:0; border-radius:14px; background:#1D3730; color:#FCFAF6; font:700 13.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; cursor:pointer" style-hover="background:#96592A">Find my booking</button>
+            </div>
+            <p style="{{ errorStyle }}">{{ errorText }}</p>
+            <p style="font:400 13.5px/1.7 Figtree, sans-serif; color:#8B877E; margin:20px 0 0">Booked through Booking.com, Airbnb or Expedia? The agent's terms apply — please contact them directly. Otherwise call reception on <a href="tel:0264562224" style="color:#1D3730; border-bottom:1px solid #96592A">02 6456 2224</a>.</p>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ showBooking }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#FFFFFF; border:1px solid rgba(29,55,48,0.10); border-radius:16px; padding:clamp(20px,3vw,32px); box-shadow:0 22px 50px -34px rgba(18,39,32,0.45); animation:riseIn .2s ease both">
+            <div style="display:flex; flex-wrap:wrap; gap:12px 20px; align-items:baseline; justify-content:space-between">
+              <div>
+                <p style="font:700 10.5px/1 Figtree, sans-serif; letter-spacing:.18em; text-transform:uppercase; color:#74836A; margin:0">{{ booking.ref }}</p>
+                <h2 style="font:400 clamp(20px,2.3vw,26px)/1.2 Petrona, Georgia, serif; color:#1D3730; margin:10px 0 0">{{ booking.room }}</h2>
+              </div>
+              <span style="{{ statusStyle }}">{{ booking.status }}</span>
+            </div>
+
+            <dl style="margin:22px 0 0; display:grid; gap:1px; border-radius:14px; overflow:hidden">
+              <sc-for list="{{ booking.rows }}" as="r" hint-placeholder-count="5">
+                <div style="display:flex; flex-wrap:wrap; gap:4px 18px; padding:14px 16px; background:#F3ECE0; box-shadow:0 0 0 1px rgba(29,55,48,0.08)">
+                  <dt style="flex:0 0 128px; font:700 10.5px/1.7 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">{{ r.k }}</dt>
+                  <dd style="margin:0; flex:1 1 170px; font:400 15px/1.6 Figtree, sans-serif; color:#292724">{{ r.v }}</dd>
+                </div>
+              </sc-for>
+            </dl>
+
+            <p style="{{ noticeStyle }}">{{ noticeText }}</p>
+
+            <sc-if value="{{ canAct }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:22px">
+                <button type="button" onClick="{{ openDates }}" style="{{ tabDates }}">Change dates</button>
+                <button type="button" onClick="{{ openGuests }}" style="{{ tabGuests }}">Guest numbers</button>
+                <button type="button" onClick="{{ openNote }}" style="{{ tabNote }}">Add a request</button>
+                <button type="button" onClick="{{ openCancel }}" style="{{ tabCancel }}">Cancel booking</button>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ modeDates }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:20px; border-top:1px solid rgba(29,55,48,0.10); padding-top:22px">
+                <h3 style="font:400 19px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:0">Request new dates</h3>
+                <p style="font:400 14px/1.7 Figtree, sans-serif; color:#6C6862; margin:8px 0 16px">{{ amendText }}</p>
+                <dc-import name="BookingBar" compact="{{ true }}" submit-label="Request date change" on-submit="{{ submitDates }}" hint-size="100%,240px"></dc-import>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ modeGuests }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:20px; border-top:1px solid rgba(29,55,48,0.10); padding-top:22px">
+                <h3 style="font:400 19px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:0">Change guest numbers</h3>
+                <p style="font:400 14px/1.7 Figtree, sans-serif; color:#6C6862; margin:8px 0 6px">Maximum occupancy includes adults, children (2–16) and infants under 2. Infants stay free but count toward the limit.</p>
+                <div style="display:grid; gap:1px; border-radius:14px; overflow:hidden; margin-top:14px">
+                  <sc-for list="{{ guestRows }}" as="row" hint-placeholder-count="3">
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; padding:14px 16px; background:#F3ECE0; box-shadow:0 0 0 1px rgba(29,55,48,0.08)">
+                      <span style="display:flex; flex-direction:column; gap:3px">
+                        <span style="font:600 15px/1 Figtree, sans-serif; color:#292724">{{ row.label }}</span>
+                        <span style="font:400 12.5px/1 Figtree, sans-serif; color:#8B877E">{{ row.hint }}</span>
+                      </span>
+                      <span style="display:flex; align-items:center; gap:4px">
+                        <button type="button" onClick="{{ row.dec }}" style="width:40px; height:40px; border-radius:999px; border:1px solid rgba(29,55,48,0.18); background:transparent; color:#1D3730; font:400 19px/1 Figtree, sans-serif; cursor:pointer">−</button>
+                        <span style="min-width:26px; text-align:center; font:600 15px/1 Figtree, sans-serif; color:#1D3730">{{ row.value }}</span>
+                        <button type="button" onClick="{{ row.inc }}" style="width:40px; height:40px; border-radius:999px; border:1px solid rgba(29,55,48,0.18); background:transparent; color:#1D3730; font:400 19px/1 Figtree, sans-serif; cursor:pointer">+</button>
+                      </span>
+                    </div>
+                  </sc-for>
+                </div>
+                <p style="font:500 13.5px/1.6 Figtree, sans-serif; color:#4C5C40; margin:14px 0 0">{{ occupancyText }}</p>
+                <button type="button" onClick="{{ submitGuests }}" style="margin-top:16px; border:0; border-radius:14px; background:#1D3730; color:#FCFAF6; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; cursor:pointer; padding:17px 26px">Submit request</button>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ modeNote }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:20px; border-top:1px solid rgba(29,55,48,0.10); padding-top:22px">
+                <h3 style="font:400 19px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:0">Add a request</h3>
+                <p style="font:400 14px/1.7 Figtree, sans-serif; color:#6C6862; margin:8px 0 14px">Late arrival, drying room access ($5 per person per night, for the full stay), extra vehicle ($20 per night), firewood or anything else we should know.</p>
+                <textarea value="{{ noteValue }}" onChange="{{ onNoteChange }}" rows="4" placeholder="Arriving around 8pm — please leave keys at reception." style="width:100%; border:1px solid rgba(29,55,48,0.12); border-radius:14px; background:#F3ECE0; padding:16px 18px; font:400 15px/1.6 Figtree, sans-serif; color:#292724; resize:vertical; outline:none"></textarea>
+                <button type="button" onClick="{{ submitNote }}" style="margin-top:14px; border:0; border-radius:14px; background:#1D3730; color:#FCFAF6; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; cursor:pointer; padding:17px 26px">Send request</button>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ modeCancel }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:20px; border-top:1px solid rgba(29,55,48,0.10); padding-top:22px">
+                <h3 style="font:400 19px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:0">Cancel this booking</h3>
+                <div style="background:#F3ECE0; border-radius:14px; padding:18px; margin-top:14px">
+                  <p style="font:500 15px/1.7 Figtree, sans-serif; color:#292724; margin:0">{{ cancelHeadline }}</p>
+                  <p style="font:400 14px/1.7 Figtree, sans-serif; color:#6C6862; margin:8px 0 0">{{ cancelDetail }}</p>
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:16px">
+                  <button type="button" onClick="{{ submitCancel }}" style="border:0; border-radius:14px; background:#8C3B2A; color:#FCFAF6; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; cursor:pointer; padding:17px 26px">Request cancellation</button>
+                  <button type="button" onClick="{{ closeMode }}" style="border:1px solid rgba(29,55,48,0.18); border-radius:14px; background:transparent; color:#1D3730; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; cursor:pointer; padding:17px 26px">Keep my booking</button>
+                </div>
+              </div>
+            </sc-if>
+
+            <div style="{{ confirmStyle }}">
+              <p style="font:500 15px/1.7 Figtree, sans-serif; color:#1D3730; margin:0">{{ confirmTitle }}</p>
+              <p style="font:400 14px/1.7 Figtree, sans-serif; color:#4C5C40; margin:8px 0 0">{{ confirmBody }}</p>
+            </div>
+
+            <button type="button" onClick="{{ reset }}" style="margin-top:24px; border:0; background:transparent; font:600 12px/1 Figtree, sans-serif; letter-spacing:.12em; text-transform:uppercase; color:#74836A; cursor:pointer; padding:8px 0">Look up another booking</button>
+          </div>
+        </sc-if>
+      </div>
+
+      <aside style="min-width:0; display:grid; gap:14px">
+        <div style="background:#E9EEE3; border-radius:16px; padding:22px">
+          <h2 style="font:700 10.5px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A; margin:0">How changes work</h2>
+          <ul style="list-style:none; margin:14px 0 0; padding:0; display:grid; gap:11px">
+            <li style="font:400 14px/1.65 Figtree, sans-serif; color:#4C5C40">Submitting this form does not confirm a change. Your booking stays on its original terms until we send written confirmation.</li>
+            <li style="font:400 14px/1.65 Figtree, sans-serif; color:#4C5C40">Any change that reduces the total value or length of the stay is treated as a cancellation.</li>
+            <li style="font:400 14px/1.65 Figtree, sans-serif; color:#4C5C40">Promotional, discounted and Stay-and-Save rates are non-refundable and non-amendable.</li>
+          </ul>
+          <a href="/terms" style="display:inline-block; margin-top:16px; font:700 11.5px/1 Figtree, sans-serif; letter-spacing:.12em; text-transform:uppercase; color:#1D3730; border-bottom:1px solid #96592A; padding-bottom:7px">Read full terms</a>
+        </div>
+
+        <div style="background:#FFFFFF; border:1px solid rgba(29,55,48,0.10); border-radius:16px; padding:22px">
+          <h2 style="font:700 10.5px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A; margin:0">Reception</h2>
+          <div style="display:flex; flex-direction:column; gap:9px; margin-top:14px">
+            <a href="tel:0264562224" style="font:400 15px/1.4 Figtree, sans-serif; color:#292724">02 6456 2224</a>
+            <a href="mailto:stay@kosipark.com.au" style="font:400 15px/1.4 Figtree, sans-serif; color:#292724">stay@kosipark.com.au</a>
+            <span style="font:400 14px/1.7 Figtree, sans-serif; color:#6C6862">Check-in from 3pm · check-out by 10am<br />Quiet hours 10pm to 6am</span>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <dc-import name="SiteFooter" hint-size="100%,420px"></dc-import>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}">
+const BOOKINGS = [
+  { ref: "KTP-48213", surname: "Nguyen", room: "Two Bedroom Chalet", checkIn: "2026-10-16", checkOut: "2026-10-19", adults: 2, children: 2, infants: 0, total: 612, rate: "standard", nightly: 204 },
+  { ref: "KTP-51907", surname: "Doyle", room: "Caravan Site (powered)", checkIn: "2026-12-27", checkOut: "2027-01-02", adults: 4, children: 2, infants: 1, total: 438, rate: "standard", nightly: 73 },
+  { ref: "KTP-52440", surname: "Reid", room: "Cedar Cabin", checkIn: "2026-09-19", checkOut: "2026-09-21", adults: 2, children: 0, infants: 0, total: 396, rate: "promotional", nightly: 198 }
+];
+
+class Component extends DCLogic {
+  state = { refInput: "", nameInput: "", booking: null, error: "", mode: null, adults: 0, children: 0, infants: 0, note: "", confirm: null, cancelled: false };
+
+  static parse(v) { const p = (v || "").split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  static fmt(v) { return Component.parse(v).toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "long", year: "numeric" }); }
+  static money(n) { return "$" + n.toFixed(2).replace(/\.00$/, ""); }
+
+  find() {
+    const r = this.state.refInput.trim().toUpperCase();
+    const n = this.state.nameInput.trim().toLowerCase();
+    if (!r || !n) { this.setState({ error: "Enter both your booking reference and surname." }); return; }
+    const b = BOOKINGS.find(x => x.ref.toUpperCase() === r && x.surname.toLowerCase() === n);
+    if (!b) { this.setState({ error: "We couldn't match that reference and surname. Check your confirmation email, or call reception on 02 6456 2224." }); return; }
+    this.setState({ booking: b, error: "", mode: null, confirm: null, cancelled: false, adults: b.adults, children: b.children, infants: b.infants, note: "" });
+  }
+
+  daysUntil(b) {
+    const t = new Date(); t.setHours(0, 0, 0, 0);
+    return Math.round((Component.parse(b.checkIn) - t) / 86400000);
+  }
+
+  nights(b) { return Math.round((Component.parse(b.checkOut) - Component.parse(b.checkIn)) / 86400000); }
+
+  snowSeason(b) { const m = Component.parse(b.checkIn).getMonth() + 1; return m >= 6 && m <= 9; }
+
+  policy(b) {
+    const d = this.daysUntil(b);
+    const oneNight = b.nightly;
+    const promo = b.rate !== "standard";
+    const snow = this.snowSeason(b);
+    const transfer = Math.max(50, b.total * 0.1, oneNight);
+    let cancelHeadline, cancelDetail, amendText, amendAllowed = true;
+
+    if (promo) {
+      cancelHeadline = "This rate is non-refundable.";
+      cancelDetail = "Promotional, discounted and Stay-and-Save rates require full payment at booking and cannot be refunded or amended under any circumstances. You may still send us a request and we will reply, but no refund applies.";
+      amendText = "Promotional rates cannot be amended. Contact reception if your circumstances have changed.";
+      amendAllowed = false;
+    } else if (d >= 15) {
+      const keep = Math.max(b.total * 0.1, oneNight);
+      cancelHeadline = "Cancelling now retains " + Component.money(keep) + " of your " + Component.money(b.total) + " booking.";
+      cancelDetail = "15 or more days before arrival we retain the greater of 10% of the total or one full night's tariff. The balance is refunded to your original payment method within 7 business days.";
+      amendText = snow
+        ? "Snow season: date moves are permitted within the same season only, subject to availability, with a transfer fee of " + Component.money(transfer) + " (the greater of $50, 10% of the tariff or one night)."
+        : "15 or more days out, a like-for-like change (same rate type and accommodation) is free if we have availability.";
+    } else if (d >= 8) {
+      const keep = Math.max(b.total * 0.5, oneNight);
+      cancelHeadline = "Cancelling now retains " + Component.money(keep) + " of your " + Component.money(b.total) + " booking.";
+      cancelDetail = "8 to 14 days before arrival we retain the greater of 50% of the total or one full night's tariff. The balance is refunded within 7 business days.";
+      amendText = "8 to 14 days out, a change carries a transfer fee of " + Component.money(transfer) + " — the greater of $50, 10% of the tariff or one full night.";
+      if (snow && d < 14) { amendText = "Snow season changes are not permitted within 14 days of arrival."; amendAllowed = false; }
+    } else {
+      cancelHeadline = "Within 7 days of arrival this booking is 100% non-refundable.";
+      cancelDetail = "No refund applies. You are welcome to send a request and we will reply, but the full tariff is retained.";
+      amendText = "Changes are not permitted within 7 days of arrival.";
+      amendAllowed = false;
+    }
+    return { cancelHeadline, cancelDetail, amendText, amendAllowed, days: d, snow };
+  }
+
+  tab(active) {
+    return "border:1px solid " + (active ? "rgba(29,55,48,0.55)" : "rgba(29,55,48,0.16)") +
+      "; background:" + (active ? "#1D3730" : "transparent") + "; color:" + (active ? "#FCFAF6" : "#1D3730") +
+      "; font:600 12.5px/1 Figtree, sans-serif; letter-spacing:.06em; border-radius:999px; padding:14px 18px; cursor:pointer";
+  }
+
+  bump(key, delta, min) {
+    this.setState(s => ({ [key]: Math.max(min, Math.min(12, s[key] + delta)), confirm: null }));
+  }
+
+  renderVals() {
+    const s = this.state;
+    const b = s.booking;
+    const p = b ? this.policy(b) : null;
+    const status = b ? (s.cancelled ? "Cancellation requested" : (p.days < 0 ? "Completed" : "Confirmed")) : "";
+    const people = s.adults + s.children;
+
+    return {
+      showFind: !b,
+      showBooking: !!b,
+      refValue: s.refInput,
+      nameValue: s.nameInput,
+      onRefChange: e => this.setState({ refInput: e.target.value, error: "" }),
+      onNameChange: e => this.setState({ nameInput: e.target.value, error: "" }),
+      find: () => this.find(),
+      errorText: s.error,
+      errorStyle: s.error
+        ? "margin:16px 0 0; font:500 13.5px/1.6 Figtree, sans-serif; color:#8C3B2A; animation:riseIn .18s ease both"
+        : "display:none",
+
+      booking: b ? {
+        ref: "Reference " + b.ref,
+        room: b.room,
+        status,
+        rows: [
+          { k: "Dates", v: Component.fmt(b.checkIn) + " → " + Component.fmt(b.checkOut) },
+          { k: "Nights", v: this.nights(b) + (this.nights(b) === 1 ? " night" : " nights") + (p.snow ? " · snow season" : "") },
+          { k: "Guests", v: b.adults + " adults, " + b.children + " children" + (b.infants ? ", " + b.infants + " infant" : "") },
+          { k: "Rate type", v: b.rate === "standard" ? "Standard rate" : "Promotional rate (non-refundable)" },
+          { k: "Total", v: Component.money(b.total) + " · " + Component.money(b.nightly) + " per night" },
+          { k: "Arrival", v: p.days > 0 ? "In " + p.days + " days · check-in from 3pm" : "Stay has begun or passed" }
+        ]
+      } : { ref: "", room: "", status: "", rows: [] },
+      statusStyle: "font:600 11px/1 Figtree, sans-serif; letter-spacing:.12em; text-transform:uppercase; padding:11px 15px; border-radius:999px; " +
+        (s.cancelled ? "background:#F3E3DE; color:#8C3B2A" : "background:#E9EEE3; color:#4C5C40"),
+
+      canAct: !!b && !s.cancelled && (p ? p.days >= 0 : false),
+      noticeText: b && p && p.days < 0 ? "This stay has already taken place, so it can no longer be changed online." : "",
+      noticeStyle: b && p && p.days < 0
+        ? "margin:18px 0 0; font:500 14px/1.7 Figtree, sans-serif; color:#8B877E"
+        : "display:none",
+
+      tabDates: this.tab(s.mode === "dates"),
+      tabGuests: this.tab(s.mode === "guests"),
+      tabNote: this.tab(s.mode === "note"),
+      tabCancel: this.tab(s.mode === "cancel"),
+      openDates: () => this.setState(x => ({ mode: x.mode === "dates" ? null : "dates", confirm: null })),
+      openGuests: () => this.setState(x => ({ mode: x.mode === "guests" ? null : "guests", confirm: null })),
+      openNote: () => this.setState(x => ({ mode: x.mode === "note" ? null : "note", confirm: null })),
+      openCancel: () => this.setState(x => ({ mode: x.mode === "cancel" ? null : "cancel", confirm: null })),
+      closeMode: () => this.setState({ mode: null }),
+
+      modeDates: s.mode === "dates",
+      modeGuests: s.mode === "guests",
+      modeNote: s.mode === "note",
+      modeCancel: s.mode === "cancel",
+
+      amendText: p ? p.amendText : "",
+      submitDates: payload => {
+        if (!payload.checkIn || !payload.checkOut) return;
+        this.setState({
+          mode: null,
+          confirm: {
+            title: "Date change requested",
+            body: "We have your request to move to " + Component.fmt(payload.checkIn) + " → " + Component.fmt(payload.checkOut) + ". " +
+              (p && p.amendAllowed ? "Reception will confirm availability and any transfer fee in writing." : "This booking sits outside the amendment window, so reception will reply about your options.") +
+              " Your booking remains on its original terms until then."
+          }
+        });
+      },
+
+      guestRows: [
+        { label: "Adults", hint: "17 and over", value: s.adults, inc: () => this.bump("adults", 1, 1), dec: () => this.bump("adults", -1, 1) },
+        { label: "Children", hint: "2 to 16 years", value: s.children, inc: () => this.bump("children", 1, 0), dec: () => this.bump("children", -1, 0) },
+        { label: "Infants", hint: "Under 2 — free, but counted", value: s.infants, inc: () => this.bump("infants", 1, 0), dec: () => this.bump("infants", -1, 0) }
+      ],
+      occupancyText: b ? "Requesting " + (people + s.infants) + " guests in total, previously " + (b.adults + b.children + b.infants) + ". Occupancy limits apply per cabin and site." : "",
+      submitGuests: () => this.setState({
+        mode: null,
+        confirm: {
+          title: "Guest change requested",
+          body: "We have your request for " + s.adults + " adults, " + s.children + " children and " + s.infants + " infants. Reception will confirm whether it fits the occupancy limit for your " + (b ? b.room.toLowerCase() : "booking") + "."
+        }
+      }),
+
+      noteValue: s.note,
+      onNoteChange: e => this.setState({ note: e.target.value, confirm: null }),
+      submitNote: () => this.setState({
+        mode: null,
+        confirm: s.note.trim()
+          ? { title: "Request sent", body: "Reception has your note and will reply by email. Extras such as drying room access and additional vehicles are confirmed in writing before they are charged." }
+          : { title: "Nothing to send", body: "Add a note first, then send it through." }
+      }),
+
+      cancelHeadline: p ? p.cancelHeadline : "",
+      cancelDetail: p ? p.cancelDetail : "",
+      submitCancel: () => this.setState({
+        mode: null,
+        cancelled: true,
+        confirm: {
+          title: "Cancellation requested",
+          body: "Reception will process this and email written confirmation, including any refund amount. Cancellation fees are based on the full night's tariff regardless of the deposit paid."
+        }
+      }),
+
+      confirmTitle: s.confirm ? s.confirm.title : "",
+      confirmBody: s.confirm ? s.confirm.body : "",
+      confirmStyle: s.confirm
+        ? "margin-top:22px; background:#E9EEE3; border-radius:16px; padding:20px; animation:riseIn .2s ease both"
+        : "display:none",
+
+      reset: () => this.setState({ booking: null, refInput: "", nameInput: "", mode: null, confirm: null, cancelled: false, error: "" })
+    };
+  }
+}
+
+</script>
+</body>
+</html>
