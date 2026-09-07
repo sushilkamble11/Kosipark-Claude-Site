@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<base href="/">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/vendor-map.js"></script>
+<script src="./support.js"></script>
+<script src="/site.js" defer></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Petrona:wght@300;400;500;600&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="./image-slot.js"></script>
+<script src="/gp-images.js" defer></script>
+<style>
+  body { margin: 0; background: #FCFAF6; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #1D3730; text-decoration: none; }
+  a:hover { color: #96592A; }
+  @keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  @keyframes pulseFade { 0%,100% { opacity: .5 } 50% { opacity: .85 } }
+</style>
+</helmet>
+
+<div style="background:#FCFAF6; color:#292724; font-family:Figtree, system-ui, sans-serif; min-height:100vh">
+  <dc-import name="SiteNav" active="stay" book-href="#results" hint-size="100%,84px"></dc-import>
+
+  <section data-screen-label="Search summary" style="background:#1D3730">
+    <div style="max-width:1320px; margin:0 auto; padding:clamp(26px,4vw,44px) clamp(20px,5vw,56px)">
+      <div style="display:flex; flex-wrap:wrap; gap:16px 28px; align-items:flex-end; justify-content:space-between">
+        <div>
+          <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#A9B995; margin:0">Availability</p>
+          <h1 style="font:300 clamp(23px,2.8vw,33px)/1.1 Petrona, Georgia, serif; letter-spacing:-0.015em; color:#FCFAF6; margin:12px 0 0">{{ headline }}</h1>
+          <p style="font:400 15px/1.6 Figtree, sans-serif; color:rgba(237,228,212,0.82); margin:10px 0 0">{{ subline }}</p>
+        </div>
+        <span style="display:flex; flex-wrap:wrap; gap:8px">
+        <a href="/book/calendar" style="border:1px solid rgba(237,228,212,0.4); color:#EDE4D4; font:600 12px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:15px 22px; border-radius:999px">View calendar</a>
+        <button type="button" onClick="{{ toggleEdit }}" style="border:1px solid rgba(237,228,212,0.4); background:transparent; color:#EDE4D4; font:600 12px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:15px 22px; border-radius:999px; cursor:pointer">{{ editLabel }}</button>
+        </span>
+      </div>
+      <div style="{{ editStyle }}">
+        <dc-import name="BookingBar" initial-arrival="{{ arrival }}" initial-departure="{{ departure }}" initial-adults="{{ adults }}" initial-children="{{ children }}" initial-infants="{{ infants }}" submit-label="Update search" hint-size="100%,110px"></dc-import>
+      </div>
+    </div>
+  </section>
+
+  <section id="results" data-screen-label="Results" style="max-width:1320px; margin:0 auto; padding:clamp(30px,4vw,52px) clamp(20px,5vw,56px) clamp(38px,5.2vw,70px)">
+    <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:clamp(18px,2.4vw,26px)">
+      <sc-for list="{{ filters }}" as="f" hint-placeholder-count="4">
+        <button type="button" onClick="{{ f.pick }}" style="{{ f.style }}">{{ f.label }}</button>
+      </sc-for>
+      <button type="button" onClick="{{ toggleEdit }}" style="border:1px solid rgba(29,55,48,0.16); background:transparent; color:#56534C; font:600 12px/1 Figtree, sans-serif; letter-spacing:.04em; border-radius:999px; padding:13px 16px; cursor:pointer">{{ datesPill }}</button>
+      <span style="{{ promoWrapStyle }}">
+        <input value="{{ promoValue }}" onChange="{{ onPromo }}" placeholder="Promo code" style="border:0; background:transparent; outline:none; font:500 13px/1 Figtree, sans-serif; color:#1D3730; width:96px; padding:0" />
+        <button type="button" onClick="{{ applyPromo }}" style="border:0; background:transparent; font:700 11px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; color:#96592A; cursor:pointer; padding:0 2px">Apply</button>
+      </span>
+      <span style="{{ promoNoteStyle }}">{{ promoNote }}</span>
+    </div>
+
+    <div style="display:grid; gap:clamp(20px,3vw,40px); grid-template-columns:repeat(auto-fit, minmax(min(100%, 300px), 1fr)); align-items:start">
+      <div style="min-width:0; grid-column:span 2">
+
+        <sc-if value="{{ loading }}" hint-placeholder-val="{{ true }}">
+          <div style="display:grid; gap:14px">
+            <sc-for list="{{ skeletons }}" as="k" hint-placeholder-count="3">
+              <div style="background:#F3ECE0; border-radius:14px; height:150px; animation:pulseFade 1.4s ease-in-out infinite"></div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ hasError }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#F3E3DE; border-radius:14px; padding:26px">
+            <p style="font:500 16px/1.6 Figtree, sans-serif; color:#8C3B2A; margin:0">{{ errorText }}</p>
+            <p style="font:400 14px/1.7 Figtree, sans-serif; color:#6C6862; margin:10px 0 0">Please try again, or call reception on <a href="tel:0264562224">02 6456 2224</a> and we'll check for you.</p>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ hasResults }}" hint-placeholder-val="{{ false }}">
+          <div>
+            <div style="display:flex; flex-wrap:wrap; gap:10px 20px; align-items:baseline; justify-content:space-between; margin-bottom:18px">
+              <p style="font:500 14px/1.5 Figtree, sans-serif; color:#56534C; margin:0">{{ resultCount }}</p>
+              <p style="font:400 13px/1.5 Figtree, sans-serif; color:#8B877E; margin:0">Prices shown are totals for the whole stay</p>
+            </div>
+
+            <div style="display:grid; gap:14px">
+              <sc-for list="{{ rooms }}" as="r" hint-placeholder-count="4">
+                <article style="{{ r.cardStyle }}">
+                  <div style="{{ r.imgWrapStyle }}" onTouchStart="{{ r.onTouchStart }}" onTouchEnd="{{ r.onTouchEnd }}">
+                    <image-slot id="{{ r.imgId }}" shape="rect" placeholder="{{ r.name }}"></image-slot>
+                    <span style="{{ r.scarcityStyle }}">{{ r.scarcity }}</span>
+                    <button type="button" onClick="{{ r.prevImg }}" aria-label="Previous photo" style="position:absolute; z-index:3; top:50%; left:8px; transform:translateY(-50%); width:44px; height:44px; border-radius:999px; border:0; background:rgba(252,250,246,0.92); color:#1D3730; font:400 16px/1 Figtree, sans-serif; cursor:pointer">‹</button>
+                    <button type="button" onClick="{{ r.nextImg }}" aria-label="Next photo" style="position:absolute; z-index:3; top:50%; right:8px; transform:translateY(-50%); width:44px; height:44px; border-radius:999px; border:0; background:rgba(252,250,246,0.92); color:#1D3730; font:400 16px/1 Figtree, sans-serif; cursor:pointer">›</button>
+                    <span style="position:absolute; z-index:3; top:14px; right:12px; display:flex; gap:5px; justify-content:flex-end">
+                      <sc-for list="{{ r.dots }}" as="dot" hint-placeholder-count="3">
+                        <span style="{{ dot }}"></span>
+                      </sc-for>
+                    </span>
+                  </div>
+                  <div style="flex:1 1 260px; min-width:0; padding:clamp(18px,2.2vw,26px); display:flex; flex-direction:column; gap:10px">
+                    <div style="display:flex; flex-wrap:wrap; gap:8px 14px; align-items:baseline; justify-content:space-between">
+                      <h2 style="font:400 clamp(18px,2vw,22px)/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">{{ r.name }}</h2>
+                      <span style="{{ r.tagStyle }}">{{ r.tag }}</span>
+                    </div>
+                    <div style="display:flex; flex-wrap:wrap; gap:8px 18px">
+                      <sc-for list="{{ r.specs }}" as="sp" hint-placeholder-count="3">
+                        <span style="font:500 12.5px/1 Figtree, sans-serif; color:#56534C; letter-spacing:.02em">{{ sp }}</span>
+                      </sc-for>
+                    </div>
+                    <p style="font:400 14.5px/1.65 Figtree, sans-serif; color:#56534C; margin:0; max-width:60ch">{{ r.blurb }}</p>
+                    <p style="font:400 13px/1.6 Figtree, sans-serif; color:#8B877E; margin:0">{{ r.policy }}</p>
+                    <div style="{{ r.restrictStyle }}">
+                      <div style="display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; justify-content:space-between">
+                        <span style="display:flex; flex-direction:column; gap:5px; min-width:0">
+                          <span style="display:flex; align-items:center; gap:8px">
+                            <span style="font:600 13.5px/1.3 Figtree, sans-serif; color:#8C3B2A">{{ r.restrictMessage }}</span>
+                            <button type="button" onClick="{{ r.toggleWhy }}" aria-label="Why can't I book this?" style="width:22px; height:22px; border-radius:999px; border:1px solid rgba(140,59,42,0.4); background:transparent; color:#8C3B2A; font:700 11px/1 Figtree, sans-serif; cursor:pointer">?</button>
+                          </span>
+                          <span style="{{ r.whyStyle }}">{{ r.whyText }}</span>
+                        </span>
+                        <span style="display:flex; flex-wrap:wrap; gap:8px">
+                          <sc-for list="{{ r.fixes }}" as="fx" hint-placeholder-count="1">
+                            <button type="button" onClick="{{ fx.apply }}" style="border:0; border-radius:999px; background:#1D3730; color:#FCFAF6; font:700 11.5px/1 Figtree, sans-serif; letter-spacing:.08em; padding:14px 18px; cursor:pointer; white-space:nowrap">{{ fx.label }}</button>
+                          </sc-for>
+                        </span>
+                      </div>
+                    </div>
+                    <div style="display:flex; flex-wrap:wrap; gap:12px 20px; align-items:flex-end; justify-content:space-between; margin-top:auto; padding-top:8px">
+                      <div>
+                        <span style="display:block; font:400 clamp(21px,2.4vw,26px)/1 Petrona, Georgia, serif; color:#1D3730">{{ r.total }}</span>
+                        <span style="display:block; font:400 13px/1.5 Figtree, sans-serif; color:#6C6862; margin-top:5px">{{ r.perNight }}</span>
+                      </div>
+                      <span style="display:flex; flex-wrap:wrap; gap:8px; align-items:center">
+                        <a href="{{ r.detailHref }}" style="font:600 12px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; color:#74836A; padding:14px 4px">All features &amp; inclusions</a>
+                        <button type="button" style="{{ r.ratesToggleStyle }}" onClick="{{ r.toggleRates }}">{{ r.ratesToggleLabel }}</button>
+                        <a href="{{ r.calendarHref }}" style="{{ r.calendarLinkStyle }}">Find dates that work</a>
+                        <button type="button" disabled="{{ r.disabled }}" onClick="{{ r.select }}" style="{{ r.buttonStyle }}">{{ r.buttonLabel }}</button>
+                      </span>
+                    </div>
+
+                    <div style="{{ r.plansStyle }}">
+                      <sc-for list="{{ r.plans }}" as="pl" hint-placeholder-count="2">
+                        <div style="display:flex; flex-wrap:wrap; gap:12px 20px; align-items:center; justify-content:space-between; padding:16px 18px; border:1px solid rgba(29,55,48,0.10); border-radius:12px; background:#FCFAF6">
+                          <span style="display:flex; flex-direction:column; gap:5px; min-width:0; flex:1 1 200px">
+                            <span style="display:flex; flex-wrap:wrap; gap:8px; align-items:center">
+                              <span style="font:600 14.5px/1.2 Figtree, sans-serif; color:#292724">{{ pl.name }}</span>
+                              <span style="{{ pl.saveStyle }}">{{ pl.saveLabel }}</span>
+                            </span>
+                            <span style="font:400 13px/1.5 Figtree, sans-serif; color:#8B877E">{{ pl.description }}</span>
+                            <span style="font:500 12px/1.4 Figtree, sans-serif; color:#74836A">{{ pl.cancellation }}</span>
+                          </span>
+                          <span style="display:flex; align-items:center; gap:16px">
+                            <span style="text-align:right">
+                              <span style="display:block; font:400 18px/1 Petrona, Georgia, serif; color:#1D3730">{{ pl.perNight }}</span>
+                              <span style="display:block; font:400 12.5px/1.4 Figtree, sans-serif; color:#8B877E; margin-top:4px">{{ pl.total }}</span>
+                            </span>
+                            <button type="button" onClick="{{ pl.select }}" style="border:0; border-radius:999px; background:#96592A; color:#FCFAF6; font:700 12px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:15px 22px; cursor:pointer">Book</button>
+                          </span>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </div>
+                </article>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ noneAvailable }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#F3ECE0; border-radius:14px; padding:28px">
+            <h2 style="font:400 20px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:0">Nothing free for those dates</h2>
+            <p style="font:400 15px/1.7 Figtree, sans-serif; color:#56534C; margin:10px 0 0; max-width:52ch">Try shifting your dates by a night or two — midweek stays open up first. Reception often knows of cancellations, so it's worth a call on <a href="tel:0264562224">02 6456 2224</a>.</p>
+          </div>
+        </sc-if>
+      </div>
+
+      <aside style="{{ asideStyle }}">
+        <div style="background:#FFFFFF; border:1px solid rgba(29,55,48,0.10); border-radius:16px; padding:22px">
+          <h2 style="font:700 10.5px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A; margin:0">Your stay</h2>
+          <dl style="margin:14px 0 0; display:grid; gap:10px">
+            <sc-for list="{{ stayRows }}" as="row" hint-placeholder-count="3">
+              <div style="display:flex; gap:14px; justify-content:space-between">
+                <dt style="font:400 14px/1.5 Figtree, sans-serif; color:#8B877E">{{ row.k }}</dt>
+                <dd style="margin:0; font:500 14px/1.5 Figtree, sans-serif; color:#292724; text-align:right">{{ row.v }}</dd>
+              </div>
+            </sc-for>
+          </dl>
+        </div>
+        <div style="{{ nudgeStyle }}">
+          <p style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#8C3B2A; margin:0">Worth knowing</p>
+          <p style="font:500 14px/1.6 Figtree, sans-serif; color:#292724; margin:10px 0 0">{{ nudgeText }}</p>
+        </div>
+        <div style="background:#E9EEE3; border-radius:16px; padding:22px">
+          <h2 style="font:700 10.5px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A; margin:0">Before you book</h2>
+          <ul style="list-style:none; margin:14px 0 0; padding:0; display:grid; gap:10px">
+            <li style="font:400 13.5px/1.6 Figtree, sans-serif; color:#4C5C40">Deposit is 50% of the total or one night's tariff, whichever is higher.</li>
+            <li style="font:400 13.5px/1.6 Figtree, sans-serif; color:#4C5C40">Card payments carry a 2% surcharge. Cabins have a $100 bond at check-in.</li>
+            <li style="font:400 13.5px/1.6 Figtree, sans-serif; color:#4C5C40">Pets are not permitted anywhere in the park.</li>
+            <li style="font:400 13.5px/1.6 Figtree, sans-serif; color:#4C5C40">Vehicle entry fees to Kosciuszko National Park are payable separately.</li>
+          </ul>
+          <a href="/terms" style="display:inline-block; margin-top:14px; font:700 11.5px/1 Figtree, sans-serif; letter-spacing:.12em; text-transform:uppercase; color:#1D3730; border-bottom:1px solid #96592A; padding-bottom:7px">Full terms</a>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <dc-import name="SiteFooter" hint-size="100%,420px"></dc-import>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}">
+const BLURBS = {
+  "three-bedroom-chalet": "Three bedrooms, two bathrooms, private deck and a drying cupboard. Fully self-contained, linen supplied.",
+  "two-bedroom-chalet-upgraded": "Queen plus two sets of bunks, electric fireplace, underfloor-heated shower and EV power point.",
+  "two-bedroom-chalet": "Queen plus two double bunks, full kitchen with oven, 24-hour silent heating and carport parking.",
+  "cedar-cabin": "Double, two singles and a bunk, kitchenette and fire pit. Amenities block and laundry next door.",
+  "caravan-site": "Drive-through powered site among the snowgums, with sullage sink and your own campfire.",
+  "camper-trailer-site": "Powered site for vans, trailers and tents, designed for easy reversing, with a campfire.",
+  "motorhome-site": "Powered site for small camper-vans and motorhomes. No awnings permitted due to site width.",
+  "unpowered-site": "Walk-in tent site, one car and one tent per site. Guest kitchen and hot showers a short walk away."
+};
+
+class Component extends DCLogic {
+  state = { loading: true, error: "", rooms: [], edit: false, openRates: {}, imgIdx: {}, whyOpen: {}, filter: "all", promo: "", promoNote: "", currency: "AUD", wide: typeof window !== "undefined" ? window.innerWidth >= 1100 : true, cardWide: typeof window !== "undefined" ? window.innerWidth >= 820 : true };
+
+  componentWillUnmount() { window.removeEventListener("resize", this._onResize); }
+
+  params() {
+    const q = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+    const today = new Date();
+    const plus = n => { const d = new Date(today); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+    return {
+      arrival: q.get("arrival") || plus(14),
+      departure: q.get("departure") || plus(16),
+      adults: Number(q.get("adults") || 2),
+      children: Number(q.get("children") || 0),
+      infants: Number(q.get("infants") || 0),
+      room: q.get("room") || ""
+    };
+  }
+
+  async componentDidMount() {
+    this._onResize = () => this.setState({ wide: window.innerWidth >= 1100, cardWide: window.innerWidth >= 820 });
+    window.addEventListener("resize", this._onResize);
+    const p = this.params();
+    try {
+      const gp = await import("./guestpoint.js");
+      this.gp = gp;
+      const data = await gp.searchAvailability({
+        arrivalDate: p.arrival, departureDate: p.departure,
+        numAdults: p.adults, numChildren: p.children
+      });
+      const prop = data && data.Properties && data.Properties[0];
+      this.setState({
+        loading: false,
+        currency: (prop && prop.CurrencyCode) || "AUD",
+        rooms: gp.flattenAvailability(data)
+      });
+    } catch (e) {
+      this.setState({ loading: false, error: e.message || "We couldn't reach the booking system." });
+    }
+  }
+
+  async applyPromo() {
+    const code = (this.state.promo || "").trim();
+    if (!code || !this.gp) return;
+    this.setState({ promoNote: "Checking…" });
+    try {
+      const res = await this.gp.checkPromoCode(code);
+      if (res && res.length) {
+        const p = this.params();
+        const data = await this.gp.searchAvailability({
+          arrivalDate: p.arrival, departureDate: p.departure,
+          numAdults: p.adults, numChildren: p.children, promoCode: code
+        });
+        this.setState({ rooms: this.gp.flattenAvailability(data), promoNote: res[0].Name + " applied" });
+      } else {
+        this.setState({ promoNote: "That code isn't valid for these dates" });
+      }
+    } catch (e) {
+      this.setState({ promoNote: "We couldn't check that code" });
+    }
+  }
+
+  fmtDate(v) {
+    const p = (v || "").split("-");
+    return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" });
+  }
+
+  renderVals() {
+    const p = this.params();
+    const s = this.state;
+    const nights = Math.max(1, Math.round((new Date(p.departure) - new Date(p.arrival)) / 86400000));
+    const guests = p.adults + p.children;
+    const money = n => this.gp ? this.gp.money(n, s.currency) : "$" + n;
+
+    const category = r => r.roomTypeId.indexOf("unpowered") > -1 ? "camping"
+      : r.roomTypeId.indexOf("site") > -1 ? "sites" : "cabins";
+    const filtered = s.filter === "all" ? s.rooms : s.rooms.filter(r => category(r) === s.filter);
+    const sorted = [...filtered].sort((a, b) => {
+      if (a.available !== b.available) return a.available ? -1 : 1;
+      if (p.room) { if (a.roomTypeId === p.room) return -1; if (b.roomTypeId === p.room) return 1; }
+      return (a.total || 1e9) - (b.total || 1e9);
+    });
+
+    const rooms = sorted.map(r => {
+      const highlight = p.room && r.roomTypeId === p.room;
+      const perNight = r.total ? r.total / nights : null;
+      const open = !!s.openRates[r.roomTypeId];
+      const shot = (s.imgIdx[r.roomTypeId] || 0) % 3;
+      const specs = [];
+      if (r.sleeps) specs.push("Sleeps " + r.sleeps);
+      if (r.bedrooms) specs.push(r.bedrooms + (r.bedrooms === 1 ? " bedroom" : " bedrooms"));
+      specs.push((r.cars || 1) + " car");
+      if (r.isSite) specs.push("Powered site");
+      const scarce = r.available && r.roomsLeft !== null && r.roomsLeft > 0 && r.roomsLeft <= 2;
+      const rest = r.restriction;
+      const shiftIso = (v, n) => { const d = new Date(v); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+      const research = (arrival, departure) => {
+        const q = new URLSearchParams({
+          arrival, departure, adults: String(p.adults), children: String(p.children),
+          infants: String(p.infants), room: r.slug
+        });
+        window.location.href = "/book?" + q.toString();
+      };
+      const fixes = [];
+      const whyCopy = {
+        MIN_STAY: "Winter weekends and the Christmas period carry a minimum stay, so the park isn't left with single nights it can't fill. Extending by a night usually solves it.",
+        CLOSED_TO_ARRIVAL: "Saturday check-ins are closed in snow season while sites turn over between weekly stays. Arriving a day earlier or later is fine.",
+        MAX_STAY: "Stays inside the national park are capped per booking. Reception can arrange back-to-back bookings on the same site where availability allows.",
+        OCCUPANCY: "This type is licensed for a set number of guests, including infants. Splitting across two cabins or choosing a larger type will fit everyone.",
+        SOLD_OUT: "Every one of this type is booked for your dates. The calendar shows the nearest nights that are still open."
+      };
+      if (rest && rest.code === "MIN_STAY" && rest.minNights) {
+        fixes.push({ label: "Extend to " + rest.minNights + " nights", apply: () => research(p.arrival, shiftIso(p.arrival, rest.minNights)) });
+      } else if (rest && rest.code === "CLOSED_TO_ARRIVAL") {
+        fixes.push({ label: "Arrive a day earlier", apply: () => research(shiftIso(p.arrival, -1), p.departure) });
+      } else if (rest && rest.code === "MAX_STAY" && rest.maxNights) {
+        fixes.push({ label: "Cap at " + rest.maxNights + " nights", apply: () => research(p.arrival, shiftIso(p.arrival, rest.maxNights)) });
+      } else if (rest && rest.code === "OCCUPANCY") {
+        fixes.push({ label: "Show what fits " + guests, apply: () => this.setState({ filter: "all" }) });
+      }
+      if (rest) fixes.push({ label: "Find dates", apply: () => { window.location.href = "/book/calendar?room=" + r.slug; } });
+
+      const goTo = planId => {
+        const q = new URLSearchParams({
+          room: r.slug, plan: planId,
+          arrival: p.arrival, departure: p.departure,
+          adults: String(p.adults), children: String(p.children), infants: String(p.infants),
+          total: String((r.plans.find(x => x.ratePlanId === planId) || {}).total || r.total || 0)
+        });
+        window.location.href = "/book/checkout?" + q.toString();
+      };
+      return {
+        imgId: "av-" + r.slug + "-" + (shot + 1),
+        dots: [0, 1, 2].map(i => "width:6px; height:6px; border-radius:999px; background:" + (i === shot ? "#FCFAF6" : "rgba(252,250,246,0.45)")),
+        prevImg: () => this.setState(x => ({ imgIdx: { ...x.imgIdx, [r.slug]: (shot + 2) % 3 } })),
+        nextImg: () => this.setState(x => ({ imgIdx: { ...x.imgIdx, [r.slug]: (shot + 1) % 3 } })),
+        imgWrapStyle: s.cardWide
+          ? "flex:0 0 auto; width:clamp(180px,26%,240px); position:relative; align-self:stretch; min-height:170px"
+          : "flex:1 1 100%; width:100%; position:relative; aspect-ratio:16/10; min-height:180px",
+        onTouchStart: e => { this._tx = e.touches[0].clientX; },
+        onTouchEnd: e => {
+          if (typeof this._tx !== "number") return;
+          const dx = e.changedTouches[0].clientX - this._tx;
+          this._tx = null;
+          if (Math.abs(dx) < 40) return;
+          const next = dx < 0 ? (shot + 1) % 3 : (shot + 2) % 3;
+          this.setState(x => ({ imgIdx: { ...x.imgIdx, [r.roomTypeId]: next } }));
+        },
+        specs,
+        restrictStyle: rest
+          ? "background:#F7E7E1; border-radius:12px; padding:14px 16px; margin-top:4px"
+          : "display:none",
+        restrictMessage: rest ? rest.message : "",
+        whyText: rest ? (whyCopy[rest.code] || "Reception can explain this one on 02 6456 2224.") : "",
+        whyStyle: (rest && s.whyOpen[r.roomTypeId])
+          ? "font:400 13px/1.6 Figtree, sans-serif; color:#56534C; max-width:54ch"
+          : "display:none",
+        toggleWhy: () => this.setState(x => ({ whyOpen: { ...x.whyOpen, [r.roomTypeId]: !x.whyOpen[r.roomTypeId] } })),
+        fixes,
+        scarcity: scarce ? (r.roomsLeft === 1 ? "Only 1 left for these dates" : "Only " + r.roomsLeft + " left") : "",
+        scarcityStyle: scarce
+          ? "position:absolute; top:10px; left:10px; z-index:2; font:700 10px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; color:#FCFAF6; background:#8C3B2A; padding:9px 11px; border-radius:7px"
+          : "display:none",
+        plans: (r.plans || []).map(pl => ({
+          name: pl.name,
+          description: pl.description,
+          cancellation: pl.cancellation || "Standard conditions apply",
+          saveLabel: pl.saving ? "Save " + money(pl.saving) : "",
+          saveStyle: pl.saving
+            ? "font:700 9.5px/1 Figtree, sans-serif; letter-spacing:.12em; text-transform:uppercase; color:#4C5C40; background:#E9EEE3; padding:7px 9px; border-radius:6px"
+            : "display:none",
+          perNight: money(pl.total / nights) + " / night",
+          total: money(pl.total) + " total",
+          select: () => goTo(pl.ratePlanId)
+        })),
+        plansStyle: open && r.available
+          ? "display:grid; gap:10px; margin-top:16px; padding-top:16px; border-top:1px solid rgba(29,55,48,0.10); animation:riseIn .2s ease both"
+          : "display:none",
+        ratesToggleLabel: open ? "Hide rates" : ((r.plans || []).length > 1 ? "See all " + r.plans.length + " rates" : "See rate"),
+        ratesToggleStyle: r.available
+          ? "border:1px solid rgba(29,55,48,0.22); background:transparent; color:#1D3730; font:600 12px/1 Figtree, sans-serif; letter-spacing:.08em; text-transform:uppercase; padding:15px 18px; border-radius:999px; cursor:pointer"
+          : "display:none",
+        toggleRates: () => this.setState(x => ({ openRates: { ...x.openRates, [r.roomTypeId]: !x.openRates[r.roomTypeId] } })),
+        name: r.name,
+        blurb: BLURBS[r.roomTypeId] || r.description || "",
+        policy: r.available && r.policyText ? r.policyText : "",
+        total: r.available && r.total ? money(r.total) + " total" : "—",
+        perNight: r.available && perNight ? "from " + money(perNight) + " per night · " + nights + (nights === 1 ? " night" : " nights") : "Try different dates",
+        tag: highlight ? "You were viewing this" : (r.available ? (r.ratePlanName || "Standard rate") : "Unavailable"),
+        tagStyle: "font:600 10.5px/1 Figtree, sans-serif; letter-spacing:.12em; text-transform:uppercase; padding:9px 13px; border-radius:999px; " +
+          (highlight ? "background:#F4E4D2; color:#8A5A2B" : r.available ? "background:#E9EEE3; color:#4C5C40" : "background:#EFEDE7; color:#8B877E"),
+        cardStyle: "display:flex; flex-wrap:wrap; overflow:hidden; border-radius:16px; border:1px solid " +
+          (highlight ? "rgba(185,121,63,0.45)" : "rgba(29,55,48,0.09)") +
+          (r.available
+            ? "; background:#FFFFFF; box-shadow:0 16px 34px -26px rgba(18,39,32,0.42)"
+            : "; background:#F7F5F0; filter:grayscale(0.55); box-shadow:none"),
+        disabled: !r.available,
+        buttonLabel: r.available ? "Select" : "Unavailable",
+        buttonStyle: "border:0; border-radius:999px; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:17px 26px; " +
+          (r.available ? "background:#1D3730; color:#FCFAF6; cursor:pointer" : "background:#EFEDE7; color:#A6A29A; cursor:not-allowed"),
+        detailHref: "/accommodation/" + r.slug,
+        calendarHref: "/book/calendar?room=" + r.slug,
+        calendarLinkStyle: r.available
+          ? "display:none"
+          : "border:1px solid rgba(29,55,48,0.22); color:#1D3730; font:600 12px/1 Figtree, sans-serif; letter-spacing:.08em; text-transform:uppercase; padding:15px 18px; border-radius:999px",
+        select: () => { if (r.available) goTo(r.ratePlanId || "standard"); }
+      };
+    });
+
+    const available = rooms.filter(r => !r.disabled).length;
+    const scarceCount = sorted.filter(r => r.available && r.roomsLeft !== null && r.roomsLeft <= 2).length;
+    const snow = (new Date(p.arrival).getMonth() + 1) >= 6 && (new Date(p.arrival).getMonth() + 1) <= 9;
+    let nudge = "";
+    if (available === 0) nudge = "";
+    else if (scarceCount === 1) nudge = "One of these options has a single space left for your dates.";
+    else if (scarceCount > 1) nudge = scarceCount + " of these options are down to their last one or two spaces for your dates.";
+    else if (snow) nudge = "These are snow season dates, when weekends fill earliest — a deposit holds it.";
+    else if (nights === 1) nudge = "Winter weekends and the Christmas period need a minimum of two nights.";
+
+    return {
+      arrival: p.arrival, departure: p.departure,
+      adults: p.adults, children: p.children, infants: p.infants,
+      headline: this.fmtDate(p.arrival) + " → " + this.fmtDate(p.departure),
+      subline: nights + (nights === 1 ? " night" : " nights") + " · " + guests + (guests === 1 ? " guest" : " guests") + (p.infants ? ", " + p.infants + " infant" : "") + " · Sawpit Creek",
+      loading: s.loading,
+      skeletons: [1, 2, 3],
+      hasError: !!s.error,
+      errorText: s.error,
+      hasResults: !s.loading && !s.error && rooms.length > 0,
+      noneAvailable: !s.loading && !s.error && rooms.length > 0 && available === 0,
+      resultCount: available + (available === 1 ? " option available" : " options available") + (rooms.length > available ? " · " + (rooms.length - available) + " unavailable" : ""),
+      rooms,
+      stayRows: [
+        { k: "Check in", v: this.fmtDate(p.arrival) + " from 3pm" },
+        { k: "Check out", v: this.fmtDate(p.departure) + " by 10am" },
+        { k: "Nights", v: String(nights) },
+        { k: "Guests", v: p.adults + " adults" + (p.children ? ", " + p.children + " children" : "") + (p.infants ? ", " + p.infants + " infants" : "") }
+      ],
+      asideStyle: (s.wide ? "position:sticky; top:100px; " : "grid-column:1/-1; ") + "min-width:0; display:grid; gap:14px",
+      filters: [
+        { key: "all", label: "All" },
+        { key: "cabins", label: "Cabins & chalets" },
+        { key: "sites", label: "Powered sites" },
+        { key: "camping", label: "Camping" }
+      ].map(f => ({
+        label: f.label,
+        style: "border:1px solid " + (s.filter === f.key ? "rgba(29,55,48,0.5)" : "rgba(29,55,48,0.16)") +
+          "; background:" + (s.filter === f.key ? "#1D3730" : "transparent") +
+          "; color:" + (s.filter === f.key ? "#FCFAF6" : "#56534C") +
+          "; font:600 12px/1 Figtree, sans-serif; letter-spacing:.04em; border-radius:999px; padding:13px 16px; cursor:pointer",
+        pick: () => this.setState({ filter: f.key })
+      })),
+      datesPill: nights + (nights === 1 ? " night" : " nights") + " · " + guests + (guests === 1 ? " guest" : " guests"),
+      promoValue: s.promo,
+      onPromo: e => this.setState({ promo: e.target.value, promoNote: "" }),
+      applyPromo: () => this.applyPromo(),
+      promoWrapStyle: "display:flex; align-items:center; gap:6px; border:1px solid rgba(29,55,48,0.16); border-radius:999px; padding:11px 16px",
+      promoNote: s.promoNote,
+      promoNoteStyle: s.promoNote
+        ? "font:500 12px/1.4 Figtree, sans-serif; color:#4C5C40"
+        : "display:none",
+      nudgeText: nudge,
+      nudgeStyle: nudge ? "background:#F7E7E1; border-radius:16px; padding:20px 22px" : "display:none",
+      edit: s.edit,
+      toggleEdit: () => this.setState(x => ({ edit: !x.edit })),
+      editLabel: s.edit ? "Close" : "Change dates",
+      editStyle: s.edit ? "margin-top:22px; animation:riseIn .2s ease both" : "display:none"
+    };
+  }
+}
+
+</script>
+</body>
+</html>

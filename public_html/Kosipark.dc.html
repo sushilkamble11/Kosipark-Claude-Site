@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<base href="/">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/vendor-map.js"></script>
+<script src="./support.js"></script>
+<script src="/site.js" defer></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Petrona:wght@300;400;500;600&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="./image-slot.js"></script>
+<script src="/gp-images.js" defer></script>
+<style>
+  body { margin: 0; background: #FCFAF6; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #1D3730; text-decoration: none; }
+  a:hover { color: #96592A; }
+  @keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+</style>
+</helmet>
+
+<div style="background:#FCFAF6; color:#292724; font-family:Figtree, system-ui, sans-serif">
+
+  <template id="__bundler_thumbnail">
+    <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <rect width="200" height="200" fill="#1D3730"></rect>
+      <text x="100" y="118" text-anchor="middle" font-family="Georgia, serif" font-size="74" fill="#EDE4D4">K</text>
+    </svg>
+  </template>
+
+  <dc-import name="SiteNav" active="home" book-href="#book" sticky-book-bar="{{ showSticky }}" hint-size="100%,84px"></dc-import>
+
+  <section id="top" data-screen-label="Hero" style="position:relative; z-index:30; min-height:clamp(500px, 74vh, 700px); display:flex; flex-direction:column; justify-content:flex-end">
+    <div style="position:absolute; inset:0">
+      <image-slot id="h-hero" gp-property gp-index="0" shape="rect" fit="cover" placeholder="Hero photo — the park under snow gums, or the Snowy Mountains"></image-slot>
+    </div>
+    <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient(180deg, rgba(18,39,32,0.5) 0%, rgba(18,39,32,0.15) 34%, rgba(18,39,32,0.82) 100%)"></div>
+
+    <div style="position:relative; width:100%; max-width:1320px; margin:0 auto; padding:92px clamp(20px,5vw,56px) clamp(56px,7vw,92px); pointer-events:none">
+      <p style="font:600 11px/1 Figtree, sans-serif; letter-spacing:.24em; text-transform:uppercase; color:#CDD9B7; margin:0 0 18px">Chalets · Cabins · Caravan &amp; Motorhome · Camping</p>
+      <h1 style="font:300 clamp(33px,5.6vw,60px)/1.02 Petrona, Georgia, serif; letter-spacing:-0.02em; color:#FCFAF6; margin:0; max-width:16ch; text-wrap:balance; text-shadow:0 2px 30px rgba(18,39,32,0.35)">Stay in the Heart of Kosciuszko National Park</h1>
+      <p style="font:400 clamp(15px,1.6vw,17.5px)/1.65 Figtree, sans-serif; color:rgba(252,250,246,0.9); margin:22px 0 0; max-width:46ch">Australia's highest tourist park, at Sawpit Creek — campfires under the stars, native wildlife at the door and Perisher just 14 km up the road.</p>
+    </div>
+
+  </section>
+
+  <div id="book" style="position:relative; z-index:40; width:100%; max-width:1240px; margin:clamp(-150px,-6.5vw,-28px) auto 0; padding:0 clamp(14px,4vw,44px)">
+    <dc-import name="BookingBar" hint-size="100%,110px"></dc-import>
+  </div>
+
+  <section data-screen-label="Intro" style="max-width:1320px; margin:0 auto; padding:clamp(40px,6vw,84px) clamp(20px,5vw,56px) 0">
+    <div style="display:grid; gap:clamp(24px,4vw,64px); grid-template-columns:repeat(auto-fit, minmax(min(100%, 300px), 1fr)); align-items:start">
+      <div>
+        <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#74836A; margin:0">Welcome to Kosciuszko Tourist Park</p>
+        <h2 style="font:300 clamp(24px,3.1vw,36px)/1.08 Petrona, Georgia, serif; letter-spacing:-0.015em; color:#1D3730; margin:14px 0 0; max-width:22ch; text-wrap:balance">Your gateway to the Snowy Mountains</h2>
+      </div>
+      <div>
+        <p style="font:400 clamp(14.5px,1.5vw,16.5px)/1.75 Figtree, sans-serif; color:#56534C; margin:0">Nestled within the serene Kosciuszko National Park, our park is a paradise for nature lovers and outdoor adventurers. A short drive from Australia's highest peak, we offer everything from Heritage Chalets to camping sites, all set in the tranquility of natural bushland.</p>
+        <p style="font:400 clamp(15px,1.7vw,17px)/1.75 Figtree, sans-serif; color:#6C6862; margin:18px 0 0">Whether you're here for skiing at Perisher Valley, 14 kilometres away, or exploring the alpine landscapes in summer, the park is the perfect base — with a guest lounge, camp kitchen and drying room, surrounded by snowgum forest and native wildlife.</p>
+        <a href="/accommodation" style="display:inline-block; margin-top:24px; font:700 12px/1 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#1D3730; border-bottom:1px solid #96592A; padding-bottom:8px">See all accommodation</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="stay" data-screen-label="Ways to stay" style="max-width:1320px; margin:0 auto; padding:clamp(38px,5.2vw,72px) clamp(20px,5vw,56px) 0">
+    <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end; justify-content:space-between">
+      <div>
+        <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#74836A; margin:0">Ways to Stay</p>
+        <h2 style="font:300 clamp(25px,3.3vw,38px)/1.06 Petrona, Georgia, serif; letter-spacing:-0.015em; color:#1D3730; margin:12px 0 0; max-width:24ch">Eight ways to spend the night in the park</h2>
+      </div>
+      <a href="/accommodation" style="font:700 12px/1 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#1D3730; border-bottom:1px solid #96592A; padding-bottom:8px">See all</a>
+    </div>
+
+    <div style="display:grid; gap:clamp(16px,2.4vw,26px); grid-template-columns:repeat(auto-fit, minmax(min(100%, 285px), 1fr)); margin-top:clamp(22px,3vw,38px)">
+      <a href="/accommodation/three-bedroom-chalet" style="background:#FFFFFF; border-radius:14px; overflow:hidden; border:1px solid rgba(29,55,48,0.07); box-shadow:0 14px 30px -22px rgba(18,39,32,0.4); display:block">
+        <div style="aspect-ratio:4/3; position:relative"><image-slot id="h-stay-1" gp-room="three-bedroom-chalet" gp-index="0" shape="rect" placeholder="Chalet exterior or deck"></image-slot></div>
+        <div style="padding:22px 22px 26px">
+          <h3 style="font:400 18.5px/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Heritage Chalets</h3>
+          <p style="font:400 14.5px/1.65 Figtree, sans-serif; color:#56534C; margin:10px 0 0">Two and three bedroom, fully self-contained, sleeping six to eight. Linen provided.</p>
+          <span style="display:inline-block; margin-top:16px; font:600 12px/1 Figtree, sans-serif; letter-spacing:.12em; text-transform:uppercase; color:#96592A">Sleeps 6–8</span>
+        </div>
+      </a>
+      <a href="/accommodation/cedar-cabin" style="background:#FFFFFF; border-radius:14px; overflow:hidden; border:1px solid rgba(29,55,48,0.07); box-shadow:0 14px 30px -22px rgba(18,39,32,0.4); display:block">
+        <div style="aspect-ratio:4/3; position:relative"><image-slot id="h-stay-2" gp-room="cedar-cabin" gp-index="0" shape="rect" placeholder="Cedar cabin interior"></image-slot></div>
+        <div style="padding:22px 22px 26px">
+          <h3 style="font:400 18.5px/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Cedar Cabins</h3>
+          <p style="font:400 14.5px/1.65 Figtree, sans-serif; color:#56534C; margin:10px 0 0">Budget-friendly cabins for up to six, with kitchen, heating and amenities next door.</p>
+          <span style="display:inline-block; margin-top:16px; font:600 12px/1 Figtree, sans-serif; letter-spacing:.12em; text-transform:uppercase; color:#96592A">Sleeps 6</span>
+        </div>
+      </a>
+      <a href="/accommodation/caravan-site" style="background:#FFFFFF; border-radius:14px; overflow:hidden; border:1px solid rgba(29,55,48,0.07); box-shadow:0 14px 30px -22px rgba(18,39,32,0.4); display:block">
+        <div style="aspect-ratio:4/3; position:relative"><image-slot id="h-stay-3" gp-room="caravan-site" gp-index="0" shape="rect" placeholder="Powered caravan site among snowgums"></image-slot></div>
+        <div style="padding:22px 22px 26px">
+          <h3 style="font:400 18.5px/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Powered Sites</h3>
+          <p style="font:400 14.5px/1.65 Figtree, sans-serif; color:#56534C; margin:10px 0 0">Fifteen generous drive-through caravan, camper trailer and motorhome sites with private campfires.</p>
+          <span style="display:inline-block; margin-top:16px; font:600 12px/1 Figtree, sans-serif; letter-spacing:.12em; text-transform:uppercase; color:#96592A">Up to 6 people</span>
+        </div>
+      </a>
+      <a href="/accommodation/unpowered-site" style="background:#FFFFFF; border-radius:14px; overflow:hidden; border:1px solid rgba(29,55,48,0.07); box-shadow:0 14px 30px -22px rgba(18,39,32,0.4); display:block">
+        <div style="aspect-ratio:4/3; position:relative"><image-slot id="h-stay-4" gp-room="unpowered-site" gp-index="0" shape="rect" placeholder="Tent site in the bush"></image-slot></div>
+        <div style="padding:22px 22px 26px">
+          <h3 style="font:400 18.5px/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Unpowered Camping</h3>
+          <p style="font:400 14.5px/1.65 Figtree, sans-serif; color:#56534C; margin:10px 0 0">Classic walk-in tent sites for a quiet escape, one tent and one car per site.</p>
+          <span style="display:inline-block; margin-top:16px; font:600 12px/1 Figtree, sans-serif; letter-spacing:.12em; text-transform:uppercase; color:#96592A">Up to 6 people</span>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <section data-screen-label="Guest facilities" style="margin-top:clamp(38px,5.2vw,72px); background:#1D3730">
+    <div style="max-width:1320px; margin:0 auto; padding:clamp(38px,5.2vw,70px) clamp(20px,5vw,56px); display:grid; gap:clamp(24px,3.5vw,56px); grid-template-columns:repeat(auto-fit, minmax(min(100%, 320px), 1fr)); align-items:center">
+      <div>
+        <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#A9B995; margin:0">Guest Kitchen &amp; Lounge</p>
+        <h2 style="font:300 clamp(24px,3vw,35px)/1.08 Petrona, Georgia, serif; letter-spacing:-0.015em; color:#FCFAF6; margin:14px 0 0; max-width:20ch">A wood fire to come back to</h2>
+        <p style="font:400 clamp(14px,1.4vw,16px)/1.75 Figtree, sans-serif; color:rgba(237,228,212,0.84); margin:18px 0 0; max-width:52ch">Our large guest kitchen and lounge has two stoves with ovens, a microwave, sink, fridge, dining furniture, lounge chairs and a free gas barbecue — all warmed by a cosy wood fire.</p>
+        <ul style="list-style:none; margin:26px 0 0; padding:0; display:grid; gap:11px; max-width:46ch">
+          <li style="display:flex; gap:12px; align-items:baseline; font:400 15px/1.6 Figtree, sans-serif; color:#EDE4D4"><span style="width:5px; height:5px; border-radius:999px; background:#96592A; flex:0 0 auto; transform:translateY(-3px)"></span>Kiosk and two amenity blocks with hot showers</li>
+          <li style="display:flex; gap:12px; align-items:baseline; font:400 15px/1.6 Figtree, sans-serif; color:#EDE4D4"><span style="width:5px; height:5px; border-radius:999px; background:#96592A; flex:0 0 auto; transform:translateY(-3px)"></span>Laundry with coin-operated washers and dryers</li>
+          <li style="display:flex; gap:12px; align-items:baseline; font:400 15px/1.6 Figtree, sans-serif; color:#EDE4D4"><span style="width:5px; height:5px; border-radius:999px; background:#96592A; flex:0 0 auto; transform:translateY(-3px)"></span>Undercover wash-up area, drying room and playground</li>
+          <li style="display:flex; gap:12px; align-items:baseline; font:400 15px/1.6 Figtree, sans-serif; color:#EDE4D4"><span style="width:5px; height:5px; border-radius:999px; background:#96592A; flex:0 0 auto; transform:translateY(-3px)"></span>Picnic area and three walking trails from the park</li>
+        </ul>
+      </div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:5/4; position:relative"><image-slot id="h-kitchen" gp-property gp-index="1" shape="rect" placeholder="Guest kitchen and lounge with the wood fire"></image-slot></div>
+    </div>
+  </section>
+
+  <section data-screen-label="Why Kosipark" style="max-width:1320px; margin:0 auto; padding:clamp(38px,5.2vw,72px) clamp(20px,5vw,56px) 0">
+    <div style="background:#E9EEE3; border-radius:16px; padding:clamp(22px,3.2vw,44px)">
+      <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#74836A; margin:0">Why Stay at Kosipark</p>
+      <h2 style="font:300 clamp(24px,3vw,35px)/1.08 Petrona, Georgia, serif; letter-spacing:-0.015em; color:#1D3730; margin:12px 0 0; max-width:24ch">Inside the national park, not an hour away from it</h2>
+      <div style="display:grid; gap:clamp(20px,3vw,40px); grid-template-columns:repeat(auto-fit, minmax(min(100%, 220px), 1fr)); margin-top:clamp(22px,3vw,34px)">
+        <div><span style="font:400 15px/1 Petrona, Georgia, serif; color:#96592A">01</span><h3 style="font:400 20px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:10px 0 0">Closest park to Perisher</h3><p style="font:400 14.5px/1.65 Figtree, sans-serif; color:#56534C; margin:8px 0 0">Fourteen kilometres to the largest ski resort in the Southern Hemisphere — no pre-dawn drive.</p></div>
+        <div><span style="font:400 15px/1 Petrona, Georgia, serif; color:#96592A">02</span><h3 style="font:400 20px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:10px 0 0">Campfires and wildlife</h3><p style="font:400 14.5px/1.65 Figtree, sans-serif; color:#56534C; margin:8px 0 0">Private campfires on powered sites, snowgum shelter and friendly locals of the feathered kind.</p></div>
+        <div><span style="font:400 15px/1 Petrona, Georgia, serif; color:#96592A">03</span><h3 style="font:400 20px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:10px 0 0">Every way to stay</h3><p style="font:400 14.5px/1.65 Figtree, sans-serif; color:#56534C; margin:8px 0 0">Chalets, cabins, caravan, motorhome, camper trailer and tent sites side by side.</p></div>
+        <div><span style="font:400 15px/1 Petrona, Georgia, serif; color:#96592A">04</span><h3 style="font:400 20px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:10px 0 0">Trails from the gate</h3><p style="font:400 14.5px/1.65 Figtree, sans-serif; color:#56534C; margin:8px 0 0">Waterfall, Sawpit and Pallaibo walks all start here, with the Education Centre 200 m away.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section data-screen-label="Attractions teaser" style="max-width:1320px; margin:0 auto; padding:clamp(38px,5.2vw,72px) clamp(20px,5vw,56px) 0">
+    <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end; justify-content:space-between">
+      <div>
+        <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#74836A; margin:0">Things to Do</p>
+        <h2 style="font:300 clamp(25px,3.3vw,38px)/1.06 Petrona, Georgia, serif; letter-spacing:-0.015em; color:#1D3730; margin:12px 0 0; max-width:22ch">Kosciuszko National Park, from the front gate</h2>
+      </div>
+      <a href="/attractions" style="font:700 12px/1 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#1D3730; border-bottom:1px solid #96592A; padding-bottom:8px">All attractions</a>
+    </div>
+    <div style="display:grid; gap:clamp(16px,2.4vw,26px); grid-template-columns:repeat(auto-fit, minmax(min(100%, 270px), 1fr)); margin-top:clamp(22px,3vw,34px)">
+      <a href="/attractions#winter" style="display:block"><div style="border-radius:14px; overflow:hidden; aspect-ratio:3/4; position:relative"><image-slot id="h-do-1" shape="rect" placeholder="Perisher — snowfields"></image-slot></div><h3 style="font:400 19px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:18px 0 0">Perisher Ski Resort</h3><p style="font:400 14.5px/1.65 Figtree, sans-serif; color:#56534C; margin:8px 0 0">The closest caravan park to Perisher, the largest ski resort in the Southern Hemisphere.</p></a>
+      <a href="/attractions#walks" style="display:block"><div style="border-radius:14px; overflow:hidden; aspect-ratio:3/4; position:relative"><image-slot id="h-do-2" shape="rect" placeholder="Walking track near the park"></image-slot></div><h3 style="font:400 19px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:18px 0 0">Bushwalking &amp; Hiking</h3><p style="font:400 14.5px/1.65 Figtree, sans-serif; color:#56534C; margin:8px 0 0">Three tracks start from the park — Waterfall Walk, Sawpit Walk and Pallaibo Walk.</p></a>
+      <a href="/attractions#summer" style="display:block"><div style="border-radius:14px; overflow:hidden; aspect-ratio:3/4; position:relative"><image-slot id="h-do-3" shape="rect" placeholder="Thredbo chairlift or Mt Kosciuszko walk"></image-slot></div><h3 style="font:400 19px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:18px 0 0">Mount Kosciuszko Walk</h3><p style="font:400 14.5px/1.65 Figtree, sans-serif; color:#56534C; margin:8px 0 0">The closest you can stay to Charlotte Pass, where the summit walk begins.</p></a>
+      <a href="/attractions#water" style="display:block"><div style="border-radius:14px; overflow:hidden; aspect-ratio:3/4; position:relative"><image-slot id="h-do-4" shape="rect" placeholder="Fly fishing on the Thredbo River"></image-slot></div><h3 style="font:400 19px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:18px 0 0">Fly Fishing</h3><p style="font:400 14.5px/1.65 Figtree, sans-serif; color:#56534C; margin:8px 0 0">Wild trout in the Thredbo River, with Gaden Trout Hatchery close by.</p></a>
+    </div>
+  </section>
+
+  <section data-screen-label="Gallery teaser" style="max-width:1320px; margin:0 auto; padding:clamp(38px,5.2vw,72px) clamp(20px,5vw,56px) 0">
+    <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end; justify-content:space-between">
+      <h2 style="font:300 clamp(24px,3vw,35px)/1.06 Petrona, Georgia, serif; letter-spacing:-0.015em; color:#1D3730; margin:0">The park, through the year</h2>
+      <a href="/gallery" style="font:700 12px/1 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#1D3730; border-bottom:1px solid #96592A; padding-bottom:8px">Full gallery</a>
+    </div>
+    <div style="display:grid; gap:10px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 200px), 1fr)); margin-top:clamp(22px,3vw,36px)">
+      <div style="border-radius:14px; overflow:hidden; aspect-ratio:1/1; position:relative"><image-slot id="h-gal-1" gp-property gp-index="2" shape="rect" placeholder="Cabins in snow"></image-slot></div>
+      <div style="border-radius:14px; overflow:hidden; aspect-ratio:1/1; position:relative"><image-slot id="h-gal-2" gp-property gp-index="3" shape="rect" placeholder="Campfire at dusk"></image-slot></div>
+      <div style="border-radius:14px; overflow:hidden; aspect-ratio:1/1; position:relative"><image-slot id="h-gal-3" gp-property gp-index="4" shape="rect" placeholder="Snowgums at dawn"></image-slot></div>
+      <div style="border-radius:14px; overflow:hidden; aspect-ratio:1/1; position:relative"><image-slot id="h-gal-4" gp-property gp-index="5" shape="rect" placeholder="Kangaroos on the lawn"></image-slot></div>
+      <div style="border-radius:14px; overflow:hidden; aspect-ratio:1/1; position:relative"><image-slot id="h-gal-5" gp-property gp-index="6" shape="rect" placeholder="Chalet interior"></image-slot></div>
+      <div style="border-radius:14px; overflow:hidden; aspect-ratio:1/1; position:relative"><image-slot id="h-gal-6" gp-property gp-index="7" shape="rect" placeholder="Van site in summer"></image-slot></div>
+    </div>
+  </section>
+
+  <section data-screen-label="Reviews" style="margin-top:clamp(38px,5.2vw,72px); background:#F3ECE0">
+    <div style="max-width:1320px; margin:0 auto; padding:clamp(38px,5.2vw,70px) clamp(20px,5vw,56px)">
+      <div style="display:flex; flex-wrap:wrap; gap:12px 24px; align-items:baseline">
+        <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#74836A; margin:0">Guest Reviews</p>
+        <span style="font:500 12px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; color:#96592A">Star rating 4.4</span>
+      </div>
+      <h2 style="font:300 clamp(24px,3vw,35px)/1.08 Petrona, Georgia, serif; letter-spacing:-0.015em; color:#1D3730; margin:12px 0 0">What guests tell us</h2>
+      <div style="display:grid; gap:clamp(16px,2.4vw,26px); grid-template-columns:repeat(auto-fit, minmax(min(100%, 270px), 1fr)); margin-top:clamp(22px,3vw,34px)">
+        <blockquote style="margin:0; background:#FCFAF6; border-radius:14px; padding:28px 26px"><p style="font:400 17px/1.55 Petrona, Georgia, serif; color:#1D3730; margin:0">“Twenty minutes from the lifts and the chalet was warm before we finished unpacking. The drying cupboard saved the trip.”</p><footer style="font:600 12px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; color:#74836A; margin-top:20px">Megan · Two Bedroom Chalet · August</footer></blockquote>
+        <blockquote style="margin:0; background:#FCFAF6; border-radius:14px; padding:28px 26px"><p style="font:400 17px/1.55 Petrona, Georgia, serif; color:#1D3730; margin:0">“Easiest drive-through site we have used in the Snowies, and a campfire of our own every night.”</p><footer style="font:600 12px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; color:#74836A; margin-top:20px">Rob &amp; Di · Caravan Site · March</footer></blockquote>
+        <blockquote style="margin:0; background:#FCFAF6; border-radius:14px; padding:28px 26px"><p style="font:400 17px/1.55 Petrona, Georgia, serif; color:#1D3730; margin:0">“Camped four nights and walked a different track each day. Quiet, tidy, and the guest kitchen is a treat in the cold.”</p><footer style="font:600 12px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; color:#74836A; margin-top:20px">Anh · Unpowered Site · January</footer></blockquote>
+      </div>
+    </div>
+  </section>
+
+  <section data-screen-label="Location" style="max-width:1320px; margin:0 auto; padding:clamp(38px,5.2vw,72px) clamp(20px,5vw,56px) clamp(38px,5.2vw,72px)">
+    <div style="display:grid; gap:clamp(20px,3vw,44px); grid-template-columns:repeat(auto-fit, minmax(min(100%, 300px), 1fr)); align-items:center">
+      <div>
+        <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#74836A; margin:0">Location &amp; Getting Here</p>
+        <h2 style="font:300 clamp(24px,3vw,35px)/1.08 Petrona, Georgia, serif; letter-spacing:-0.015em; color:#1D3730; margin:12px 0 0; max-width:20ch">1400 Kosciuszko Road, Sawpit Creek</h2>
+        <p style="font:400 clamp(14px,1.4vw,16px)/1.75 Figtree, sans-serif; color:#56534C; margin:16px 0 0; max-width:50ch">On the Kosciuszko Road between Jindabyne and Perisher, inside the national park boundary. Vehicle entry fees apply — ask reception about passes.</p>
+        <div style="display:grid; gap:1px; border-radius:14px; overflow:hidden; margin-top:26px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 140px), 1fr))">
+          <div style="background:#FCFAF6; padding:18px 16px; box-shadow:0 0 0 1px rgba(29,55,48,0.12)"><span style="display:block; font:400 21px/1 Petrona, Georgia, serif; color:#1D3730">14 km</span><span style="display:block; font:500 11px/1.4 Figtree, sans-serif; color:#74836A; margin-top:6px; letter-spacing:.08em">PERISHER VALLEY</span></div>
+          <div style="background:#FCFAF6; padding:18px 16px; box-shadow:0 0 0 1px rgba(29,55,48,0.12)"><span style="display:block; font:400 21px/1 Petrona, Georgia, serif; color:#1D3730">10 min</span><span style="display:block; font:500 11px/1.4 Figtree, sans-serif; color:#74836A; margin-top:6px; letter-spacing:.08em">JINDABYNE TOWN</span></div>
+          <div style="background:#FCFAF6; padding:18px 16px; box-shadow:0 0 0 1px rgba(29,55,48,0.12)"><span style="display:block; font:400 21px/1 Petrona, Georgia, serif; color:#1D3730">2 hr</span><span style="display:block; font:500 11px/1.4 Figtree, sans-serif; color:#74836A; margin-top:6px; letter-spacing:.08em">CANBERRA</span></div>
+          <div style="background:#FCFAF6; padding:18px 16px; box-shadow:0 0 0 1px rgba(29,55,48,0.12)"><span style="display:block; font:400 21px/1 Petrona, Georgia, serif; color:#1D3730">5.5 hr</span><span style="display:block; font:500 11px/1.4 Figtree, sans-serif; color:#74836A; margin-top:6px; letter-spacing:.08em">SYDNEY</span></div>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:12px; margin-top:28px">
+          <a href="/contact" style="background:#1D3730; color:#FCFAF6; font:700 13px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:17px 26px; border-radius:999px">Contact &amp; map</a>
+          <a href="tel:0264562224" style="border:1px solid rgba(29,55,48,0.2); color:#1D3730; font:700 13px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:17px 26px; border-radius:999px">02 6456 2224</a>
+        </div>
+      </div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="h-map" shape="rect" placeholder="Google Map embed goes here"></image-slot></div>
+    </div>
+  </section>
+
+  <dc-import name="SiteFooter" hint-size="100%,420px"></dc-import>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}">class Component extends DCLogic {
+  state = { barVisible: true };
+
+  componentDidMount() {
+    const target = document.getElementById("book");
+    if (!target || typeof IntersectionObserver === "undefined") return;
+    this._io = new IntersectionObserver(
+      entries => this.setState({ barVisible: entries[0].isIntersecting }),
+      { rootMargin: "-70px 0px -120px 0px" }
+    );
+    this._io.observe(target);
+  }
+  componentWillUnmount() { if (this._io) this._io.disconnect(); }
+
+  renderVals() {
+    // the hero search bar is the call to action while it's on screen —
+    // the floating one would only sit on top of it
+    return { showSticky: !this.state.barVisible };
+  }
+}
+</script>
+</body>
+</html>

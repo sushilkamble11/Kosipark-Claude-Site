@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/vendor-map.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Petrona:wght@300;400;500;600&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  @keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+</style>
+</helmet>
+
+<div data-booking="{{ uid }}" style="font-family:Figtree, system-ui, sans-serif; background:#FFFFFF; border-radius:18px; padding:8px; box-shadow:0 26px 60px -28px rgba(18,39,32,0.55); border:1px solid rgba(29,55,48,0.08)">
+  <div style="display:flex; flex-wrap:wrap; align-items:flex-start; gap:8px">
+
+    <div style="flex:2 1 340px; min-width:0; position:relative; display:flex; flex-wrap:wrap; align-items:flex-start; gap:8px">
+      <button type="button" onClick="{{ dates.openIn }}" style="{{ dates.inStyle }}">
+        <span style="font:700 9.5px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#8B877E">Check in</span>
+        <span style="font:400 18px/1.2 Petrona, Georgia, serif; color:#1D3730; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ dates.inLabel }}</span>
+      </button>
+      <button type="button" onClick="{{ dates.openOut }}" style="{{ dates.outStyle }}">
+        <span style="font:700 9.5px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#8B877E">Check out</span>
+        <span style="font:400 18px/1.2 Petrona, Georgia, serif; color:#1D3730; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ dates.outLabel }}</span>
+      </button>
+
+      <sc-if value="{{ dates.open }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ dates.panelStyle }}">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px">
+            <button type="button" onClick="{{ dates.prev }}" style="width:40px; height:40px; border-radius:999px; border:1px solid rgba(29,55,48,0.16); background:transparent; color:#1D3730; font:400 17px/1 Figtree, sans-serif; cursor:pointer">‹</button>
+            <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#74836A; text-align:center">{{ dates.prompt }}</span>
+            <button type="button" onClick="{{ dates.next }}" style="width:40px; height:40px; border-radius:999px; border:1px solid rgba(29,55,48,0.16); background:transparent; color:#1D3730; font:400 17px/1 Figtree, sans-serif; cursor:pointer">›</button>
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:24px">
+            <sc-for list="{{ dates.months }}" as="m" hint-placeholder-count="1">
+              <div style="flex:1 1 250px; min-width:0">
+                <div style="font:400 19px/1 Petrona, Georgia, serif; color:#1D3730; text-align:center; padding:6px 0 14px">{{ m.title }}</div>
+                <div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:2px">
+                  <sc-for list="{{ dates.weekdays }}" as="wd" hint-placeholder-count="7">
+                    <div style="text-align:center; font:700 9px/1 Figtree, sans-serif; letter-spacing:.1em; color:#A6A29A; padding:0 0 8px">{{ wd }}</div>
+                  </sc-for>
+                  <sc-for list="{{ m.days }}" as="d" hint-placeholder-count="30">
+                    <div style="{{ d.cellStyle }}">
+                      <button type="button" disabled="{{ d.disabled }}" onClick="{{ d.pick }}" style="{{ d.style }}">{{ d.label }}</button>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; border-top:1px solid rgba(29,55,48,0.08); margin-top:14px; padding-top:10px">
+            <span style="font:400 13px/1.4 Figtree, sans-serif; color:#8B877E">{{ dates.summary }}</span>
+            <span style="display:flex; gap:6px">
+              <button type="button" onClick="{{ dates.clear }}" style="border:0; background:transparent; font:600 13px/1 Figtree, sans-serif; color:#74836A; cursor:pointer; padding:13px 12px">Clear</button>
+              <button type="button" onClick="{{ dates.close }}" style="border:0; border-radius:12px; background:#1D3730; color:#FCFAF6; font:600 13px/1 Figtree, sans-serif; letter-spacing:.04em; cursor:pointer; padding:13px 22px">Done</button>
+            </span>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+
+    <div style="flex:1 1 180px; min-width:0; position:relative; display:flex; flex-direction:column">
+      <button type="button" onClick="{{ guests.toggle }}" style="{{ guests.fieldStyle }}">
+        <span style="font:700 9.5px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#8B877E">Guests</span>
+        <span style="font:400 18px/1.2 Petrona, Georgia, serif; color:#1D3730; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%">{{ guests.label }}</span>
+      </button>
+      <sc-if value="{{ guests.open }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute; z-index:120; top:calc(100% + 10px); right:0; width:min(92vw, 320px); background:#FCFAF6; border:1px solid rgba(29,55,48,0.1); border-radius:14px; box-shadow:0 30px 60px -20px rgba(18,39,32,0.48); padding:8px; animation:riseIn .18s ease both">
+          <sc-for list="{{ guests.rows }}" as="row" hint-placeholder-count="3">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; padding:11px 12px">
+              <span style="display:flex; flex-direction:column; gap:3px">
+                <span style="font:600 15px/1 Figtree, sans-serif; color:#292724">{{ row.label }}</span>
+                <span style="font:400 12px/1 Figtree, sans-serif; color:#8B877E">{{ row.hint }}</span>
+              </span>
+              <span style="display:flex; align-items:center; gap:4px">
+                <button type="button" onClick="{{ row.dec }}" style="width:40px; height:40px; border-radius:999px; border:1px solid rgba(29,55,48,0.18); background:transparent; color:#1D3730; font:400 19px/1 Figtree, sans-serif; cursor:pointer">−</button>
+                <span style="min-width:26px; text-align:center; font:600 15px/1 Figtree, sans-serif; color:#1D3730">{{ row.value }}</span>
+                <button type="button" onClick="{{ row.inc }}" style="width:40px; height:40px; border-radius:999px; border:1px solid rgba(29,55,48,0.18); background:transparent; color:#1D3730; font:400 19px/1 Figtree, sans-serif; cursor:pointer">+</button>
+              </span>
+            </div>
+          </sc-for>
+          <button type="button" onClick="{{ guests.toggle }}" style="width:100%; margin-top:4px; padding:14px; border:0; border-radius:12px; background:#1D3730; color:#FCFAF6; font:600 13px/1 Figtree, sans-serif; letter-spacing:.04em; cursor:pointer">Done</button>
+        </div>
+      </sc-if>
+    </div>
+
+    <button type="button" onClick="{{ submit }}" style="flex:1 1 190px; min-width:0; min-height:66px; border:0; border-radius:12px; background:#96592A; color:#FCFAF6; font:700 12.5px/1.3 Figtree, sans-serif; letter-spacing:.12em; text-transform:uppercase; cursor:pointer; padding:16px 22px" style-hover="background:#1D3730">{{ submitLabel }}</button>
+  </div>
+  <p style="{{ resultStyle }}">{{ resultText }}</p>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1100,&quot;height&quot;:420},&quot;maxGuests&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:8,&quot;min&quot;:2,&quot;max&quot;:16,&quot;tsType&quot;:&quot;number&quot;},&quot;allowPets&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;compact&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  state = { checkIn: this.props.initialArrival || "", checkOut: this.props.initialDeparture || "", adults: this.props.initialAdults || 2, children: this.props.initialChildren || 0, infants: this.props.initialInfants || 0, pets: 0, openField: null, monthOffset: 0, guestsOpen: false, searched: false, w: typeof window !== "undefined" ? window.innerWidth : 1200, cw: 1200 };
+  uid = "bb-" + Math.random().toString(36).slice(2, 8);
+
+  el() { return document.querySelector('[data-booking="' + this.uid + '"]'); }
+
+  measure() {
+    const el = this.el();
+    if (!el) return;
+    const cw = Math.round(el.getBoundingClientRect().width);
+    if (cw && Math.abs(cw - this.state.cw) > 2) this.setState({ cw });
+  }
+
+  componentDidMount() {
+    this.measure();
+    setTimeout(() => this.measure(), 60);
+    setTimeout(() => this.measure(), 400);
+    const el = this.el();
+    if (typeof ResizeObserver !== "undefined" && el) {
+      this._ro = new ResizeObserver(() => this.measure());
+      this._ro.observe(el);
+    }
+    this._onResize = () => { this.measure(); this.setState({ w: window.innerWidth }); };
+    this._onDocDown = e => {
+      if (!e.target.closest || !e.target.closest("[data-booking]")) {
+        if (this.state.openField || this.state.guestsOpen) this.setState({ openField: null, guestsOpen: false });
+      }
+    };
+    window.addEventListener("resize", this._onResize);
+    document.addEventListener("mousedown", this._onDocDown);
+  }
+  componentWillUnmount() {
+    window.removeEventListener("resize", this._onResize);
+    document.removeEventListener("mousedown", this._onDocDown);
+    if (this._ro) this._ro.disconnect();
+  }
+
+  static iso(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+  static parse(v) { const p = (v || "").split("-"); return p.length === 3 ? new Date(+p[0], +p[1] - 1, +p[2]) : null; }
+  static today() { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }
+
+  fmt(v) {
+    const d = Component.parse(v);
+    if (!d) return "Select date";
+    return d.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" });
+  }
+
+  nights() {
+    const a = Component.parse(this.state.checkIn), b = Component.parse(this.state.checkOut);
+    if (!a || !b) return 0;
+    return Math.max(0, Math.round((b - a) / 86400000));
+  }
+
+  pickDay(iso) {
+    const s = this.state;
+    if (s.openField === "out" && s.checkIn && iso > s.checkIn) {
+      this.setState({ checkOut: iso, openField: null, searched: false });
+    } else {
+      const next = { checkIn: iso, openField: "out", searched: false };
+      if (!s.checkOut || s.checkOut <= iso) next.checkOut = "";
+      this.setState(next);
+    }
+  }
+
+  buildMonth(base) {
+    const s = this.state;
+    const today = Component.today();
+    const first = new Date(base.getFullYear(), base.getMonth(), 1);
+    const lead = (first.getDay() + 6) % 7;
+    const count = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate();
+    const days = [];
+    for (let i = 0; i < lead; i++) days.push({ label: "", disabled: true, style: "visibility:hidden", cellStyle: "", pick: () => {} });
+    for (let d = 1; d <= count; d++) {
+      const date = new Date(base.getFullYear(), base.getMonth(), d);
+      const iso = Component.iso(date);
+      const past = date < today;
+      const beforeIn = s.openField === "out" && s.checkIn ? iso <= s.checkIn : false;
+      const disabled = past || beforeIn;
+      const isIn = iso === s.checkIn, isOut = iso === s.checkOut;
+      const inRange = s.checkIn && s.checkOut && iso > s.checkIn && iso < s.checkOut;
+      let cellStyle = "border-radius:11px";
+      if (inRange) cellStyle = "background:#E9EEE3";
+      if (isIn && s.checkOut) cellStyle = "background:linear-gradient(90deg, transparent 50%, #E9EEE3 50%)";
+      if (isOut) cellStyle = "background:linear-gradient(90deg, #E9EEE3 50%, transparent 50%)";
+      let style = "width:100%; aspect-ratio:1/1; min-height:40px; display:flex; align-items:center; justify-content:center; border:0; border-radius:11px; background:transparent; font:500 14.5px/1 Figtree, sans-serif; color:#292724; cursor:pointer; padding:0";
+      if (disabled) style = style.replace("color:#292724", "color:#C7C3B9").replace("cursor:pointer", "cursor:not-allowed");
+      if (isIn || isOut) style += "; background:#1D3730; color:#FCFAF6; font-weight:600";
+      else if (iso === Component.iso(today) && !disabled) style += "; box-shadow:inset 0 0 0 1px rgba(29,55,48,0.28)";
+      days.push({ label: String(d), disabled, style, cellStyle, pick: disabled ? () => {} : () => this.pickDay(iso) });
+    }
+    return { title: base.toLocaleDateString("en-AU", { month: "long", year: "numeric" }), days };
+  }
+
+  bump(key, delta, min) {
+    this.setState(s => {
+      const max = key === "pets" ? 2 : key === "infants" ? 4 : (this.props.maxGuests ?? 8);
+      return { [key]: Math.max(min, Math.min(max, s[key] + delta)), searched: false };
+    });
+  }
+
+  renderVals() {
+    const s = this.state;
+    const compact = !!this.props.compact;
+    const box = compact ? 340 : Math.min(s.cw || s.w, s.w);
+    const narrow = box < 760;
+    const panelW = box < 700 ? "100%" : "min(" + Math.max(320, box - 24) + "px, 640px)";
+    const n = this.nights();
+    const people = s.adults + s.children;
+    let label = people + (people === 1 ? " guest" : " guests");
+    if (s.infants) label += ", " + s.infants + (s.infants === 1 ? " infant" : " infants");
+    if (s.pets) label += ", " + s.pets + (s.pets === 1 ? " pet" : " pets");
+
+    const rows = [
+      { label: "Adults", hint: "17 and over", value: s.adults, inc: () => this.bump("adults", 1, 1), dec: () => this.bump("adults", -1, 1) },
+      { label: "Children", hint: "2 to 16 years", value: s.children, inc: () => this.bump("children", 1, 0), dec: () => this.bump("children", -1, 0) },
+      { label: "Infants", hint: "Under 2 years", value: s.infants, inc: () => this.bump("infants", 1, 0), dec: () => this.bump("infants", -1, 0) }
+    ];
+    if (this.props.allowPets ?? false) {
+      rows.push({ label: "Pets", hint: "Selected sites only", value: s.pets, inc: () => this.bump("pets", 1, 0), dec: () => this.bump("pets", -1, 0) });
+    }
+
+    const fieldBase = "width:100%; min-height:66px; text-align:left; cursor:pointer; display:flex; flex-direction:column; justify-content:center; gap:7px; padding:12px 20px; border-radius:12px; background:transparent; border:1px solid ";
+    const on = "rgba(29,55,48,0.45); background:#F3ECE0";
+    const off = "transparent";
+    // a divider only makes sense while the fields sit side by side
+    const rule = box >= 700 ? "; border-left:1px solid rgba(29,55,48,0.12)" : "";
+
+    const base = new Date();
+    base.setDate(1);
+    base.setMonth(base.getMonth() + s.monthOffset);
+    const months = narrow ? [this.buildMonth(base)] : [this.buildMonth(base), this.buildMonth(new Date(base.getFullYear(), base.getMonth() + 1, 1))];
+
+    let resultText = "";
+    if (s.searched) {
+      if (!s.checkIn || !s.checkOut) resultText = "Add your check-in and check-out dates to see live availability.";
+      else resultText = n + (n === 1 ? " night" : " nights") + " for " + label + " — chalets, cabins, powered and unpowered sites available. Reception confirms by email or on 02 6456 2224.";
+    }
+
+    return {
+      dates: {
+        open: !!s.openField,
+        inLabel: this.fmt(s.checkIn),
+        outLabel: this.fmt(s.checkOut),
+        inStyle: "flex:1 1 155px; min-width:0; " + fieldBase + (s.openField === "in" ? on : off),
+        outStyle: "flex:1 1 155px; min-width:0; " + fieldBase + (s.openField === "out" ? on : off) + rule,
+        openIn: () => this.setState({ openField: "in", guestsOpen: false, monthOffset: 0 }),
+        openOut: () => this.setState({ openField: s.checkIn ? "out" : "in", guestsOpen: false }),
+        close: () => this.setState({ openField: null }),
+        clear: () => this.setState({ checkIn: "", checkOut: "", openField: "in", searched: false }),
+        prev: () => this.setState(p => ({ monthOffset: Math.max(0, p.monthOffset - 1) })),
+        next: () => this.setState(p => ({ monthOffset: Math.min(23, p.monthOffset + 1) })),
+        panelStyle: "position:absolute; z-index:120; top:calc(100% + 10px); left:0; width:" + panelW +
+          "; max-width:calc(100vw - 24px); background:#FCFAF6; border:1px solid rgba(29,55,48,0.10); border-radius:16px; box-shadow:0 34px 70px -22px rgba(18,39,32,0.5); padding:18px 18px 14px; animation:riseIn .18s ease both",
+        prompt: s.openField === "out" ? "Select check-out" : "Select check-in",
+        summary: n > 0 ? n + (n === 1 ? " night" : " nights") + " · " + this.fmt(s.checkIn) + " → " + this.fmt(s.checkOut) : "Minimum one night · 2 nights in peak periods",
+        weekdays: ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"],
+        months
+      },
+      uid: this.uid,
+      guests: {
+        label, open: s.guestsOpen, rows,
+        fieldStyle: fieldBase + (s.guestsOpen ? on : off) + rule,
+        toggle: () => this.setState(p => ({ guestsOpen: !p.guestsOpen, openField: null }))
+      },
+      submit: () => {
+        this.setState({ searched: true, guestsOpen: false, openField: null });
+        if (typeof this.props.onSubmit === "function") {
+          this.props.onSubmit({ checkIn: s.checkIn, checkOut: s.checkOut, nights: n, adults: s.adults, children: s.children, infants: s.infants, guestLabel: label });
+          return;
+        }
+        if (!s.checkIn || !s.checkOut) return;
+        const p = new URLSearchParams({
+          arrival: s.checkIn, departure: s.checkOut,
+          adults: String(s.adults), children: String(s.children), infants: String(s.infants)
+        });
+        if (this.props.room) p.set("room", this.props.room);
+        window.location.href = (this.props.action || "/book") + "?" + p.toString();
+      },
+      submitLabel: this.props.submitLabel || "Check Availability",
+      resultText,
+      resultStyle: (s.searched && !this.props.onSubmit)
+        ? "margin:12px 8px 4px; font:500 13.5px/1.5 Figtree, sans-serif; color:#4C5C40; animation:riseIn .2s ease both"
+        : "display:none"
+    };
+  }
+}
+
+</script>
+</body>
+</html>

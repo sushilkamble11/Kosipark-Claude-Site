@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<base href="/">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/vendor-map.js"></script>
+<script src="./support.js"></script>
+<script src="/site.js" defer></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Petrona:wght@300;400;500;600&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="./image-slot.js"></script>
+<script src="/gp-images.js" defer></script>
+<style>
+  body { margin: 0; background: #FCFAF6; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #1D3730; text-decoration: none; }
+  a:hover { color: #96592A; }
+  @keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+</style>
+</helmet>
+
+<div style="background:#FCFAF6; color:#292724; font-family:Figtree, system-ui, sans-serif">
+  <dc-import name="SiteNav" active="stay" book-href="#availability" hint-size="100%,84px"></dc-import>
+
+  <section data-screen-label="Room hero" style="max-width:1320px; margin:0 auto; padding:clamp(20px,3vw,34px) clamp(20px,5vw,56px) 0">
+    <nav style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; font:500 12px/1 Figtree, sans-serif; color:#8B877E">
+      <a href="/" style="color:#74836A">Home</a>
+      <span>/</span>
+      <a href="/accommodation" style="color:#74836A">Accommodation</a>
+      <span>/</span>
+      <span style="color:#292724">{{ room.name }}</span>
+    </nav>
+
+    <div style="display:flex; flex-wrap:wrap; gap:14px 28px; align-items:flex-end; justify-content:space-between; margin-top:clamp(18px,2.5vw,28px)">
+      <div>
+        <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#74836A; margin:0">{{ room.category }}</p>
+        <h1 style="font:300 clamp(32px,5vw,58px)/1.05 Petrona, Georgia, serif; letter-spacing:-0.02em; color:#1D3730; margin:12px 0 0; max-width:22ch; text-wrap:balance">{{ room.name }}</h1>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px">
+        <sc-for list="{{ room.tags }}" as="t" hint-placeholder-count="3">
+          <span style="font:600 12px/1 Figtree, sans-serif; letter-spacing:.06em; color:#4C5C40; background:#E9EEE3; padding:11px 15px; border-radius:999px">{{ t }}</span>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="display:grid; gap:12px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 240px), 1fr)); margin-top:clamp(20px,3vw,32px)">
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:16/11; position:relative; grid-column:span 2; min-width:0"><image-slot id="{{ room.img1 }}" shape="rect" placeholder="{{ room.ph1 }}"></image-slot></div>
+      <div style="display:grid; gap:12px; min-width:0">
+        <div style="border-radius:16px; overflow:hidden; aspect-ratio:16/10; position:relative"><image-slot id="{{ room.img2 }}" shape="rect" placeholder="{{ room.ph2 }}"></image-slot></div>
+        <div style="border-radius:16px; overflow:hidden; aspect-ratio:16/10; position:relative"><image-slot id="{{ room.img3 }}" shape="rect" placeholder="{{ room.ph3 }}"></image-slot></div>
+      </div>
+    </div>
+  </section>
+
+  <section data-screen-label="Room detail" style="max-width:1320px; margin:0 auto; padding:clamp(36px,5vw,64px) clamp(20px,5vw,56px) 0">
+    <div style="display:grid; gap:clamp(24px,4vw,56px); grid-template-columns:repeat(auto-fit, minmax(min(100%, 300px), 1fr)); align-items:start">
+      <div>
+        <p style="font:400 clamp(14.5px,1.5vw,16.5px)/1.75 Figtree, sans-serif; color:#56534C; margin:0">{{ room.intro }}</p>
+        <sc-for list="{{ room.paras }}" as="p" hint-placeholder-count="2">
+          <p style="font:400 14.5px/1.75 Figtree, sans-serif; color:#6C6862; margin:16px 0 0">{{ p }}</p>
+        </sc-for>
+
+        <h2 style="font:400 clamp(19px,2.2vw,24px)/1.2 Petrona, Georgia, serif; color:#1D3730; margin:clamp(28px,4vw,40px) 0 0">In this {{ room.noun }}</h2>
+        <dl style="margin:18px 0 0; display:grid; gap:1px; border-radius:16px; overflow:hidden">
+          <sc-for list="{{ room.specs }}" as="s" hint-placeholder-count="4">
+            <div style="display:flex; flex-wrap:wrap; gap:4px 18px; padding:15px 18px; background:#F3ECE0; box-shadow:0 0 0 1px rgba(29,55,48,0.08)">
+              <dt style="flex:0 0 132px; font:700 10.5px/1.7 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">{{ s.k }}</dt>
+              <dd style="margin:0; flex:1 1 180px; font:400 15px/1.65 Figtree, sans-serif; color:#292724">{{ s.v }}</dd>
+            </div>
+          </sc-for>
+        </dl>
+
+        <h2 style="font:400 clamp(19px,2.2vw,24px)/1.2 Petrona, Georgia, serif; color:#1D3730; margin:clamp(28px,4vw,40px) 0 0">Shared with every stay</h2>
+        <div style="display:grid; gap:12px 26px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 210px), 1fr)); margin-top:16px">
+          <span style="font:400 14.5px/1.6 Figtree, sans-serif; color:#56534C">Guest kitchen &amp; lounge with wood fire</span>
+          <span style="font:400 14.5px/1.6 Figtree, sans-serif; color:#56534C">Two stoves with ovens, microwave, fridge</span>
+          <span style="font:400 14.5px/1.6 Figtree, sans-serif; color:#56534C">Free gas barbecue &amp; picnic area</span>
+          <span style="font:400 14.5px/1.6 Figtree, sans-serif; color:#56534C">Two amenity blocks, hot showers</span>
+          <span style="font:400 14.5px/1.6 Figtree, sans-serif; color:#56534C">Coin laundry &amp; undercover wash-up</span>
+          <span style="font:400 14.5px/1.6 Figtree, sans-serif; color:#56534C">Kiosk, playground, walking trails</span>
+        </div>
+      </div>
+
+      <aside id="availability" style="position:relative">
+        <div style="background:#FFFFFF; border:1px solid rgba(29,55,48,0.10); border-radius:16px; padding:clamp(18px,2.4vw,26px); box-shadow:0 22px 50px -30px rgba(18,39,32,0.5)">
+          <div style="display:flex; flex-wrap:wrap; gap:8px 16px; align-items:baseline; justify-content:space-between">
+            <h2 style="font:400 19px/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Check availability</h2>
+            <span style="font:600 11px/1 Figtree, sans-serif; letter-spacing:.12em; text-transform:uppercase; color:#74836A">{{ room.sleeps }}</span>
+          </div>
+          <p style="font:400 14px/1.6 Figtree, sans-serif; color:#6C6862; margin:10px 0 18px">{{ room.stayNote }}</p>
+          <div data-availability-api="{{ room.slug }}">
+            <dc-import name="TypeCalendar" room="{{ room.slug }}" label="{{ room.name }}" months="{{ 1 }}" hint-size="100%,420px"></dc-import>
+          </div>
+          <a href="{{ room.calendarHref }}" style="display:inline-block; margin-top:16px; font:700 11.5px/1 Figtree, sans-serif; letter-spacing:.12em; text-transform:uppercase; color:#1D3730; border-bottom:1px solid #96592A; padding-bottom:7px">See the availability calendar</a>
+          <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:18px">
+            <a href="tel:0264562224" style="flex:1 1 140px; text-align:center; border:1px solid rgba(29,55,48,0.18); color:#1D3730; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:17px 20px; border-radius:999px">Call the park</a>
+            <a href="mailto:stay@kosipark.com.au" style="flex:1 1 140px; text-align:center; border:1px solid rgba(29,55,48,0.18); color:#1D3730; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:17px 20px; border-radius:999px">Email us</a>
+          </div>
+        </div>
+
+        <div style="background:#E9EEE3; border-radius:16px; padding:22px; margin-top:14px">
+          <h3 style="font:700 10.5px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A; margin:0">Good to know</h3>
+          <ul style="list-style:none; margin:14px 0 0; padding:0; display:grid; gap:10px">
+            <li style="font:400 14px/1.6 Figtree, sans-serif; color:#4C5C40">Check-in from 3pm · check-out by 10am · quiet hours 10pm–6am</li>
+            <li style="font:400 14px/1.6 Figtree, sans-serif; color:#4C5C40">Inside Kosciuszko National Park — vehicle entry fees apply</li>
+            <li style="font:400 14px/1.6 Figtree, sans-serif; color:#4C5C40">14 km to Perisher · 10 min to Jindabyne</li>
+            <li style="font:400 14px/1.6 Figtree, sans-serif; color:#4C5C40">Pets are not permitted anywhere in the park (NPWS rules)</li>
+            <li style="font:400 14px/1.6 Figtree, sans-serif; color:#4C5C40">Specific sites and cabins may be requested but are not guaranteed</li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <section data-screen-label="Other options" style="max-width:1320px; margin:0 auto; padding:clamp(34px,4.6vw,62px) clamp(20px,5vw,56px) clamp(38px,5.2vw,70px)">
+    <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end; justify-content:space-between">
+      <h2 style="font:300 clamp(22px,2.7vw,32px)/1.1 Petrona, Georgia, serif; color:#1D3730; margin:0">Other ways to stay</h2>
+      <a href="/accommodation" style="font:700 12px/1 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#1D3730; border-bottom:1px solid #96592A; padding-bottom:8px">All accommodation</a>
+    </div>
+    <div style="display:grid; gap:clamp(14px,2vw,22px); grid-template-columns:repeat(auto-fit, minmax(min(100%, 240px), 1fr)); margin-top:clamp(24px,3.5vw,36px)">
+      <sc-for list="{{ others }}" as="o" hint-placeholder-count="3">
+        <a href="{{ o.href }}" style="background:#FFFFFF; border:1px solid rgba(29,55,48,0.08); border-radius:14px; padding:22px; display:flex; flex-direction:column; gap:8px">
+          <span style="font:600 10.5px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A">{{ o.category }}</span>
+          <span style="font:400 19px/1.25 Petrona, Georgia, serif; color:#1D3730">{{ o.name }}</span>
+          <span style="font:400 14px/1.6 Figtree, sans-serif; color:#6C6862">{{ o.sleeps }}</span>
+        </a>
+      </sc-for>
+    </div>
+  </section>
+
+  <dc-import name="SiteFooter" hint-size="100%,420px"></dc-import>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;room&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;three-bedroom-chalet&quot;,&quot;two-bedroom-chalet-upgraded&quot;,&quot;two-bedroom-chalet&quot;,&quot;cedar-cabin&quot;,&quot;caravan-site&quot;,&quot;camper-trailer-site&quot;,&quot;motorhome-site&quot;,&quot;unpowered-site&quot;],&quot;default&quot;:null,&quot;tsType&quot;:&quot;string&quot;}}">
+const ROOMS = [
+  {
+    slug: "three-bedroom-chalet", name: "Three Bedroom Chalet", category: "Heritage Chalets", noun: "chalet",
+    sleeps: "Sleeps up to 8", tags: ["Sleeps 8", "Two bathrooms", "Linen provided"],
+    stayNote: "Two-night minimum stay. All linen supplied.",
+    intro: "Our Three Bedroom Spa Chalet provides a sophisticated and spacious retreat, accommodating up to eight guests with ease.",
+    paras: [
+      "Perfect for families or groups seeking both comfort and style, these fully self-contained chalets offer a lounge area for relaxing and socialising and a kitchen and dining area equipped with modern amenities.",
+      "A private deck with outdoor furniture faces the bush, and a personal drying cupboard takes care of wet gear at the end of the day."
+    ],
+    specs: [
+      { k: "Sleeping", v: "Three bedrooms, sleeping up to 8 people" },
+      { k: "Bathrooms", v: "Two bathrooms" },
+      { k: "Living", v: "Lounge area plus kitchen and dining area" },
+      { k: "Comfort", v: "Reverse cycle heating and cooling, colour television, personal drying cupboard" },
+      { k: "Outdoors", v: "Private deck with outdoor furniture" },
+      { k: "Linen", v: "All linen supplied · 2-night minimum stay" }
+    ],
+    ph: ["Three bedroom chalet exterior or deck", "Chalet living area", "Chalet bedroom or bathroom"]
+  },
+  {
+    slug: "two-bedroom-chalet-upgraded", name: "Two Bedroom Chalet — Upgraded", category: "Heritage Chalets", noun: "chalet",
+    sleeps: "Sleeps up to 6", tags: ["Sleeps 6", "Electric fireplace", "EV charging"],
+    stayNote: "Two-night minimum stay in peak periods. All linen provided.",
+    intro: "Our recently upgraded 2-bedroom Heritage Chalet offers a contemporary retreat with enhanced features designed for a comfortable and cosy stay.",
+    paras: [
+      "Perfect for families or small groups, this fully self-contained chalet blends modern amenities with homey warmth — a walk-in shower with underfloor heating, an electric fireplace in the living room and improved thermal insulation in the walls.",
+      "A 15 amp power point is available for EV charging."
+    ],
+    specs: [
+      { k: "Sleeping", v: "1 queen bed with electric blanket in the main room, 2 sets of bunk beds in separate rooms" },
+      { k: "Kitchen", v: "Full-size fridge, microwave, induction cooktop (no oven), plates, pots, pans and cutlery" },
+      { k: "Bathroom", v: "Walk-in shower with underfloor heating" },
+      { k: "Comfort", v: "Reverse cycle air-conditioning, electric fireplace, enhanced wall insulation" },
+      { k: "Extras", v: "15 amp power point for EV charging" },
+      { k: "Linen", v: "Queen and bottom bunks made up on arrival; top bunk linen in the cupboard" }
+    ],
+    ph: ["Upgraded chalet living room", "Kitchen detail", "Bedroom or shower"]
+  },
+  {
+    slug: "two-bedroom-chalet", name: "Two Bedroom Chalet", category: "Heritage Chalets", noun: "chalet",
+    sleeps: "Sleeps up to 6", tags: ["Sleeps 6", "Silent heating", "Carport"],
+    stayNote: "Two-night minimum stay in peak periods. All linen provided.",
+    intro: "Experience exceptional comfort with our Heritage Bedroom Chalets, designed to accommodate up to six guests with ease.",
+    paras: [
+      "Ideal for families or groups, these fully self-contained chalets offer a blend of modern convenience and cosy charm, with 24-hour silent heating, carpet and insulation for cold alpine nights.",
+      "Carport parking is available at the chalet."
+    ],
+    specs: [
+      { k: "Sleeping", v: "1 queen bed with electric blanket, 2 double bunks — blankets, doonas and pillows provided" },
+      { k: "Kitchen", v: "Cooktop with oven, microwave, fridge, toaster, kettle and all necessary utensils" },
+      { k: "Bathroom", v: "One well-appointed bathroom" },
+      { k: "Comfort", v: "Reverse cycle heating and cooling, 24-hour silent heating, carpet and insulation, colour television" },
+      { k: "Parking", v: "Carport parking" },
+      { k: "Linen", v: "Queen and bottom bunks made up on arrival; top bunk linen in the cupboard" }
+    ],
+    ph: ["Two bedroom heritage chalet exterior", "Living and dining area", "Bedroom"]
+  },
+  {
+    slug: "cedar-cabin", name: "Cedar Cabin", category: "Cabins", noun: "cabin",
+    sleeps: "Sleeps up to 6", tags: ["Sleeps 6", "Amenities adjacent", "Fire pit"],
+    stayNote: "Bring your own linen for bunk and single beds, or hire on arrival.",
+    intro: "Our Modern Cedar Cabins offer a budget-friendly option without compromising on comfort, ideal for families or groups of up to six.",
+    paras: [
+      "The cabins sit adjacent to the newly renovated amenities block and laundry, so everything is a few steps away. Outside, an outdoor fire pit is perfect for socialising and enjoying the evening.",
+      "Inside, reverse cycle heating and cooling keeps the cabin comfortable year-round, with an inner spring mattress, mattress protector, pillows, blankets, doonas and a bedspread on the double bed."
+    ],
+    specs: [
+      { k: "Sleeping", v: "1 double bed with electric blanket, 2 single beds, 1 double bunk" },
+      { k: "Bathroom", v: "No private bathroom — adjacent to the renovated amenities block and laundry" },
+      { k: "Kitchen", v: "Gas cooktop, microwave, under-bench fridge, toaster, kettle, cutlery, crockery and utensils" },
+      { k: "Comfort", v: "Reverse cycle heating and cooling, colour television" },
+      { k: "Outdoors", v: "Outdoor fire pit" },
+      { k: "What to bring", v: "Sheets, pillow slips and towels for the bunk and single beds — linen hire available at extra cost" }
+    ],
+    ph: ["Cedar cabin exterior", "Cabin interior", "Fire pit outside"]
+  },
+  {
+    slug: "caravan-site", name: "Caravan Site", category: "Powered Sites", noun: "site",
+    sleeps: "Up to 6 people", tags: ["Powered", "Drive-through", "Personal campfire"],
+    stayNote: "Fifteen generously sized sites, spaced for privacy.",
+    intro: "Immerse yourself in the natural beauty of the Snowy Mountains with our spacious powered caravan sites, designed for a memorable bush camping experience.",
+    paras: [
+      "We offer 15 generously sized sites, each carefully positioned to ensure privacy and comfort, nestled among snowgums for natural shelter and shade.",
+      "Every site is designed for easy access and manoeuvring, with safe drinking water, sullage sinks and a personal campfire for the quintessential Snowy Mountains evening."
+    ],
+    specs: [
+      { k: "Site type", v: "Drive-through powered site for caravans" },
+      { k: "Capacity", v: "Up to 6 people per site" },
+      { k: "Amenities", v: "Safe drinking water, sullage sinks, personal campfire" },
+      { k: "Privacy", v: "Sites spaced apart and nestled among snowgums" },
+      { k: "Nearby", v: "Kiosk, two amenity blocks, hot showers, laundry, playground" }
+    ],
+    ph: ["Caravan on a powered site", "Campfire in the evening", "Snowgums around the site"]
+  },
+  {
+    slug: "camper-trailer-site", name: "Camper Trailer Site", category: "Powered Sites", noun: "site",
+    sleeps: "Up to 6 people", tags: ["Powered", "Easy reversing", "Personal campfire"],
+    stayNote: "Suits caravans, camper trailers, motorhomes and tents.",
+    intro: "Our powered camper trailer sites offer the ideal setting for caravans, camper trailers, motorhomes and tents — a serene bush camping experience with friendly wildlife nearby.",
+    paras: [
+      "With 15 generously sized sites available, each designed for easy reversing and featuring a personal campfire, you'll find the perfect spot to relax and unwind.",
+      "Sites do not have individual water taps; taps are conveniently located throughout the park."
+    ],
+    specs: [
+      { k: "Site type", v: "Powered site for caravans, camper trailers, motorhomes and tents" },
+      { k: "Capacity", v: "Up to 6 people per site" },
+      { k: "Access", v: "Designed for easy reversing" },
+      { k: "Water", v: "Taps located throughout the park" },
+      { k: "Extras", v: "Personal campfire, snowgum shelter and shade" }
+    ],
+    ph: ["Camper trailer set up on site", "Fire pit and chairs", "Guest kitchen nearby"]
+  },
+  {
+    slug: "motorhome-site", name: "Motorhome Site", category: "Powered Sites", noun: "site",
+    sleeps: "Up to 6 people", tags: ["Powered", "Small vans", "No awnings"],
+    stayNote: "Narrower sites — awnings are not permitted.",
+    intro: "Our powered motorhome sites are thoughtfully designed to accommodate small camper-vans and motorhomes, offering a cosy and convenient camping experience.",
+    paras: [
+      "Due to the site's narrow dimensions, awnings are not permitted, ensuring an intimate and efficient setup.",
+      "Each site is designed to maximise space while providing the essential amenities for a comfortable stay, with thoughtful spacing amid the picturesque surroundings."
+    ],
+    specs: [
+      { k: "Suitable for", v: "Small camper-vans and motorhomes" },
+      { k: "Capacity", v: "Up to 6 people per site" },
+      { k: "Awnings", v: "Not permitted due to site width" },
+      { k: "Setting", v: "Natural environment with thoughtful spacing and placement" },
+      { k: "Nearby", v: "Guest kitchen and lounge, hot showers, laundry, wash-up area" }
+    ],
+    ph: ["Camper van on a powered site", "Van and snowgums", "Amenities block"]
+  },
+  {
+    slug: "unpowered-site", name: "Unpowered Tent Site", category: "Camping", noun: "site",
+    sleeps: "Up to 6 people", tags: ["Tents only", "Walk-in", "One car per site"],
+    stayNote: "One car and one tent (or two swags) per site.",
+    intro: "Our unpowered tent sites offer a classic camping experience for those looking to immerse themselves in nature without the distraction of power.",
+    paras: [
+      "Sites are not drive-in: you carry and pitch your tent with the car parked one to two metres away from the site.",
+      "Each site accommodates up to 6 people but allows only one car and one tent (or two swags) per site. Multiple tents and cars are not permitted."
+    ],
+    specs: [
+      { k: "Suitable for", v: "Tents only — no power available" },
+      { k: "Access", v: "Walk-in; park the car 1–2 metres from the site" },
+      { k: "Capacity", v: "Up to 6 people, one car and one tent (or two swags)" },
+      { k: "Shared", v: "Guest kitchen and lounge with wood fire, hot showers, laundry, playground" },
+      { k: "Nearby", v: "Kiosk, picnic area, walking trails, public telephone" }
+    ],
+    ph: ["Tent pitched among snowgums", "Camp kitchen interior", "Morning light in the campground"]
+  }
+];
+
+class Component extends DCLogic {
+  currentSlug() {
+    if (this.props.room) return this.props.room;
+    if (typeof window !== "undefined") {
+      // Live, this page is served at /accommodation/<slug>. The server rewrites
+      // that to Room.dc.html?room=<slug>, but the rewrite is internal — the
+      // browser's location still has no query string. So read the path first,
+      // and keep ?room= working for the design canvas and direct links.
+      const m = /^\/accommodation\/([a-z0-9-]+)\/?$/.exec(window.location.pathname);
+      if (m) return m[1];
+      const q = new URLSearchParams(window.location.search).get("room");
+      if (q) return q;
+      const h = (window.location.hash || "").replace("#", "");
+      if (h) return h;
+    }
+    return "two-bedroom-chalet";
+  }
+
+  componentDidMount() {
+    this._onNav = () => this.forceUpdate();
+    window.addEventListener("hashchange", this._onNav);
+    window.addEventListener("popstate", this._onNav);
+  }
+  componentWillUnmount() {
+    window.removeEventListener("hashchange", this._onNav);
+    window.removeEventListener("popstate", this._onNav);
+  }
+
+  renderVals() {
+    const slug = this.currentSlug();
+    const r = ROOMS.find(x => x.slug === slug) || ROOMS[2];
+    if (typeof document !== "undefined") document.title = r.name + " | Kosciuszko Tourist Park";
+    return {
+      room: {
+        slug: r.slug, name: r.name, category: r.category, noun: r.noun, sleeps: r.sleeps,
+        stayNote: r.stayNote, intro: r.intro, paras: r.paras, specs: r.specs, tags: r.tags,
+        calendarHref: "/book/calendar?room=" + r.slug,
+        img1: "r-" + r.slug + "-1", img2: "r-" + r.slug + "-2", img3: "r-" + r.slug + "-3",
+        ph1: r.ph[0], ph2: r.ph[1], ph3: r.ph[2]
+      },
+      others: ROOMS.filter(x => x.slug !== r.slug).slice(0, 4).map(x => ({
+        name: x.name, category: x.category, sleeps: x.sleeps, href: "/accommodation/" + x.slug
+      }))
+    };
+  }
+}
+
+</script>
+</body>
+</html>

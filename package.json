@@ -1,0 +1,9 @@
+{
+  "name": "kosipark-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "python3 dev-server.py",
+    "test": "node test/mapping.test.mjs && node test/smoke.mjs"
+  }
+}

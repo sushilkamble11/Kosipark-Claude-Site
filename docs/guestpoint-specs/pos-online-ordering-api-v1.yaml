@@ -1,0 +1,1276 @@
+openapi: 3.0.0
+info:
+  title: GuestPoint POS Online Ordering API
+  version: 1.0.0
+  description: |-
+    This API is designed to assist third party online ordering applications to integrate with the GuestPoint POS system.
+
+    Contact GuestPoint to discuss your integration requirements and get an API Key.
+  contact:
+    name: Chris Curtis
+    email: api-support@guestpoint.com
+servers:
+  - url: 'https://posapi.guestpoint.dev/api/v1'
+    description: Developer Sandbox
+components:
+  securitySchemes:
+    apikeyAuth:
+      name: X-API-KEY
+      type: apiKey
+      in: header
+security:
+  - apikeyAuth: []
+paths:
+  /ping:
+    get:
+      summary: Ping
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              examples:
+                example-1:
+                  value:
+                    data: pong
+                    success: true
+                    traceId: 1ed07e11-193d-6929-9bc8-c1aebc598c5c
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                  success:
+                    type: boolean
+                  traceId:
+                    type: string
+                x-examples:
+                  example-1:
+                    data: pong
+                    success: true
+                    traceId: 1ed07e11-193d-6929-9bc8-c1aebc598c5c
+      description: |-
+        Ping is used to verify connectivity.
+        It's a good place to start when integrating, to check the API Key is valid in the staging system.
+      tags:
+        - Start Here
+      operationId: Ping
+  /properties:
+    get:
+      summary: Get Properties
+      description: |-
+        This request returns the list of properties which are visible using the API Key given to a partner.
+        The Property ID must be used in other API requests to identify the property it relates to.
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        ID:
+                          type: string
+                        Name:
+                          type: string
+                        Currency:
+                          type: string
+                  success:
+                    type: boolean
+                  traceId:
+                    type: string
+                x-examples:
+                  example-1:
+                    data:
+                      - ID: MPROYAL
+                        Name: The Miles Platting Royal
+                        Currency: AUD
+                    success: true
+                    traceId: 1ed071e0-7dbc-6adc-80f0-acd54bd7c40e
+              examples:
+                example-1:
+                  value:
+                    data:
+                      - ID: MPROYAL
+                        Name: The Miles Platting Royal
+                        Currency: AUD
+                    success: true
+                    traceId: 1ed071e0-7dbc-6adc-80f0-acd54bd7c40e
+      tags:
+        - setup
+      operationId: GetProperties
+  '/properties/{propertyId}/locations':
+    get:
+      summary: Get Locations for Property
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        Code:
+                          type: string
+                        Name:
+                          type: string
+                  success:
+                    type: boolean
+                  traceId:
+                    type: string
+                x-examples:
+                  example-1:
+                    data:
+                      - Code: '1'
+                        Name: Bar/Restaurant
+                      - Code: '2'
+                        Name: Restaurant
+                      - Code: '3'
+                        Name: Cafe
+                      - Code: '4'
+                        Name: Function
+                    success: true
+                    traceId: 1ed072be-af48-6e69-b08f-0e4cc4c157cc
+              examples:
+                example-1:
+                  value:
+                    data:
+                      - Code: '2'
+                        Name: Restaurant
+                      - Code: '3'
+                        Name: Cafe
+                      - Code: '4'
+                        Name: Bar
+                    success: true
+                    traceId: 1ed072be-af48-6e69-b08f-0e4cc4c157cc
+      description: |-
+        This request gets the List of Locations for a Property.
+        Stock Items are related to one or more locations.
+      tags:
+        - setup
+      operationId: GetPropertyLocations
+    parameters:
+      - schema:
+          type: string
+        name: propertyId
+        in: path
+        required: true
+        description: The Property Code
+  '/properties/{propertyId}/stockcategories':
+    get:
+      summary: Get Stock Categories for Property
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        Code:
+                          type: string
+                        Name:
+                          type: string
+                  success:
+                    type: boolean
+                  traceId:
+                    type: string
+                x-examples:
+                  example-1:
+                    data:
+                      - Code: BEER
+                        Name: BEER
+                      - Code: BFST
+                        Name: BREAKFAST
+                      - Code: COFF
+                        Name: COFFEE
+                      - Code: CTAL
+                        Name: COCKTAILS
+                      - Code: DES
+                        Name: DESSERT
+                      - Code: ENT
+                        Name: ENTREE
+                      - Code: FOOD
+                        Name: SPECIALS
+                      - Code: G
+                        Name: SPARKLING WINE
+                      - Code: JUI
+                        Name: JUICES
+                      - Code: KIDS
+                        Name: KIDS
+                      - Code: LUN
+                        Name: LUNCH MENU
+                      - Code: MAIN
+                        Name: MAIN MEAL
+                      - Code: NE
+                        Name: WHITE WHINE
+                      - Code: SNA
+                        Name: SNACKS
+                      - Code: SOFT
+                        Name: SOFTDRINK
+                      - Code: SPEC
+                        Name: SPECIALS
+                      - Code: SPIR
+                        Name: SPIRITS
+                      - Code: TAKE
+                        Name: TAKINGS POS
+                      - Code: WINE
+                        Name: RED WINE
+                    success: true
+                    traceId: 1ed07e4f-893b-652d-9bc8-2661beda0103
+              examples:
+                example-1:
+                  value:
+                    data:
+                      - Code: BFST
+                        Name: Breakfast
+                      - Code: SOFT
+                        Name: SOFTDRINK
+                    success: true
+                    traceId: string
+      description: |-
+        Get the list of Stock Categories for a Property.
+        Each Stock item is connected to one Category.
+      tags:
+        - setup
+      operationId: GetPropertyCategories
+    parameters:
+      - schema:
+          type: string
+        name: propertyId
+        in: path
+        required: true
+        description: The Property Code
+  '/properties/{propertyId}/stockmodifiers':
+    get:
+      summary: Get Stock Modifiers for Property
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        Code:
+                          type: string
+                        Description:
+                          type: string
+                        PriceIncTax:
+                          type: string
+                        PriceExTax:
+                          type: string
+                        Tax1:
+                          type: string
+                        Tax2:
+                          type: string
+                        Tax3:
+                          type: string
+                        Tax4:
+                          type: string
+                        Tax5:
+                          type: string
+                  success:
+                    type: boolean
+                  traceId:
+                    type: string
+                x-examples:
+                  example-1:
+                    data:
+                      - Code: $BACON
+                        Description: $Bacon
+                        PriceIncTax: '5.00'
+                        PriceExTax: '4.55'
+                        Tax1: '0.45'
+                        Tax2: '0.00'
+                        Tax3: '0.00'
+                        Tax4: '0.00'
+                        Tax5: '0.00'
+                      - Code: $EGG
+                        Description: $Egg
+                        PriceIncTax: '4.00'
+                        PriceExTax: '3.64'
+                        Tax1: '0.36'
+                        Tax2: '0.00'
+                        Tax3: '0.00'
+                        Tax4: '0.00'
+                        Tax5: '0.00'
+                    success: true
+                    traceId: 1ed0819e-3d57-6ea4-b054-ce304b566afb
+              examples:
+                example-1:
+                  value:
+                    data:
+                      - Code: $ BEAN
+                        Description: $ Beans
+                        PriceIncTax: '2.50'
+                        PriceExTax: '2.27'
+                        Tax1: '0.23'
+                        Tax2: '0.00'
+                        Tax3: '0.00'
+                        Tax4: '0.00'
+                        Tax5: '0.00'
+                      - Code: $BACON
+                        Description: $Bacon
+                        PriceIncTax: '5.00'
+                        PriceExTax: '4.55'
+                        Tax1: '0.45'
+                        Tax2: '0.00'
+                        Tax3: '0.00'
+                        Tax4: '0.00'
+                        Tax5: '0.00'
+                    success: true
+                    traceId: 1ed07e17-ff12-6544-9bc8-71616fe11660
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  success:
+                    type: boolean
+                x-examples:
+                  example-1:
+                    message: Invalid Property requested
+                    success: false
+              examples:
+                example-1:
+                  value:
+                    message: Invalid Property requested
+                    success: false
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  success:
+                    type: boolean
+                x-examples:
+                  example-1:
+                    message: Unauthorized
+                    success: false
+              examples:
+                example-1:
+                  value:
+                    message: Unauthorized
+                    success: false
+      description: |-
+        Retrieve the list of stock modifiers for the given property.
+        Each Stock Item can have zero or more modifiers for ordering. Modifiers may have a price.
+
+        Tax inclusive and Tax exclusive prices are shown, along with the example tax calculation for each of up to 5 levels of tax. 
+      tags:
+        - setup
+      operationId: GetStockModifiers
+    parameters:
+      - schema:
+          type: string
+        name: propertyId
+        in: path
+        required: true
+        description: The Property Code
+  '/properties/{propertyId}/stocklist':
+    get:
+      summary: Get Stock Data for Property
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                x-examples:
+                  example-1:
+                    data:
+                      - Code: EGGS ROYALE
+                        Description: Eggs Royale
+                        PriceIncTax: '19.00'
+                        PriceExTax: '17.27'
+                        Tax1: '1.73'
+                        Tax2: '0.00'
+                        Tax3: '0.00'
+                        Tax4: '0.00'
+                        Tax5: '0.00'
+                        SpecialPriceIncTax: '0.00'
+                        SpecialPriceExTax: '0.00'
+                        SpecialPriceTax1: '0.00'
+                        SpecialPriceTax2: '0.00'
+                        SpecialPriceTax3: '0.00'
+                        SpecialPriceTax4: '0.00'
+                        SpecialPriceTax5: '0.00'
+                        Modifiers:
+                          - Code: $SNAG
+                            Description: $Side Sausage
+                            PriceIncTax: ''
+                            PriceExTax: ''
+                            Tax1: ''
+                            Tax2: ''
+                            Tax3: ''
+                            Tax4: ''
+                          - Code: $TOM
+                            Description: $Tomato
+                            PriceIncTax: ''
+                            PriceExTax: ''
+                            Tax1: ''
+                            Tax2: ''
+                            Tax3: ''
+                            Tax4: ''
+                        Locations:
+                          - {}
+                        CategoryCode: BFST
+                    success: true
+                    traceId: 1ed072b3-6f55-6db2-9ee2-ef69d611aff3
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        Code:
+                          type: string
+                        Description:
+                          type: string
+                        PriceIncTax:
+                          type: string
+                        PriceExTax:
+                          type: string
+                        Tax1:
+                          type: string
+                        Tax2:
+                          type: string
+                        Tax3:
+                          type: string
+                        Tax4:
+                          type: string
+                        Tax5:
+                          type: string
+                        SpecialPriceIncTax:
+                          type: string
+                        SpecialPriceExTax:
+                          type: string
+                        SpecialPriceTax1:
+                          type: string
+                        SpecialPriceTax2:
+                          type: string
+                        SpecialPriceTax3:
+                          type: string
+                        SpecialPriceTax4:
+                          type: string
+                        SpecialPriceTax5:
+                          type: string
+                        Modifiers:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              Code:
+                                type: string
+                              Description:
+                                type: string
+                              PriceIncTax:
+                                type: string
+                              PriceExTax:
+                                type: string
+                              Tax1:
+                                type: string
+                              Tax2:
+                                type: string
+                              Tax3:
+                                type: string
+                              Tax4:
+                                type: string
+                        Locations:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              '':
+                                type: string
+                        CategoryCode:
+                          type: string
+                  success:
+                    type: boolean
+                  traceId:
+                    type: string
+              examples:
+                example-1:
+                  value:
+                    data:
+                      - Code: EGGS ROYALE
+                        Description: Eggs Royale
+                        PriceIncTax: '19.00'
+                        PriceExTax: '17.27'
+                        Tax1: '1.73'
+                        Tax2: '0.00'
+                        Tax3: '0.00'
+                        Tax4: '0.00'
+                        Tax5: '0.00'
+                        SpecialPriceIncTax: '0.00'
+                        SpecialPriceExTax: '0.00'
+                        SpecialPriceTax1: '0.00'
+                        SpecialPriceTax2: '0.00'
+                        SpecialPriceTax3: '0.00'
+                        SpecialPriceTax4: '0.00'
+                        SpecialPriceTax5: '0.00'
+                        Modifiers:
+                          - Code: $SNAG
+                            Description: $Side Sausage
+                            PriceIncTax: ''
+                            PriceExTax: ''
+                            Tax1: ''
+                            Tax2: ''
+                            Tax3: ''
+                            Tax4: ''
+                          - Code: $TOM
+                            Description: $Tomato
+                            PriceIncTax: ''
+                            PriceExTax: ''
+                            Tax1: ''
+                            Tax2: ''
+                            Tax3: ''
+                            Tax4: ''
+                        Locations:
+                          - {}
+                        CategoryCode: BFST
+                    success: true
+                    traceId: 1ed072b3-6f55-6db2-9ee2-ef69d611aff3
+      description: |-
+        Get the full stock list for a property.
+        This shows all stock items with embedded lists of locations and modifiers.
+
+        Tax inclusive and Tax exclusive prices are shown, along with the example tax calculation for each of up to 5 levels of tax. 
+      operationId: GetStockList
+      tags:
+        - setup
+    parameters:
+      - schema:
+          type: string
+        name: propertyId
+        in: path
+        required: true
+        description: The Property Code
+  '/properties/{propertyId}/bills':
+    post:
+      summary: Open Bill
+      operationId: OpenBill
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                x-examples:
+                  example-1:
+                    data:
+                      CustomerId: 1ed08b56-1be2-6ccf-949f-460f635d7925
+                    success: true
+                    traceId: 1ed08b56-1bdd-6894-949f-99aa41ac805a
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      CustomerId:
+                        type: string
+                        description: The CustomerId must be passed back when Ordering
+                  success:
+                    type: boolean
+                  traceId:
+                    type: string
+              examples:
+                example-1:
+                  value:
+                    data:
+                      CustomerId: 01G8ZF5A7PPMJZSM03FB6NG911
+                    success: true
+                    traceId: 1ed08b74-ca7e-6bdc-949f-10e200ce662b
+      description: Creates a customer with an open Bill. This must be called before placing an order.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              x-examples:
+                example-1:
+                  location: '1'
+                  Type: Table
+                  TableNumber: '22'
+                  RoomNumber: '22'
+                  Name: ''
+                  Address: ''
+                  PhoneNumber: ''
+              properties:
+                location:
+                  type: string
+                Type:
+                  type: string
+                  description: 'Must be one of: Table,Room,TakeAway,Pickup,Delivery'
+                TableNumber:
+                  type: string
+                  description: The Table Number. Required if Type=Table
+                RoomNumber:
+                  type: string
+                  description: The Room Number. Required if Type=Room
+                Name:
+                  type: string
+                  description: 'Customer Name. Required if Type=TakeAway,Pickup or Delivery. This is limited to 30 chars.'
+                Address:
+                  type: object
+                  description: Address for Delivery
+                  properties:
+                    Address1:
+                      type: string
+                    Address2:
+                      type: string
+                    Suburb:
+                      type: string
+                    PostalCode:
+                      type: string
+                PhoneNumber:
+                  type: string
+                  description: Phone Number. Required for Type=Pickup or Delivery
+              required:
+                - location
+                - Type
+            examples:
+              example-1:
+                value:
+                  location: '1'
+                  Type: Table
+                  TableNumber: '22'
+              example-2:
+                value:
+                  location: '1'
+                  Type: Delivery
+                  Name: William Wonka
+                  Address:
+                    Address1: Suite 1
+                    Address2: Candy Lane
+                    Suburb: Sweet River
+                    PostalCode: '11111'
+                  PhoneNumber: '1234567'
+      tags:
+        - Ordering
+    parameters:
+      - schema:
+          type: string
+        name: propertyId
+        in: path
+        required: true
+        description: The Property Id
+  '/properties/{propertyId}/orders':
+    parameters:
+      - schema:
+          type: string
+        name: propertyId
+        in: path
+        required: true
+        description: The Property Id
+    post:
+      summary: Create Order
+      operationId: AddOrder
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      PropertyId:
+                        type: string
+                      CustomerId:
+                        type: string
+                      OrderId:
+                        type: string
+                  success:
+                    type: boolean
+                  traceId:
+                    type: string
+                x-examples:
+                  example-1:
+                    data:
+                      PropertyId: MPROYAL
+                      CustomerId: 1ed0991f-c00c-6202-a6a7-557c87e53936
+                      OrderId: 1ed099b5-7664-6293-b611-7728c4bef99a
+                    success: true
+                    traceId: 1ed099b5-7661-681f-b611-e6945f60f230
+              examples:
+                example-1:
+                  value:
+                    data:
+                      PropertyId: MPROYAL
+                      CustomerId: 01G8ZF5A7PPMJZSM03FB6NG911
+                      OrderId: 01G8ZF9V65JEWNSE7Z6ZFBW9C3
+                    success: true
+                    traceId: 1ed099b5-7661-681f-b611-e6945f60f230
+      description: |
+        Creates a New order for a given Property and Customer.
+
+        Note that there can only be one order for a customer, but until the bill is closed or payment is made, an order can be updated with additional items.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              x-examples:
+                example-1:
+                  CustomerId: 1ed0991f-c00c-6202-a6a7-557c87e53936
+                  OrderTotal: '27.00'
+                  TotalPaid: '27.00'
+                  PaymentType: Card
+                  OrderItems:
+                    - StockCode: BT CORONA
+                      Quantity: 2
+                      PriceIncTax: '6.50'
+                      ItemTotal: '13.00'
+                    - StockCode: BT XXXX GOLD
+                      Quantity: 2
+                      PriceIncTax: '7.00'
+                      ItemTotal: '14.00'
+              properties:
+                CustomerId:
+                  type: string
+                  description: The Customer Id returned from the Open Bill endpoint
+                VendorOrderNumber:
+                  type: string
+                  description: Your Order number. This cannot be longer than 15 characters
+                OrderTotal:
+                  type: string
+                  description: The Total amount of the order including modifiers and tax
+                TotalPaid:
+                  type: string
+                  description: |-
+                    The Amount paid. This would normally be the same as OrderTotal, but it could be zero if another order for the same bill is likely.
+                    For PaymentType = RoomCharge, the charge will be made immediately if the Amount is not zero. 
+                PaymentType:
+                  type: string
+                  description: 'How the Order is paid. One of Card or RoomCharge. Currently RoomCharge is not allowed for Table type Bills due to the poossibility of Abuse, since there is no chekcing if the guest identity.'
+                PaymentReference:
+                  type: string
+                  description: A reference from the payment gateway. This should not be longer than 40 characters.
+                ServiceChargeAmount:
+                  type: string
+                  description: The amount of any service charge inclusive of taxes
+                ServiceChargeTaxes:
+                  type: object
+                  description: Any taxes associated with the service charge
+                  properties:
+                    Tax1:
+                      type: string
+                    Tax2:
+                      type: string
+                    Tax3:
+                      type: string
+                    Tax4:
+                      type: string
+                    Tax5:
+                      type: string
+                OrderItems:
+                  type: array
+                  description: An array of Order Item objects
+                  items:
+                    type: object
+                    properties:
+                      StockCode:
+                        type: string
+                      Quantity:
+                        type: integer
+                      PriceIncTax:
+                        type: string
+                      PriceExTax:
+                        type: string
+                      Taxes:
+                        type: object
+                        properties:
+                          Tax1:
+                            type: string
+                          Tax2:
+                            type: string
+                          Tax3:
+                            type: string
+                          Tax4:
+                            type: string
+                          Tax5:
+                            type: string
+                      ItemTotal:
+                        type: string
+                      Modifiers:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            Code:
+                              type: string
+              required:
+                - CustomerId
+                - VendorOrderNumber
+                - OrderTotal
+                - TotalPaid
+                - PaymentType
+                - OrderItems
+            examples:
+              example-1:
+                value:
+                  CustomerId: 01G8ZF5A7PPMJZSM03FB6NG911
+                  VendorOrderNumber: '1234567'
+                  OrderTotal: '23.00'
+                  TotalPaid: '23.00'
+                  TipAmount: '0.00'
+                  ServiceChargeAmount: '1.20'
+                  ServiceChargeTaxes:
+                    Tax1: '0.54'
+                  PaymentReference: x27QTYU
+                  PaymentType: Card
+                  OrderItems:
+                    - StockCode: $9 CONT BRF
+                      Quantity: 1
+                      PriceIncTax: '9.00'
+                      ItemTotal: '9.00'
+                      PriceExTax: '8.18'
+                      Taxes:
+                        Tax1: '0.82'
+                      Modifiers:
+                        - Code: BrownB
+                    - StockCode: BT XXXX GOLD
+                      Quantity: 2
+                      PriceIncTax: '7.00'
+                      ItemTotal: '14.00'
+                      Modifiers: []
+      tags:
+        - Ordering
+  '/properties/{propertyId}/orders/{orderId}':
+    parameters:
+      - schema:
+          type: string
+        name: propertyId
+        in: path
+        required: true
+      - schema:
+          type: string
+        name: orderId
+        in: path
+        required: true
+    get:
+      summary: Get Order
+      tags:
+        - Ordering
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      OrderId:
+                        type: string
+                      VendorOrderNumber:
+                        type: string
+                      Customer:
+                        type: object
+                        properties:
+                          CustomerId:
+                            type: string
+                          Location:
+                            type: string
+                          Type:
+                            type: string
+                          TableNumber:
+                            type: string
+                          RoomNumber:
+                            type: string
+                          Name:
+                            type: string
+                          PhoneNumber:
+                            type: string
+                          Address1:
+                            type: string
+                          Address2:
+                            type: string
+                          Suburb:
+                            type: string
+                          PostalCode:
+                            type: string
+                      OrderTotal:
+                        type: string
+                      TipAmount:
+                        type: string
+                      TotalPaid:
+                        type: string
+                      PaymentType:
+                        type: string
+                      OrderItems:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            StockCode:
+                              type: string
+                            Quantity:
+                              type: integer
+                            PriceIncTax:
+                              type: string
+                            PriceExtax:
+                              type: string
+                            Tax1:
+                              type: string
+                            Tax2:
+                              type: string
+                            Tax3:
+                              type: string
+                            Tax4:
+                              type: string
+                            Tax5:
+                              type: string
+                            ItemTotal:
+                              type: string
+                            Modifiers:
+                              type:
+                                - array
+                                - 'null'
+                              items:
+                                type: object
+                                properties:
+                                  Code:
+                                    type: string
+                                  PriceIncTax:
+                                    type: string
+                  success:
+                    type: boolean
+                  traceId:
+                    type: string
+                x-examples:
+                  example-1:
+                    data:
+                      OrderId: 01GA36ZA1YF64ZMH0BAM1V5NMH
+                      VendorOrderNumber: '1234567'
+                      Customer:
+                        CustomerId: 01G8ZF5A7PPMJZSM03FB6NG912
+                        Location: '1'
+                        Type: Table
+                        TableNumber: '12'
+                        RoomNumber: '2'
+                        Name: Dan
+                        PhoneNumber: '1234'
+                        Address1: '123'
+                        Address2: '456'
+                        Suburb: '789'
+                        PostalCode: '1111'
+                      OrderTotal: '23'
+                      TipAmount: '0'
+                      TotalPaid: '23'
+                      PaymentType: Card
+                      OrderItems:
+                        - StockCode: $9 CONT BRF
+                          Quantity: 1
+                          PriceIncTax: '9'
+                          PriceExtax: '8.18'
+                          Tax1: '0.82'
+                          Tax2: '0'
+                          Tax3: '0'
+                          Tax4: '0'
+                          Tax5: '0'
+                          ItemTotal: '9'
+                          Modifiers:
+                            - Code: BrownB
+                              PriceIncTax: '0'
+                        - StockCode: BT XXXX GOLD
+                          Quantity: 2
+                          PriceIncTax: '7'
+                          PriceExtax: '6.36'
+                          Tax1: '1.27'
+                          Tax2: '0'
+                          Tax3: '0'
+                          Tax4: '0'
+                          Tax5: '0'
+                          ItemTotal: '14'
+                          Modifiers: null
+                    success: true
+                    traceId: 1ed19c9b-aeb1-6e8b-aead-d2ad736c6b80
+              examples:
+                example-1:
+                  value:
+                    data:
+                      OrderId: 01GA36ZA1YF64ZMH0BAM1V5NMH
+                      VendorOrderNumber: '1234567'
+                      Customer:
+                        CustomerId: 01G8ZF5A7PPMJZSM03FB6NG912
+                        Location: '1'
+                        Type: Table
+                        TableNumber: '12'
+                        RoomNumber: '2'
+                        Name: Dan
+                        PhoneNumber: '1234'
+                        Address1: '123'
+                        Address2: '456'
+                        Suburb: '789'
+                        PostalCode: '1111'
+                      OrderTotal: '23'
+                      TipAmount: '0'
+                      TotalPaid: '23'
+                      PaymentType: Card
+                      OrderItems:
+                        - StockCode: $9 CONT BRF
+                          Quantity: 1
+                          PriceIncTax: '9'
+                          PriceExtax: '8.18'
+                          Tax1: '0.82'
+                          Tax2: '0'
+                          Tax3: '0'
+                          Tax4: '0'
+                          Tax5: '0'
+                          ItemTotal: '9'
+                          Modifiers:
+                            - Code: BrownB
+                              PriceIncTax: '0'
+                        - StockCode: BT XXXX GOLD
+                          Quantity: 2
+                          PriceIncTax: '7'
+                          PriceExtax: '6.36'
+                          Tax1: '1.27'
+                          Tax2: '0'
+                          Tax3: '0'
+                          Tax4: '0'
+                          Tax5: '0'
+                          ItemTotal: '14'
+                          Modifiers: null
+                    success: true
+                    traceId: 1ed19c9b-aeb1-6e8b-aead-d2ad736c6b80
+      operationId: get-order
+      description: Get the saved order details for a given order number. This may be useful during testing to confirm the order details have been saved in the GuestPoint POS system.
+    put:
+      summary: Modify Order
+      operationId: modify-order
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      PropertyId:
+                        type: string
+                      CustomerId:
+                        type: string
+                      OrderId:
+                        type: string
+                  success:
+                    type: boolean
+                  traceId:
+                    type: string
+                x-examples:
+                  example-1:
+                    data:
+                      PropertyId: MPROYAL
+                      CustomerId: 01GBKA4RHX69GA8Q22ZG6R2746
+                      OrderId: 01GBKA4RJ67MPW7AQTH2YDHXV2
+                    success: true
+                    traceId: 1ed27233-aa7e-6eee-9d7d-ab8eab576412
+              examples:
+                example-1:
+                  value:
+                    data:
+                      PropertyId: MPROYAL
+                      CustomerId: 01GBKA4RHX69GA8Q22ZG6R2746
+                      OrderId: 01GBKA4RJ67MPW7AQTH2YDHXV2
+                    success: true
+                    traceId: 1ed27233-aa7e-6eee-9d7d-ab8eab576412
+      description: |-
+        Update an existing order by:
+        - adding more items and/or
+        - completing payment of the order
+
+        NOTE: 
+         - Items cannot be added to an order if it already has a payment balance.
+         - Items can only be added for Bill Types "Table" and "Room" 
+      tags:
+        - Ordering
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              x-examples:
+                example-1:
+                  CustomerId: 01GB4CMQD55N9PCJ7TPDTCBSRW
+                  VendorOrderNumber: '1234567'
+                  OrderTotal: '14.00'
+                  TotalPaid: '0.00'
+                  PaymentType: Card
+                  OrderItems:
+                    - StockCode: BT XXXX GOLD
+                      Quantity: 2
+                      PriceIncTax: '7.00'
+                      ItemTotal: '14.00'
+                      Modifiers: []
+              properties:
+                CustomerId:
+                  type: string
+                  description: The Customer Id from the Open Bill
+                VendorOrderNumber:
+                  type: string
+                  description: The Integrators order number. Must be the same as the order being modified
+                OrderTotal:
+                  type: string
+                TotalPaid:
+                  type: string
+                PaymentType:
+                  type: string
+                PaymentReference:
+                  type: string
+                OrderItems:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      StockCode:
+                        type: string
+                      Quantity:
+                        type: integer
+                      PriceIncTax:
+                        type: string
+                      ItemTotal:
+                        type: string
+                      Modifiers:
+                        type: array
+                        items:
+                          type: object
+              required:
+                - CustomerId
+                - VendorOrderNumber
+                - OrderTotal
+                - TotalPaid
+                - PaymentType
+            examples:
+              example-1:
+                value:
+                  CustomerId: 01GB4CMQD55N9PCJ7TPDTCBSRW
+                  VendorOrderNumber: '1234567'
+                  OrderTotal: '14.00'
+                  TotalPaid: '0.00'
+                  PaymentType: Card
+                  PaymentReference: AAVVBB
+                  OrderItems:
+                    - StockCode: BT XXXX GOLD
+                      Quantity: 2
+                      PriceIncTax: '7.00'
+                      ItemTotal: '14.00'
+                      Modifiers: []
+              example-2:
+                value:
+                  CustomerId: 01GB4CMQD55N9PCJ7TPDTCBSRW
+                  VendorOrderNumber: '1234567'
+                  OrderTotal: '14.00'
+                  TotalPaid: '27.00'
+                  PaymentType: Card
+                  OrderItems: []
+        description: ''
+  '/properties/{propertyId}/bills/{customerId}':
+    parameters:
+      - schema:
+          type: string
+        name: propertyId
+        in: path
+        required: true
+      - schema:
+          type: string
+        name: customerId
+        in: path
+        required: true
+        description: The customer Id returned from the Open Bill
+    patch:
+      summary: Close Bill
+      operationId: patch-properties-propertyId-bills-billId
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      CustomerId:
+                        type: string
+                      Status:
+                        type: string
+                  success:
+                    type: boolean
+                  traceId:
+                    type: string
+                x-examples:
+                  example-1:
+                    data:
+                      CustomerId: 1ed0b169-ddaa-6ca9-b449-68bccc5bd969
+                      Status: Closed
+                    success: true
+                    traceId: 1ed1c783-1e19-6b2a-91fd-e10020d6e8da
+              examples:
+                example-1:
+                  value:
+                    data:
+                      CustomerId: 01GB4CMQD55N9PCJ7TPDTCBSRW
+                      Status: Closed
+                    success: true
+                    traceId: 1ed1c783-1e19-6b2a-91fd-e10020d6e8da
+      description: |-
+        Changes the Status of an open Bill to Closed
+        There must be a payment, either on the Create Order or a subsequent Modify Order call before the bill can be closed.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              x-examples:
+                example-1:
+                  Status: Closed
+              properties:
+                Status:
+                  type: string
+            examples:
+              example-1:
+                value:
+                  Status: Closed
+        description: ''
+      tags:
+        - Ordering

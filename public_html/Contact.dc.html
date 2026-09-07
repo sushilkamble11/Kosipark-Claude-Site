@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<base href="/">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/vendor-map.js"></script>
+<script src="./support.js"></script>
+<script src="/site.js" defer></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Petrona:wght@300;400;500;600&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="./image-slot.js"></script>
+<script src="/gp-images.js" defer></script>
+<style>
+  body { margin: 0; background: #FCFAF6; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #1D3730; text-decoration: none; }
+  a:hover { color: #96592A; }
+</style>
+</helmet>
+
+<div style="background:#FCFAF6; color:#292724; font-family:Figtree, system-ui, sans-serif">
+  <dc-import name="SiteNav" active="contact" hint-size="100%,84px"></dc-import>
+
+  <section data-screen-label="Contact" style="max-width:1320px; margin:0 auto; padding:clamp(32px,4.2vw,58px) clamp(20px,5vw,56px) 0">
+    <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#74836A; margin:0">Contact &amp; Getting Here</p>
+    <h1 style="font:300 clamp(27px,4vw,44px)/1.05 Petrona, Georgia, serif; letter-spacing:-0.02em; color:#1D3730; margin:14px 0 0; max-width:20ch; text-wrap:balance">1400 Kosciuszko Road, Sawpit Creek</h1>
+
+    <div style="display:grid; gap:clamp(20px,3vw,44px); grid-template-columns:repeat(auto-fit, minmax(min(100%, 300px), 1fr)); margin-top:clamp(22px,3vw,38px); align-items:start">
+      <div>
+        <div style="display:grid; gap:1px; border-radius:16px; overflow:hidden">
+          <a href="tel:0264562224" style="display:flex; flex-direction:column; gap:6px; padding:20px 22px; background:#F3ECE0; box-shadow:0 0 0 1px rgba(29,55,48,0.08)">
+            <span style="font:700 10.5px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A">Telephone</span>
+            <span style="font:400 19px/1.2 Petrona, Georgia, serif; color:#1D3730">02 6456 2224</span>
+          </a>
+          <a href="mailto:stay@kosipark.com.au" style="display:flex; flex-direction:column; gap:6px; padding:20px 22px; background:#F3ECE0; box-shadow:0 0 0 1px rgba(29,55,48,0.08)">
+            <span style="font:700 10.5px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A">Email</span>
+            <span style="font:400 22px/1.3 Petrona, Georgia, serif; color:#1D3730; word-break:break-word">stay@kosipark.com.au</span>
+          </a>
+          <div style="display:flex; flex-direction:column; gap:6px; padding:20px 22px; background:#F3ECE0; box-shadow:0 0 0 1px rgba(29,55,48,0.08)">
+            <span style="font:700 10.5px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A">Address</span>
+            <span style="font:400 17px/1.6 Figtree, sans-serif; color:#292724">1400 Kosciuszko Rd, Jindabyne<br />New South Wales 2627, Australia</span>
+            <a href="https://maps.app.goo.gl/C5YTzvF5535uuA44A" style="font:700 11.5px/1 Figtree, sans-serif; letter-spacing:.12em; text-transform:uppercase; color:#1D3730; border-bottom:1px solid #96592A; padding-bottom:6px; align-self:flex-start; margin-top:6px">Open in Google Maps</a>
+          </div>
+        </div>
+
+        <div style="margin-top:22px; background:#E9EEE3; border-radius:16px; padding:22px">
+          <h2 style="font:700 10.5px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A; margin:0">Reception</h2>
+          <p style="font:400 15px/1.8 Figtree, sans-serif; color:#292724; margin:12px 0 0">Check-in from 3pm · Check-out by 10am<br />Early check-in before 1pm $30 · late checkout to midday $30<br />Quiet hours 10pm to 6am · pets are not permitted</p>
+        </div>
+
+        <a href="/accommodation#book" style="display:inline-block; margin-top:22px; background:#1D3730; color:#FCFAF6; font:700 13px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:18px 28px; border-radius:999px">Check availability</a>
+      </div>
+
+      <div style="display:grid; gap:12px">
+        <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="c-map" shape="rect" placeholder="Map of the park on Kosciuszko Rd"></image-slot></div>
+        <div style="border-radius:16px; overflow:hidden; aspect-ratio:16/9; position:relative"><image-slot id="c-entry" gp-property gp-index="1" shape="rect" placeholder="Park entrance / reception photo"></image-slot></div>
+      </div>
+    </div>
+  </section>
+
+  <section data-screen-label="Getting here" style="max-width:1320px; margin:0 auto; padding:clamp(34px,4.6vw,62px) clamp(20px,5vw,56px) clamp(38px,5.2vw,70px)">
+    <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#74836A; margin:0">Getting Here</p>
+    <h2 style="font:300 clamp(24px,3vw,34px)/1.08 Petrona, Georgia, serif; letter-spacing:-0.015em; color:#1D3730; margin:12px 0 0; max-width:24ch">On the road between Jindabyne and Perisher</h2>
+    <p style="font:400 clamp(14px,1.4vw,16px)/1.75 Figtree, sans-serif; color:#56534C; margin:16px 0 0; max-width:58ch">Follow the Kosciuszko Road out of Jindabyne towards Perisher; the park is on the left at Sawpit Creek, inside the national park boundary. Vehicle entry fees apply — ask reception about park passes. Snow chains may be required in winter.</p>
+
+    <div style="display:grid; gap:1px; border-radius:16px; overflow:hidden; margin-top:28px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 150px), 1fr))">
+      <div style="background:#FCFAF6; padding:20px 18px; box-shadow:0 0 0 1px rgba(29,55,48,0.12)"><span style="display:block; font:400 22px/1 Petrona, Georgia, serif; color:#1D3730">14 km</span><span style="display:block; font:500 11px/1.4 Figtree, sans-serif; color:#74836A; margin-top:8px; letter-spacing:.08em">PERISHER VALLEY</span></div>
+      <div style="background:#FCFAF6; padding:20px 18px; box-shadow:0 0 0 1px rgba(29,55,48,0.12)"><span style="display:block; font:400 22px/1 Petrona, Georgia, serif; color:#1D3730">10 min</span><span style="display:block; font:500 11px/1.4 Figtree, sans-serif; color:#74836A; margin-top:8px; letter-spacing:.08em">JINDABYNE TOWN</span></div>
+      <div style="background:#FCFAF6; padding:20px 18px; box-shadow:0 0 0 1px rgba(29,55,48,0.12)"><span style="display:block; font:400 22px/1 Petrona, Georgia, serif; color:#1D3730">40 min</span><span style="display:block; font:500 11px/1.4 Figtree, sans-serif; color:#74836A; margin-top:8px; letter-spacing:.08em">THREDBO</span></div>
+      <div style="background:#FCFAF6; padding:20px 18px; box-shadow:0 0 0 1px rgba(29,55,48,0.12)"><span style="display:block; font:400 22px/1 Petrona, Georgia, serif; color:#1D3730">2 hr</span><span style="display:block; font:500 11px/1.4 Figtree, sans-serif; color:#74836A; margin-top:8px; letter-spacing:.08em">CANBERRA</span></div>
+      <div style="background:#FCFAF6; padding:20px 18px; box-shadow:0 0 0 1px rgba(29,55,48,0.12)"><span style="display:block; font:400 22px/1 Petrona, Georgia, serif; color:#1D3730">5.5 hr</span><span style="display:block; font:500 11px/1.4 Figtree, sans-serif; color:#74836A; margin-top:8px; letter-spacing:.08em">SYDNEY</span></div>
+    </div>
+  </section>
+
+  <dc-import name="SiteFooter" hint-size="100%,420px"></dc-import>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}"></script>
+</body>
+</html>

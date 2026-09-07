@@ -1,0 +1,18 @@
+# Secrets — never commit
+public_html/api/gp/config.php
+.env
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Design-canvas local state (public_html/.image-slots.state.json is
+# deliberately shipped, empty, so image-slot.js does not 404 on it)
+.thumbnail
+
+# Test artefacts
+test/shots/
+node_modules/

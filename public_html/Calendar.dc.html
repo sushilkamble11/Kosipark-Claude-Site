@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<base href="/">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/vendor-map.js"></script>
+<script src="./support.js"></script>
+<script src="/site.js" defer></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Petrona:wght@300;400;500;600&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #FCFAF6; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #1D3730; text-decoration: none; }
+  a:hover { color: #96592A; }
+  @keyframes riseIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  @keyframes pulseFade { 0%,100% { opacity: .5 } 50% { opacity: .85 } }
+</style>
+</helmet>
+
+<div style="background:#FCFAF6; color:#292724; font-family:Figtree, system-ui, sans-serif; min-height:100vh">
+  <dc-import name="SiteNav" active="stay" book-href="/book" sticky-book-bar="{{ false }}" hint-size="100%,84px"></dc-import>
+
+  <section data-screen-label="Calendar" style="max-width:1320px; margin:0 auto; padding:clamp(26px,3.6vw,50px) clamp(20px,5vw,56px) clamp(38px,5.2vw,70px)">
+    <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#74836A; margin:0">Availability &amp; rates</p>
+    <h1 style="font:300 clamp(26px,3.8vw,42px)/1.06 Petrona, Georgia, serif; letter-spacing:-0.02em; color:#1D3730; margin:12px 0 0; max-width:24ch">See what's free, night by night</h1>
+    <p style="font:400 clamp(14px,1.4vw,16px)/1.7 Figtree, sans-serif; color:#56534C; margin:14px 0 0; max-width:56ch">Pick an accommodation type to see nightly rates and which dates are already taken. Tap a start date, then an end date, to check that stay.</p>
+
+    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:22px; max-width:920px">
+      <sc-for list="{{ types }}" as="t" hint-placeholder-count="8">
+        <button type="button" onClick="{{ t.pick }}" style="{{ t.style }}">{{ t.label }}</button>
+      </sc-for>
+    </div>
+
+    <div style="display:flex; flex-wrap:wrap; gap:14px 24px; align-items:center; justify-content:space-between; margin-top:28px; max-width:920px">
+      <div style="display:flex; align-items:center; gap:10px">
+        <button type="button" onClick="{{ prev }}" style="{{ prevStyle }}">‹</button>
+        <span style="font:400 clamp(19px,2.2vw,24px)/1 Petrona, Georgia, serif; color:#1D3730; min-width:12ch; text-align:center">{{ rangeLabel }}</span>
+        <button type="button" onClick="{{ next }}" style="width:42px; height:42px; border-radius:999px; border:1px solid rgba(29,55,48,0.16); background:transparent; color:#1D3730; font:400 17px/1 Figtree, sans-serif; cursor:pointer">›</button>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:center">
+        <span style="display:flex; align-items:center; gap:7px; font:500 12px/1 Figtree, sans-serif; color:#56534C"><span style="width:12px; height:12px; border-radius:4px; background:#E9EEE3"></span>Available</span>
+        <span style="display:flex; align-items:center; gap:7px; font:500 12px/1 Figtree, sans-serif; color:#56534C"><span style="width:12px; height:12px; border-radius:4px; background:#EFEDE7; box-shadow:inset 0 0 0 1px rgba(29,55,48,0.12)"></span>Sold out</span>
+        <span style="display:flex; align-items:center; gap:7px; font:500 12px/1 Figtree, sans-serif; color:#56534C"><span style="width:12px; height:12px; border-radius:4px; background:#F7E7E1; box-shadow:inset 0 0 0 1px rgba(140,59,42,0.35)"></span>Restricted — tap to see why</span>
+        <span style="display:flex; align-items:center; gap:7px; font:500 12px/1 Figtree, sans-serif; color:#56534C"><span style="width:12px; height:12px; border-radius:4px; background:#1D3730"></span>Your dates</span>
+      </div>
+    </div>
+
+    <sc-if value="{{ loading }}" hint-placeholder-val="{{ true }}">
+      <div style="display:grid; gap:14px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 300px), 1fr)); margin-top:20px">
+        <div style="background:#F3ECE0; border-radius:16px; height:330px; animation:pulseFade 1.4s ease-in-out infinite"></div>
+        <div style="background:#F3ECE0; border-radius:16px; height:330px; animation:pulseFade 1.4s ease-in-out infinite"></div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ ready }}" hint-placeholder-val="{{ false }}">
+      <div style="display:grid; gap:clamp(16px,2.4vw,24px); grid-template-columns:repeat(auto-fit, minmax(min(100%, 300px), 1fr)); margin-top:18px; max-width:920px">
+        <sc-for list="{{ months }}" as="m" hint-placeholder-count="2">
+          <div style="background:#FFFFFF; border:1px solid rgba(29,55,48,0.09); border-radius:16px; padding:clamp(14px,1.8vw,20px); animation:riseIn .2s ease both">
+            <div style="font:400 18px/1 Petrona, Georgia, serif; color:#1D3730; text-align:center; padding:4px 0 14px">{{ m.title }}</div>
+            <div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:3px">
+              <sc-for list="{{ weekdays }}" as="wd" hint-placeholder-count="7">
+                <div style="text-align:center; font:700 8.5px/1 Figtree, sans-serif; letter-spacing:.1em; color:#A6A29A; padding:0 0 8px">{{ wd }}</div>
+              </sc-for>
+              <sc-for list="{{ m.days }}" as="d" hint-placeholder-count="31">
+                <button type="button" disabled="{{ d.disabled }}" onClick="{{ d.pick }}" style="{{ d.style }}">
+                  <span style="{{ d.numStyle }}">{{ d.num }}</span>
+                  <span style="{{ d.rateStyle }}">{{ d.rate }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <div style="{{ explainStyle }}">
+      <div style="display:flex; flex-wrap:wrap; gap:12px 20px; align-items:flex-start; justify-content:space-between">
+        <div style="min-width:0">
+          <p style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#8C3B2A; margin:0">{{ explainDate }}</p>
+          <p style="font:500 15px/1.5 Figtree, sans-serif; color:#292724; margin:9px 0 0">{{ explainTitle }}</p>
+          <p style="font:400 13.5px/1.65 Figtree, sans-serif; color:#56534C; margin:6px 0 0; max-width:52ch">{{ explainDetail }}</p>
+        </div>
+        <span style="display:flex; flex-wrap:wrap; gap:8px">
+          <sc-for list="{{ explainFixes }}" as="fix" hint-placeholder-count="1">
+            <button type="button" onClick="{{ fix.apply }}" style="border:0; border-radius:999px; background:#1D3730; color:#FCFAF6; font:700 12px/1 Figtree, sans-serif; letter-spacing:.08em; padding:16px 20px; cursor:pointer; white-space:nowrap">{{ fix.label }}</button>
+          </sc-for>
+          <button type="button" onClick="{{ closeExplain }}" style="border:1px solid rgba(29,55,48,0.2); border-radius:999px; background:transparent; color:#1D3730; font:600 12px/1 Figtree, sans-serif; letter-spacing:.08em; padding:16px 18px; cursor:pointer">Dismiss</button>
+        </span>
+      </div>
+    </div>
+
+    <div style="{{ barStyle }}">
+      <div style="min-width:0">
+        <p style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#A9B995; margin:0">{{ selectionEyebrow }}</p>
+        <p style="font:400 clamp(17px,1.9vw,21px)/1.3 Petrona, Georgia, serif; color:#FCFAF6; margin:9px 0 0">{{ selectionText }}</p>
+        <p style="font:400 13px/1.5 Figtree, sans-serif; color:rgba(237,228,212,0.78); margin:6px 0 0">{{ selectionNote }}</p>
+      </div>
+      <span style="display:flex; flex-wrap:wrap; gap:8px; align-items:center">
+        <span style="{{ blockStyle }}">{{ blockText }}</span>
+        <button type="button" onClick="{{ clear }}" style="border:1px solid rgba(237,228,212,0.35); background:transparent; color:#EDE4D4; font:600 12px/1 Figtree, sans-serif; letter-spacing:.08em; text-transform:uppercase; padding:15px 18px; border-radius:999px; cursor:pointer">Clear</button>
+        <button type="button" onClick="{{ book }}" style="border:0; background:#96592A; color:#FCFAF6; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:16px 24px; border-radius:999px; cursor:pointer; white-space:nowrap">Check this stay</button>
+      </span>
+    </div>
+
+    <p style="font:400 13px/1.7 Figtree, sans-serif; color:#8B877E; margin:20px 0 0; max-width:64ch">Rates are the best available per night and change with season and demand. Minimum stays apply on winter weekends and over Christmas. Specific sites and cabins can be requested but are not guaranteed.</p>
+  </section>
+
+  <dc-import name="SiteFooter" hint-size="100%,420px"></dc-import>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}">
+const TYPES = [
+  { slug: "three-bedroom-chalet", label: "3 Bed Chalet" },
+  { slug: "two-bedroom-chalet-upgraded", label: "2 Bed Upgraded" },
+  { slug: "two-bedroom-chalet", label: "2 Bed Chalet" },
+  { slug: "cedar-cabin", label: "Cedar Cabin" },
+  { slug: "caravan-site", label: "Caravan Site" },
+  { slug: "camper-trailer-site", label: "Camper Trailer" },
+  { slug: "motorhome-site", label: "Motorhome Site" },
+  { slug: "unpowered-site", label: "Tent Site" }
+];
+
+class Component extends DCLogic {
+  state = { slug: "", days: {}, loading: true, offset: 0, from: "", to: "", explain: null, wide: typeof window !== "undefined" ? window.innerWidth >= 820 : true };
+
+  static iso(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+  static today() { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }
+
+  async componentDidMount() {
+    this._onResize = () => this.setState({ wide: window.innerWidth >= 820 });
+    window.addEventListener("resize", this._onResize);
+    const q = new URLSearchParams(window.location.search);
+    const slug = q.get("room") || TYPES[2].slug;
+    this.gp = await import("./guestpoint.js");
+    this.setState({ slug }, () => this.load());
+  }
+  componentWillUnmount() { window.removeEventListener("resize", this._onResize); }
+
+  monthStart(offset) {
+    const d = Component.today();
+    return new Date(d.getFullYear(), d.getMonth() + offset, 1);
+  }
+
+  async load() {
+    if (!this.gp) return;
+    this.setState({ loading: true });
+    const start = this.monthStart(this.state.offset);
+    const end = new Date(start.getFullYear(), start.getMonth() + (this.state.wide ? 2 : 1), 0);
+    try {
+      const data = await this.gp.bestAvailableRates({
+        fromDate: Component.iso(start), toDate: Component.iso(end), roomType: this.state.slug
+      });
+      this.setState({ days: this.gp.normaliseDays(data, this.state.slug), loading: false });
+    } catch (e) {
+      this.setState({ days: {}, loading: false });
+    }
+  }
+
+  explainDay(iso, picking) {
+    const s = this.state;
+    const info = s.days[iso] || {};
+    const fmt = v => { const p = (v || "").split("-"); return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" }); };
+    const shift = (v, n) => { const d = new Date(v); d.setDate(d.getDate() + n); return Component.iso(d); };
+
+    if (picking === "in" && info.closedToArrival) {
+      const alt = shift(iso, -1);
+      this.setState({
+        explain: {
+          date: fmt(iso),
+          title: "No arrivals on this day in snow season",
+          detail: "Saturday changeovers are closed through the snow season so the park can turn sites over between weekly stays. Arriving the day before works.",
+          fixes: (s.days[alt] && !s.days[alt].soldOut && !s.days[alt].closedToArrival)
+            ? [{ label: "Arrive " + fmt(alt) + " instead", apply: () => this.setState({ from: alt, to: "", explain: null }) }]
+            : []
+        }
+      });
+      return;
+    }
+
+    const fromInfo = s.days[s.from] || {};
+    const minStay = fromInfo.minStay || 1;
+    const maxStay = fromInfo.maxStay || 0;
+    const nightsIfChosen = Math.round((new Date(iso) - new Date(s.from)) / 86400000);
+
+    if (nightsIfChosen > 0 && nightsIfChosen < minStay) {
+      const fix = shift(s.from, minStay);
+      this.setState({
+        explain: {
+          date: fmt(iso),
+          title: minStay + " night minimum from " + fmt(s.from),
+          detail: "Winter weekends need two nights and the Christmas period needs three, so the park isn't left with single unbookable nights.",
+          fixes: [{ label: "Extend to " + minStay + " nights", apply: () => this.setState({ to: fix, explain: null }) }]
+        }
+      });
+      return;
+    }
+
+    if (nightsIfChosen <= 0) {
+      this.setState({
+        explain: {
+          date: fmt(iso),
+          title: "This is on or before your arrival",
+          detail: "Check-out has to come after check-in. Pick a later date, or start again from a different arrival day.",
+          fixes: [{ label: "Arrive " + fmt(iso) + " instead", apply: () => this.setState({ from: iso, to: "", explain: null }) }]
+        }
+      });
+      return;
+    }
+
+    if (maxStay && nightsIfChosen > maxStay) {
+      this.setState({
+        explain: {
+          date: fmt(iso),
+          title: "Maximum " + maxStay + " nights per booking",
+          detail: "Longer stays inside the national park need to be split into two bookings. Reception can arrange back-to-back stays on the same site where possible.",
+          fixes: [
+            { label: "Cap at " + maxStay + " nights", apply: () => this.setState({ to: shift(s.from, maxStay), explain: null }) },
+            { label: "Call the park", apply: () => { window.location.href = "tel:0264562224"; } }
+          ]
+        }
+      });
+      return;
+    }
+
+    if (info.closedToDeparture) {
+      const alt = shift(iso, 1);
+      this.setState({
+        explain: {
+          date: fmt(iso),
+          title: "No departures on this day",
+          detail: "This date sits mid-block over the Christmas period, when stays run in fixed lengths. Leaving the following day is available.",
+          fixes: (s.days[alt] && !s.days[alt].closedToDeparture)
+            ? [{ label: "Leave " + fmt(alt) + " instead", apply: () => this.setState({ to: alt, explain: null }) }]
+            : []
+        }
+      });
+      return;
+    }
+
+    this.setState({
+      explain: {
+        date: fmt(iso),
+        title: "Not available as a check-out date",
+        detail: "Check-out has to fall after your arrival and on a day the park allows departures. Pick a later date, or start again from a different arrival.",
+        fixes: [{ label: "Start again", apply: () => this.setState({ from: "", to: "", explain: null }) }]
+      }
+    });
+  }
+
+  pickDay(iso) {
+    const s = this.state;
+    if (!s.from || (s.from && s.to) || iso <= s.from) this.setState({ from: iso, to: "" });
+    else this.setState({ to: iso });
+  }
+
+  buildMonth(base) {
+    const s = this.state;
+    const today = Component.today();
+    const first = new Date(base.getFullYear(), base.getMonth(), 1);
+    const lead = (first.getDay() + 6) % 7;
+    const count = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate();
+    const days = [];
+    const cellBase = "display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; border:0; border-radius:9px; padding:7px 2px; min-height:52px; cursor:pointer; ";
+    for (let i = 0; i < lead; i++) days.push({ num: "", rate: "", disabled: true, style: "visibility:hidden", numStyle: "", rateStyle: "", pick: () => {} });
+    for (let n = 1; n <= count; n++) {
+      const date = new Date(base.getFullYear(), base.getMonth(), n);
+      const iso = Component.iso(date);
+      const info = s.days[iso] || {};
+      const past = date < today;
+      const soldOut = info.soldOut === true;
+      // picking an arrival vs a departure changes which rules apply
+      const picking = s.from && !s.to ? "out" : "in";
+      let restricted = false;
+      let outOfRange = false;
+      if (!past && !soldOut) {
+        if (picking === "in") restricted = !!info.closedToArrival;
+        else {
+          const nightsIfChosen = Math.round((date - new Date(s.from)) / 86400000);
+          const fromInfo = s.days[s.from] || {};
+          const minStay = fromInfo.minStay || 1;
+          const maxStay = fromInfo.maxStay || 0;
+          // near-misses are worth flagging; out-of-range dates just stay ordinary
+          restricted = nightsIfChosen > 0 && (
+            !!info.closedToDeparture ||
+            nightsIfChosen < minStay ||
+            (maxStay && nightsIfChosen === maxStay + 1)
+          );
+          outOfRange = nightsIfChosen <= 0 || (maxStay && nightsIfChosen > maxStay);
+        }
+      }
+      const closed = soldOut;
+      const disabled = past || soldOut;
+      const selected = iso === s.from || iso === s.to;
+      const inRange = s.from && s.to && iso > s.from && iso < s.to;
+      let style = cellBase;
+      if (past) style += "background:transparent; cursor:default";
+      else if (soldOut) style += "background:#EFEDE7; box-shadow:inset 0 0 0 1px rgba(29,55,48,0.10); cursor:not-allowed";
+      else if (restricted) style += "background:#F7E7E1; box-shadow:inset 0 0 0 1px rgba(140,59,42,0.3)";
+      else if (outOfRange) style += "background:#F3ECE0; box-shadow:inset 0 0 0 1px rgba(29,55,48,0.07)";
+      else if (selected) style += "background:#1D3730";
+      else if (inRange) style += "background:#DCE5D2";
+      else style += "background:#E9EEE3";
+      const light = selected;
+      days.push({
+        num: String(n),
+        rate: past ? "" : soldOut ? "Sold out" : restricted ? "Why?" : (info.rate ? "$" + Math.round(info.rate) : "—"),
+        disabled,
+        style,
+        numStyle: "font:600 13px/1 Figtree, sans-serif; color:" + (light ? "#FCFAF6" : past ? "#C7C3B9" : restricted ? "#8C3B2A" : outOfRange ? "#8B877E" : "#1D3730"),
+        rateStyle: "font:500 10px/1 Figtree, sans-serif; color:" + (light ? "rgba(237,228,212,0.9)" : soldOut ? "#A6A29A" : restricted ? "#8C3B2A" : outOfRange ? "#A6A29A" : "#74836A"),
+        pick: disabled ? () => {} : ((restricted || outOfRange) ? () => this.explainDay(iso, picking) : () => this.pickDay(iso))
+      });
+    }
+    return { title: base.toLocaleDateString("en-AU", { month: "long", year: "numeric" }), days };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const start = this.monthStart(s.offset);
+    const months = s.wide
+      ? [this.buildMonth(start), this.buildMonth(new Date(start.getFullYear(), start.getMonth() + 1, 1))]
+      : [this.buildMonth(start)];
+    const nights = s.from && s.to ? Math.round((new Date(s.to) - new Date(s.from)) / 86400000) : 0;
+    let total = 0;
+    if (nights) {
+      for (let i = 0; i < nights; i++) {
+        const d = new Date(s.from);
+        d.setDate(d.getDate() + i);
+        const info = s.days[Component.iso(d)];
+        if (info && info.rate) total += info.rate;
+      }
+    }
+    const fmt = v => { const p = (v || "").split("-"); return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString("en-AU", { day: "numeric", month: "short" }); };
+    const label = TYPES.find(t => t.slug === s.slug);
+    const fromInfo = s.days[s.from] || {};
+    const minStay = fromInfo.minStay || 1;
+    let blockText = "";
+    if (s.from && s.to && nights < minStay) blockText = minStay + " night minimum applies from this date.";
+    else if (s.from && !s.to) blockText = "Pick a check-out date to continue.";
+
+    return {
+      types: TYPES.map(t => ({
+        label: t.label,
+        style: "border:1px solid " + (t.slug === s.slug ? "rgba(29,55,48,0.5)" : "rgba(29,55,48,0.14)") +
+          "; background:" + (t.slug === s.slug ? "#1D3730" : "transparent") +
+          "; color:" + (t.slug === s.slug ? "#FCFAF6" : "#56534C") +
+          "; font:600 12px/1 Figtree, sans-serif; letter-spacing:.04em; border-radius:999px; padding:13px 16px; cursor:pointer",
+        pick: () => this.setState({ slug: t.slug, from: "", to: "" }, () => this.load())
+      })),
+      loading: s.loading,
+      ready: !s.loading,
+      months,
+      weekdays: ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"],
+      rangeLabel: months.length > 1
+        ? start.toLocaleDateString("en-AU", { month: "short" }) + " – " + new Date(start.getFullYear(), start.getMonth() + 1, 1).toLocaleDateString("en-AU", { month: "short", year: "numeric" })
+        : start.toLocaleDateString("en-AU", { month: "long", year: "numeric" }),
+      prev: () => { if (s.offset > 0) this.setState({ offset: s.offset - 1 }, () => this.load()); },
+      next: () => { if (s.offset < 11) this.setState({ offset: s.offset + 1 }, () => this.load()); },
+      prevStyle: "width:42px; height:42px; border-radius:999px; border:1px solid rgba(29,55,48,0.16); background:transparent; font:400 17px/1 Figtree, sans-serif; cursor:" +
+        (s.offset > 0 ? "pointer" : "not-allowed") + "; color:" + (s.offset > 0 ? "#1D3730" : "#C7C3B9"),
+      barStyle: (s.from ? "" : "display:none; ") +
+        "position:sticky; z-index:195; bottom:14px; margin-top:22px; max-width:920px; display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between; background:#1D3730; border-radius:14px; padding:18px 20px; box-shadow:0 22px 44px -26px rgba(18,39,32,0.6); animation:riseIn .2s ease both",
+      selectionEyebrow: label ? label.label : "Selected",
+      selectionText: s.from && s.to
+        ? fmt(s.from) + " → " + fmt(s.to) + " · " + nights + (nights === 1 ? " night" : " nights")
+        : "Arriving " + fmt(s.from),
+      selectionNote: s.from && s.to
+        ? (total ? "About $" + Math.round(total) + " for the stay, before extras" : "Rates confirmed at the next step")
+        : "Now pick your check-out date",
+      explainStyle: s.explain
+        ? "margin-top:18px; max-width:920px; background:#F7E7E1; border-radius:14px; padding:20px 22px; animation:riseIn .18s ease both"
+        : "display:none",
+      explainDate: s.explain ? s.explain.date : "",
+      explainTitle: s.explain ? s.explain.title : "",
+      explainDetail: s.explain ? s.explain.detail : "",
+      explainFixes: s.explain ? s.explain.fixes : [],
+      closeExplain: () => this.setState({ explain: null }),
+      blockText: blockText,
+      blockStyle: blockText
+        ? "font:500 12.5px/1.4 Figtree, sans-serif; color:#EDE4D4; max-width:26ch"
+        : "display:none",
+      clear: () => this.setState({ from: "", to: "", explain: null }),
+      book: () => {
+        if (!s.from) return;
+        if (s.to && nights < minStay) { this.setState({ to: "" }); return; }
+        const out = s.to || (() => { const d = new Date(s.from); d.setDate(d.getDate() + 2); return Component.iso(d); })();
+        const q = new URLSearchParams({ arrival: s.from, departure: out, adults: "2", children: "0", infants: "0", room: s.slug });
+        window.location.href = "/book?" + q.toString();
+      }
+    };
+  }
+}
+
+</script>
+</body>
+</html>

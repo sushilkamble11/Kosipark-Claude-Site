@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<base href="/">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/vendor-map.js"></script>
+<script src="./support.js"></script>
+<script src="/site.js" defer></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Petrona:wght@300;400;500;600&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #FCFAF6; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #1D3730; text-decoration: none; }
+  a:hover { color: #96592A; }
+  @keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+</style>
+</helmet>
+
+<div style="background:#FCFAF6; color:#292724; font-family:Figtree, system-ui, sans-serif; min-height:100vh">
+  <dc-import name="SiteNav" active="stay" sticky-book-bar="{{ false }}" hint-size="100%,84px"></dc-import>
+
+  <section data-screen-label="Checkout" style="max-width:1320px; margin:0 auto; padding:clamp(28px,4vw,56px) clamp(20px,5vw,56px) clamp(38px,5.2vw,70px)">
+
+    <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+      <div style="max-width:56ch">
+        <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#74836A; margin:0">Checkout</p>
+        <h1 style="font:300 clamp(24px,3.1vw,36px)/1.06 Petrona, Georgia, serif; letter-spacing:-0.02em; color:#1D3730; margin:12px 0 0">Nothing in your booking yet</h1>
+        <p style="font:400 14.5px/1.7 Figtree, sans-serif; color:#56534C; margin:14px 0 0">Pick your nights on any cabin, chalet or site and they'll appear here. You can add more than one — a cabin and a van site travel together on the same booking.</p>
+        <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:24px">
+          <a href="/#book" style="background:#1D3730; color:#FCFAF6; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:18px 26px; border-radius:999px">Search dates</a>
+          <a href="tel:0264562224" style="border:1px solid rgba(29,55,48,0.2); color:#1D3730; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:18px 26px; border-radius:999px">02 6456 2224</a>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ notDone }}" hint-placeholder-val="{{ true }}">
+      <div>
+        <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#74836A; margin:0">Complete your booking</p>
+        <h1 style="font:300 clamp(24px,3vw,35px)/1.06 Petrona, Georgia, serif; letter-spacing:-0.02em; color:#1D3730; margin:12px 0 0">{{ headline }}</h1>
+
+        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:22px">
+          <sc-for list="{{ steps }}" as="st" hint-placeholder-count="3">
+            <button type="button" onClick="{{ st.go }}" style="{{ st.style }}">{{ st.label }}</button>
+          </sc-for>
+        </div>
+
+        <div style="display:grid; gap:clamp(20px,3vw,40px); grid-template-columns:repeat(auto-fit, minmax(min(100%, 300px), 1fr)); margin-top:clamp(22px,3vw,34px); align-items:start">
+          <div style="min-width:0; grid-column:span 2">
+            <p style="{{ holdStyle }}">{{ holdText }}</p>
+
+            <sc-if value="{{ onExtras }}" hint-placeholder-val="{{ false }}">
+              <div style="background:#FFFFFF; border:1px solid rgba(29,55,48,0.10); border-radius:16px; padding:clamp(20px,3vw,30px)">
+                <p style="{{ unlockStyle }}">{{ unlockText }}</p>
+                <div style="{{ extendStyle }}">
+                  <h2 style="font:400 19px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:0">Extend your stay</h2>
+                  <p style="font:400 14.5px/1.7 Figtree, sans-serif; color:#6C6862; margin:10px 0 14px">Rates for the nights either side of your stay, if you'd like longer in the mountains.</p>
+                  <div style="display:flex; flex-wrap:wrap; gap:10px">
+                    <sc-for list="{{ extendOptions }}" as="ex" hint-placeholder-count="2">
+                      <button type="button" onClick="{{ ex.toggle }}" style="{{ ex.style }}">{{ ex.label }}</button>
+                    </sc-for>
+                  </div>
+                  <div style="height:1px; background:rgba(29,55,48,0.1); margin:24px 0"></div>
+                </div>
+                <h2 style="font:400 19px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:0">Add anything you need</h2>
+                <p style="font:400 14.5px/1.7 Figtree, sans-serif; color:#6C6862; margin:10px 0 20px">Optional. Everything here is confirmed with your booking, not charged separately on arrival.</p>
+                <div style="display:grid; gap:1px; border-radius:16px; overflow:hidden">
+                  <sc-for list="{{ extras }}" as="x" hint-placeholder-count="4">
+                    <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; padding:16px 18px; background:#F3ECE0; box-shadow:0 0 0 1px rgba(29,55,48,0.08)">
+                      <span style="display:flex; flex-direction:column; gap:4px; min-width:0; flex:1 1 200px">
+                        <span style="font:600 15px/1.3 Figtree, sans-serif; color:#292724">{{ x.name }}</span>
+                        <span style="font:400 13px/1.5 Figtree, sans-serif; color:#8B877E">{{ x.detail }}</span>
+                      </span>
+                      <span style="display:flex; align-items:center; gap:14px">
+                        <span style="font:500 14px/1 Figtree, sans-serif; color:#4C5C40; white-space:nowrap">{{ x.lineTotal }}</span>
+                        <span style="display:flex; align-items:center; gap:4px">
+                          <button type="button" onClick="{{ x.dec }}" style="width:38px; height:38px; border-radius:999px; border:1px solid rgba(29,55,48,0.18); background:transparent; color:#1D3730; font:400 18px/1 Figtree, sans-serif; cursor:pointer">−</button>
+                          <span style="min-width:24px; text-align:center; font:600 15px/1 Figtree, sans-serif; color:#1D3730">{{ x.count }}</span>
+                          <button type="button" onClick="{{ x.inc }}" style="width:38px; height:38px; border-radius:999px; border:1px solid rgba(29,55,48,0.18); background:transparent; color:#1D3730; font:400 18px/1 Figtree, sans-serif; cursor:pointer">+</button>
+                        </span>
+                      </span>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:22px; align-items:center">
+                  <button type="button" onClick="{{ backToDetails }}" style="border:0; background:transparent; color:#74836A; font:600 12px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; cursor:pointer; padding:16px 6px">‹ Back to details</button>
+                  <button type="button" onClick="{{ toReview }}" style="border:0; border-radius:14px; background:#1D3730; color:#FCFAF6; font:700 13px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; cursor:pointer; padding:19px 28px">{{ reviewLabel }}</button>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ onDetails }}" hint-placeholder-val="{{ false }}">
+              <div style="background:#FFFFFF; border:1px solid rgba(29,55,48,0.10); border-radius:16px; padding:clamp(20px,3vw,30px)">
+                <h2 style="font:400 19px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:0">Guest details</h2>
+                <p style="font:400 14.5px/1.7 Figtree, sans-serif; color:#6C6862; margin:10px 0 20px">The lead guest must be 18 or older and present at check-in with photo ID.</p>
+                <div style="display:grid; gap:12px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 220px), 1fr))">
+                  <sc-for list="{{ fields }}" as="f" hint-placeholder-count="6">
+                    <label style="{{ f.wrapStyle }}">
+                      <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A">{{ f.label }}</span>
+                      <sc-if value="{{ f.isSelect }}" hint-placeholder-val="{{ false }}">
+                        <select value="{{ f.value }}" onChange="{{ f.onChange }}" style="border:0; background:transparent; outline:none; font:500 16px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0">
+                          <sc-for list="{{ f.options }}" as="o" hint-placeholder-count="3">
+                            <option value="{{ o.value }}">{{ o.label }}</option>
+                          </sc-for>
+                        </select>
+                      </sc-if>
+                      <sc-if value="{{ f.isText }}" hint-placeholder-val="{{ true }}">
+                        <input value="{{ f.value }}" onChange="{{ f.onChange }}" placeholder="{{ f.placeholder }}" style="border:0; background:transparent; outline:none; font:500 16px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0" />
+                      </sc-if>
+                    </label>
+                  </sc-for>
+                </div>
+
+                <label style="display:flex; gap:12px; align-items:flex-start; margin-top:20px; cursor:pointer">
+                  <input type="checkbox" checked="{{ marketing }}" onChange="{{ onMarketing }}" style="width:20px; height:20px; margin:2px 0 0; accent-color:#1D3730" />
+                  <span style="font:400 14px/1.6 Figtree, sans-serif; color:#56534C">Send me occasional news about the park, snow conditions and seasonal offers.</span>
+                </label>
+                <label style="display:flex; gap:12px; align-items:flex-start; margin-top:12px; cursor:pointer">
+                  <input type="checkbox" checked="{{ consent }}" onChange="{{ onConsent }}" style="width:20px; height:20px; margin:2px 0 0; accent-color:#1D3730" />
+                  <span style="font:400 14px/1.6 Figtree, sans-serif; color:#56534C">I have read and accept the <a href="/terms">terms and conditions</a>, including the deposit, cancellation and amendment policies.</span>
+                </label>
+
+                <div style="{{ vehicleStyle }}">
+                  <h3 style="font:400 18.5px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:0">Your vehicle</h3>
+                  <p style="font:400 13.5px/1.6 Figtree, sans-serif; color:#6C6862; margin:8px 0 14px">One vehicle per cabin is included; additional vehicles are $20 per night. All vehicles are registered at reception on arrival.</p>
+                  <label style="display:flex; flex-direction:column; gap:6px; padding:12px 18px; border-radius:13px; background:#F3ECE0; border:1px solid rgba(29,55,48,0.08); max-width:320px">
+                    <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A">Vehicle type *</span>
+                    <select value="{{ eqType }}" onChange="{{ onEqType }}" style="border:0; background:transparent; outline:none; font:500 15.5px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0">
+                      <option value="">Please choose</option>
+                      <option value="Car">Car</option>
+                      <option value="4WD or SUV">4WD or SUV</option>
+                      <option value="Car with trailer">Car with trailer</option>
+                      <option value="Van">Van</option>
+                      <option value="Motorhome">Motorhome</option>
+                      <option value="Motorcycle">Motorcycle</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div style="{{ equipStyle }}">
+                  <div style="display:flex; flex-wrap:wrap; gap:10px 16px; align-items:baseline; justify-content:space-between">
+                    <h3 style="font:400 18.5px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:0">Tell us about your setup</h3>
+                    <button type="button" onClick="{{ toggleUnit }}" style="border:0; background:transparent; font:600 12px/1 Figtree, sans-serif; letter-spacing:.08em; color:#96592A; cursor:pointer; padding:6px 0">{{ unitToggleLabel }}</button>
+                  </div>
+                  <p style="font:400 13.5px/1.6 Figtree, sans-serif; color:#6C6862; margin:8px 0 14px">We'll allocate a site that fits. If nothing suits your dimensions we'll call you within one business day. Measure from the towbar tip to the rear-most point, including bike racks and spare wheels.</p>
+                  <div style="display:grid; gap:12px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 160px), 1fr))">
+                    <label style="display:flex; flex-direction:column; gap:6px; padding:12px 18px; border-radius:13px; background:#F3ECE0; border:1px solid rgba(29,55,48,0.08)">
+                      <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A">Type *</span>
+                      <select value="{{ eqType }}" onChange="{{ onEqType }}" style="border:0; background:transparent; outline:none; font:500 15.5px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0">
+                        <option value="">Please choose</option>
+                        <option value="Caravan">Caravan</option>
+                        <option value="Motorhome">Motorhome</option>
+                        <option value="Camper trailer">Camper trailer</option>
+                        <option value="Van">Van</option>
+                        <option value="Rooftop tent">Rooftop tent</option>
+                        <option value="Tent">Tent</option>
+                      </select>
+                    </label>
+                    <label style="display:flex; flex-direction:column; gap:6px; padding:12px 18px; border-radius:13px; background:#F3ECE0; border:1px solid rgba(29,55,48,0.08)">
+                      <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A">{{ lengthLabel }}</span>
+                      <input value="{{ eqLength }}" onChange="{{ onEqLength }}" placeholder="{{ lengthPlaceholder }}" style="border:0; background:transparent; outline:none; font:500 15.5px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0" />
+                    </label>
+                    <label style="display:flex; flex-direction:column; gap:6px; padding:12px 18px; border-radius:13px; background:#F3ECE0; border:1px solid rgba(29,55,48,0.08)">
+                      <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A">{{ widthLabel }}</span>
+                      <input value="{{ eqWidth }}" onChange="{{ onEqWidth }}" placeholder="{{ widthPlaceholder }}" style="border:0; background:transparent; outline:none; font:500 15.5px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0" />
+                    </label>
+                  </div>
+                  <label style="display:flex; flex-direction:column; gap:6px; padding:12px 18px; border-radius:13px; background:#F3ECE0; border:1px solid rgba(29,55,48,0.08); margin-top:12px">
+                    <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A">Preferred site (optional)</span>
+                    <input value="{{ sitePref }}" onChange="{{ onSitePref }}" placeholder="e.g. site 12, or near the amenities block" style="border:0; background:transparent; outline:none; font:500 15.5px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0" />
+                  </label>
+                  <button type="button" onClick="{{ toggleGuide }}" style="border:0; background:transparent; font:600 12.5px/1 Figtree, sans-serif; letter-spacing:.06em; color:#96592A; cursor:pointer; padding:14px 0 0">{{ guideLabel }}</button>
+                  <div style="{{ guideStyle }}">
+                    <div style="display:grid; gap:18px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 220px), 1fr)); align-items:start">
+                      <div>
+                        <p style="font:600 12px/1.5 Figtree, sans-serif; color:#292724; margin:0 0 4px">Length</p>
+                        <p style="font:400 12.5px/1.5 Figtree, sans-serif; color:#6C6862; margin:0 0 12px">Measure overall length, including the drawbar.</p>
+                        <svg viewBox="0 0 268 168" aria-label="Caravan measured from above" style="width:100%; height:auto; max-width:290px">
+                          <line x1="18" y1="16" x2="242" y2="16" stroke="#74836A" stroke-width="1.5"></line>
+                          <path d="M18 16 l7 -4 v8 z" fill="#74836A"></path>
+                          <path d="M242 16 l-7 -4 v8 z" fill="#74836A"></path>
+                          <rect x="18" y="34" width="170" height="62" rx="6" fill="none" stroke="#1D3730" stroke-width="1.6"></rect>
+                          <path d="M188 34 L242 65 L188 96 Z" fill="none" stroke="#1D3730" stroke-width="1.6"></path>
+                          <rect x="8" y="52" width="12" height="26" rx="3" fill="none" stroke="#1D3730" stroke-width="1.4"></rect>
+                          <rect x="18" y="104" width="170" height="30" rx="4" fill="none" stroke="#96592A" stroke-width="1.4" stroke-dasharray="5 4"></rect>
+                          <line x1="248" y1="34" x2="248" y2="96" stroke="#74836A" stroke-width="1.5"></line>
+                          <path d="M248 34 l-4 7 h8 z" fill="#74836A"></path>
+                          <path d="M248 96 l-4 -7 h8 z" fill="#74836A"></path>
+                          <text x="256" y="68" font-family="Figtree, sans-serif" font-size="9" fill="#56534C" transform="rotate(90 256 68)" text-anchor="middle">Width</text>
+                          <text x="130" y="10" text-anchor="middle" font-family="Figtree, sans-serif" font-size="9" fill="#56534C">Length</text>
+                          <text x="120" y="70" text-anchor="middle" font-family="Figtree, sans-serif" font-size="11" fill="#1D3730">Caravan</text>
+                          <text x="212" y="69" text-anchor="middle" font-family="Figtree, sans-serif" font-size="9" fill="#56534C">Drawbar</text>
+                          <text x="103" y="123" text-anchor="middle" font-family="Figtree, sans-serif" font-size="10" fill="#96592A">Awning</text>
+                          <text x="103" y="152" text-anchor="middle" font-family="Figtree, sans-serif" font-size="9" fill="#8B877E">Seen from above</text>
+                        </svg>
+                        <p style="font:400 12px/1.5 Figtree, sans-serif; color:#6C6862; margin:8px 0 0">Width is the van body plus your awning, if you plan to put it out.</p>
+                      </div>
+                      <div>
+                        <p style="font:600 12px/1.5 Figtree, sans-serif; color:#292724; margin:0 0 10px">Feet to metres</p>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1px; border-radius:10px; overflow:hidden; max-width:200px">
+                          <sc-for list="{{ conversions }}" as="cv" hint-placeholder-count="10">
+                            <span style="{{ cv.style }}">{{ cv.label }}</span>
+                          </sc-for>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <p style="font:400 12.5px/1.6 Figtree, sans-serif; color:#8B877E; margin:14px 0 0">Specific sites may be requested but are not guaranteed. We will do our best to accommodate requests; allocation is at management discretion and may change up to arrival.</p>
+                </div>
+
+                <p style="{{ errorStyle }}">{{ errorText }}</p>
+                <p style="font:400 12px/1.6 Figtree, sans-serif; color:#8B877E; margin:14px 0 0; max-width:62ch">If you enter your contact details but do not complete a booking, we may retain those details and contact you once about your enquiry. You can opt out at any time.</p>
+                <button type="button" onClick="{{ toOptions }}" style="margin-top:16px; border:0; border-radius:14px; background:#1D3730; color:#FCFAF6; font:700 13px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; cursor:pointer; padding:19px 28px">Continue to options</button>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ onReview }}" hint-placeholder-val="{{ false }}">
+              <div style="background:#FFFFFF; border:1px solid rgba(29,55,48,0.10); border-radius:16px; padding:clamp(20px,3vw,30px)">
+                <h2 style="font:400 19px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:0">{{ payHeading }}</h2>
+                <p style="font:400 14.5px/1.7 Figtree, sans-serif; color:#6C6862; margin:10px 0 18px">Choose how much to pay today. A 2% card surcharge applies either way and is shown separately below.</p>
+                <div style="display:grid; gap:10px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 240px), 1fr))">
+                  <sc-for list="{{ payOptions }}" as="po" hint-placeholder-count="2">
+                    <button type="button" onClick="{{ po.pick }}" style="{{ po.style }}">
+                      <span style="display:flex; align-items:baseline; justify-content:space-between; gap:12px">
+                        <span style="font:600 14.5px/1.2 Figtree, sans-serif; color:#292724">{{ po.label }}</span>
+                        <span style="font:400 19px/1 Petrona, Georgia, serif; color:#1D3730">{{ po.amount }}</span>
+                      </span>
+                      <span style="display:block; font:400 12.5px/1.6 Figtree, sans-serif; color:#6C6862; margin-top:8px">{{ po.surcharge }}</span>
+                      <span style="display:block; font:400 12.5px/1.6 Figtree, sans-serif; color:#8B877E; margin-top:3px">{{ po.balance }}</span>
+                    </button>
+                  </sc-for>
+                </div>
+                <p style="font:400 13.5px/1.7 Figtree, sans-serif; color:#8B877E; margin:16px 0 20px">{{ policyText }}</p>
+
+                <div style="display:grid; gap:12px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 200px), 1fr))">
+                  <label style="grid-column:1/-1; display:flex; flex-direction:column; gap:7px; padding:14px 18px; border-radius:14px; background:#F3ECE0; border:1px solid rgba(29,55,48,0.08)">
+                    <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A">Name on card</span>
+                    <input value="{{ cardName }}" onChange="{{ onCardName }}" placeholder="A. Nguyen" style="border:0; background:transparent; outline:none; font:500 16px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0" />
+                  </label>
+                  <label style="grid-column:1/-1; display:flex; flex-direction:column; gap:7px; padding:14px 18px; border-radius:14px; background:#F3ECE0; border:1px solid rgba(29,55,48,0.08)">
+                    <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A">Card number</span>
+                    <input value="{{ cardNumber }}" onChange="{{ onCardNumber }}" placeholder="4242 4242 4242 4242" style="border:0; background:transparent; outline:none; font:500 16px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0" />
+                  </label>
+                  <label style="display:flex; flex-direction:column; gap:7px; padding:14px 18px; border-radius:14px; background:#F3ECE0; border:1px solid rgba(29,55,48,0.08)">
+                    <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A">Expiry</span>
+                    <input value="{{ cardExpiry }}" onChange="{{ onCardExpiry }}" placeholder="09/29" style="border:0; background:transparent; outline:none; font:500 16px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0" />
+                  </label>
+                  <label style="display:flex; flex-direction:column; gap:7px; padding:14px 18px; border-radius:14px; background:#F3ECE0; border:1px solid rgba(29,55,48,0.08)">
+                    <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A">CVV</span>
+                    <input value="{{ cardCvv }}" onChange="{{ onCardCvv }}" placeholder="123" style="border:0; background:transparent; outline:none; font:500 16px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0" />
+                  </label>
+                </div>
+                <p style="font:400 12.5px/1.6 Figtree, sans-serif; color:#8B877E; margin:12px 0 0">Card details are tokenised by the payment provider before they reach the property.</p>
+                <label style="display:flex; gap:12px; align-items:flex-start; margin-top:16px; cursor:pointer">
+                  <input type="checkbox" checked="{{ ackSurcharge }}" onChange="{{ onAckSurcharge }}" style="width:20px; height:20px; margin:2px 0 0; accent-color:#1D3730" />
+                  <span style="font:400 13.5px/1.6 Figtree, sans-serif; color:#56534C">I acknowledge that a 2% card payment surcharge applies to Visa and Mastercard, and that the surcharge is non-refundable if the booking is cancelled.</span>
+                </label>
+
+                <p style="{{ errorStyle }}">{{ errorText }}</p>
+                <p style="{{ unpricedStyle }}">{{ unpricedText }}</p>
+                <button type="button" disabled="{{ unpriced }}" onClick="{{ confirm }}" style="{{ confirmStyle }}">{{ confirmLabel }}</button>
+              </div>
+            </sc-if>
+          </div>
+
+          <aside style="min-width:0; position:sticky; top:100px; background:#FFFFFF; border:1px solid rgba(29,55,48,0.10); border-radius:16px; padding:22px">
+            <div style="display:flex; flex-wrap:wrap; gap:8px 12px; align-items:baseline; justify-content:space-between">
+              <h2 style="font:700 10.5px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A; margin:0">Your booking</h2>
+              <span style="font:500 11.5px/1 Figtree, sans-serif; color:#8B877E">{{ stayCount }}</span>
+            </div>
+            <div style="display:grid; gap:10px; margin:14px 0 0">
+              <sc-for list="{{ stays }}" as="st" hint-placeholder-count="1">
+                <div style="background:#F3ECE0; border-radius:12px; padding:14px 16px">
+                  <div style="display:flex; gap:12px; align-items:baseline; justify-content:space-between">
+                    <span style="font:400 16px/1.3 Petrona, Georgia, serif; color:#1D3730">{{ st.name }}</span>
+                    <span style="font:500 14px/1.3 Figtree, sans-serif; color:#292724; white-space:nowrap">{{ st.total }}</span>
+                  </div>
+                  <p style="font:400 12.5px/1.6 Figtree, sans-serif; color:#6C6862; margin:6px 0 0">{{ st.detail }}</p>
+                  <button type="button" onClick="{{ st.remove }}" style="{{ st.removeStyle }}">Remove</button>
+                </div>
+              </sc-for>
+            </div>
+            <a href="/#book" style="display:inline-block; margin:12px 0 16px; font:700 11.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; color:#1D3730; border-bottom:1px solid #96592A; padding-bottom:7px">+ Add another cabin or site</a>
+            <dl style="margin:0; display:grid; gap:10px; border-bottom:1px solid rgba(29,55,48,0.10); padding-bottom:16px">
+              <sc-for list="{{ summaryRows }}" as="row" hint-placeholder-count="4">
+                <div style="display:flex; gap:14px; justify-content:space-between">
+                  <dt style="font:400 14px/1.5 Figtree, sans-serif; color:#8B877E">{{ row.k }}</dt>
+                  <dd style="margin:0; font:500 14px/1.5 Figtree, sans-serif; color:#292724; text-align:right">{{ row.v }}</dd>
+                </div>
+              </sc-for>
+            </dl>
+            <dl style="margin:16px 0 0; display:grid; gap:10px">
+              <sc-for list="{{ priceRows }}" as="row" hint-placeholder-count="3">
+                <div style="display:flex; gap:14px; justify-content:space-between">
+                  <dt style="{{ row.kStyle }}">{{ row.k }}</dt>
+                  <dd style="{{ row.vStyle }}">{{ row.v }}</dd>
+                </div>
+              </sc-for>
+            </dl>
+            <a href="/accommodation" style="display:inline-block; margin-top:18px; font:600 11.5px/1 Figtree, sans-serif; letter-spacing:.12em; text-transform:uppercase; color:#74836A; padding-top:4px">Change accommodation</a>
+          </aside>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isDone }}" hint-placeholder-val="{{ false }}">
+      <div style="max-width:70ch; animation:riseIn .24s ease both">
+        <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#74836A; margin:0">Booking confirmed</p>
+        <h1 style="font:300 clamp(25px,3.3vw,38px)/1.06 Petrona, Georgia, serif; letter-spacing:-0.02em; color:#1D3730; margin:14px 0 0">See you at Sawpit Creek</h1>
+        <p style="font:400 clamp(14.5px,1.5vw,16.5px)/1.75 Figtree, sans-serif; color:#56534C; margin:16px 0 0">{{ doneLine }}</p>
+        <div style="background:#E9EEE3; border-radius:16px; padding:24px; margin-top:26px">
+          <dl style="display:grid; gap:12px">
+            <sc-for list="{{ doneRows }}" as="row" hint-placeholder-count="4">
+              <div style="display:flex; flex-wrap:wrap; gap:8px 16px; justify-content:space-between">
+                <dt style="font:400 14px/1.5 Figtree, sans-serif; color:#74836A">{{ row.k }}</dt>
+                <dd style="margin:0; font:500 15px/1.5 Figtree, sans-serif; color:#1D3730; text-align:right">{{ row.v }}</dd>
+              </div>
+            </sc-for>
+          </dl>
+        </div>
+        <p style="font:400 14.5px/1.75 Figtree, sans-serif; color:#6C6862; margin:20px 0 0">A confirmation email is on its way. Check-in is from 3pm — if you're arriving after dark, call reception on <a href="tel:0264562224">02 6456 2224</a> and we'll leave keys out. Pets are not permitted in the park, and vehicle entry fees are payable to the national park separately.</p>
+        <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:26px">
+          <a href="/manage" style="background:#1D3730; color:#FCFAF6; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:18px 26px; border-radius:999px">Manage this booking</a>
+          <a href="/attractions" style="border:1px solid rgba(29,55,48,0.2); color:#1D3730; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:18px 26px; border-radius:999px">Plan your days</a>
+        </div>
+      </div>
+    </sc-if>
+  </section>
+
+  <dc-import name="SiteFooter" hint-size="100%,420px"></dc-import>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}">
+const NAMES = {
+  "three-bedroom-chalet": "Three Bedroom Chalet",
+  "two-bedroom-chalet-upgraded": "Two Bedroom Chalet — Upgraded",
+  "two-bedroom-chalet": "Two Bedroom Chalet",
+  "cedar-cabin": "Cedar Cabin",
+  "caravan-site": "Caravan Site",
+  "camper-trailer-site": "Camper Trailer Site",
+  "motorhome-site": "Motorhome Site",
+  "unpowered-site": "Unpowered Tent Site"
+};
+
+class Component extends DCLogic {
+  state = {
+    step: "details", unit: "m", payMode: "deposit", guideOpen: false, eqType: "", eqLength: "", eqWidth: "", sitePref: "",
+    addBefore: false, addAfter: false, quotes: null, ackSurcharge: false, extras: [], counts: {}, profileFields: [], answers: {},
+    firstName: "", lastName: "", email: "", mobile: "", address: "", city: "", postcode: "",
+    cardName: "", cardNumber: "", cardExpiry: "", cardCvv: "",
+    marketing: false, consent: false, error: "", busy: false, validated: null, booked: null, cart: [], loaded: false
+  };
+
+  params() {
+    const q = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+    const today = new Date();
+    const plus = n => { const d = new Date(today); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+    return {
+      room: q.get("room") || "two-bedroom-chalet",
+      plan: q.get("plan") || "standard",
+      arrival: q.get("arrival") || plus(14),
+      departure: q.get("departure") || plus(16),
+      adults: Number(q.get("adults") || 2),
+      children: Number(q.get("children") || 0),
+      infants: Number(q.get("infants") || 0),
+      total: Number(q.get("total") || 0)
+    };
+  }
+
+  nights() { const d = this.dates(); return Math.max(1, Math.round((new Date(d.departure) - new Date(d.arrival)) / 86400000)); }
+
+  dates() {
+    const first = (this.state.cart || [])[0];
+    const p = first ? { arrival: first.arrival, departure: first.departure } : this.params();
+    const shift = (v, n) => { const d = new Date(v); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+    return {
+      arrival: this.state.addBefore ? shift(p.arrival, -1) : p.arrival,
+      departure: this.state.addAfter ? shift(p.departure, 1) : p.departure
+    };
+  }
+
+  /** The offer has to belong to the stay it will be applied to — the cart's first one. */
+  async loadExtendQuotes() {
+    const first = this.cartItems()[0];
+    if (!first || !this.gp) return;
+    const key = first.roomTypeId + ":" + first.arrival + ":" + first.departure;
+    if (this._quoteKey === key) return;
+    this._quoteKey = key;
+    this.setState({ quotes: null, quoteKey: key, addBefore: false, addAfter: false });
+    try {
+      const quotes = await this.gp.extendQuotes({
+        roomType: first.roomTypeId, arrival: first.arrival, departure: first.departure,
+        numAdults: first.adults || 2, numChildren: first.children || 0
+      });
+      if (this._quoteKey === key) this.setState({ quotes, quoteKey: key });
+    } catch (e) {
+      if (this._quoteKey === key) this.setState({ quotes: null });
+    }
+  }
+
+  componentDidUpdate() { this.loadExtendQuotes(); }
+
+  extensionCost() {
+    const first = this.cartItems()[0];
+    const key = first ? first.roomTypeId + ":" + first.arrival + ":" + first.departure : "";
+    // a quote belonging to a different stay must never be charged
+    if (!first || this.state.quoteKey !== key) return 0;
+    const q = this.state.quotes || {};
+    return (this.state.addBefore && q.before ? q.before.rate : 0) + (this.state.addAfter && q.after ? q.after.rate : 0);
+  }
+
+  isSite() { return this.cartItems().some(i => (i.roomTypeId || "").indexOf("site") > -1); }
+
+  /** Heads across every stay. Infants are free but count toward occupancy. */
+  partyCount(items) {
+    return (items || []).reduce((n, i) => n + (i.adults || 0) + (i.children || 0) + (i.infants || 0), 0);
+  }
+
+  partyTotalLabel(items) {
+    return this.partyCount(items) + " across " + items.length + (items.length === 1 ? " stay" : " stays");
+  }
+
+  /** One description of a party, used by the summary and the confirmation alike. */
+  partyLabel(it) {
+    return (it.adults || 0) + " adults" +
+      (it.children ? ", " + it.children + " children" : "") +
+      (it.infants ? ", " + it.infants + (it.infants === 1 ? " infant" : " infants") : "");
+  }
+
+  cartItems() {
+    // an unpriced stay is a bug upstream, not a free night — never carry it
+    return (this.state.cart || []).filter(i => Number(i.total) > 0);
+  }
+
+  roomStay() {
+    // the first stay carries any extra nights the guest added in Options
+    const items = this.roomStays();
+    return items[0];
+  }
+
+  roomStays() {
+    const guestName = (this.state.firstName + " " + this.state.lastName).trim() || "Guest";
+    return this.cartItems().map((it, i) => {
+      const d = i === 0 ? this.dates() : { arrival: it.arrival, departure: it.departure };
+      return {
+        Arrival: d.arrival, Departure: d.departure,
+        RoomTotal: String(Number(it.total) + (i === 0 ? this.extensionCost() : 0)),
+        RoomTypeId: it.roomTypeId, RoomTypeName: it.name, RatePlanId: it.ratePlanId || "standard",
+        Adults: it.adults || 2, Children: it.children || 0, Infants: it.infants || 0,
+        GuestName: guestName, GuestId: "g1"
+      };
+    });
+  }
+
+  async componentDidMount() {
+    try {
+      const gp = await import("./guestpoint.js");
+      this.gp = gp;
+      let cart = gp.readCart();
+      const q = new URLSearchParams(window.location.search);
+      if (!cart.length && q.get("room") && Number(q.get("total")) > 0) {
+        const p = this.params();
+        cart = gp.addToCart({
+          roomTypeId: p.room, name: NAMES[p.room] || p.room, ratePlanId: p.plan,
+          arrival: p.arrival, departure: p.departure, nights: this.nights(),
+          adults: p.adults, children: p.children, infants: p.infants, total: p.total
+        });
+      }
+      this.setState({ cart, loaded: true });
+      const [extras, profileFields] = await Promise.all([
+        gp.getExtras([this.roomStay()]),
+        gp.getProfileFields()
+      ]);
+      this.setState({ extras: extras || [], profileFields: profileFields || [] });
+      this.loadExtendQuotes();
+    } catch (e) {
+      this.setState({ error: e.message || "Couldn't load booking options." });
+    }
+  }
+
+  extrasTotal() {
+    const p = this.params();
+    return (this.state.extras || []).reduce((sum, x) => {
+      const c = this.state.counts[x.Id] || 0;
+      if (!c) return sum;
+      const unit = parseFloat(x.UnitPrice || "0");
+      const nights = x.Nights || 1;
+      return sum + unit * c * nights;
+    }, 0);
+  }
+
+  totals() {
+    const p = this.params();
+    const v = this.state.validated;
+    const cartSum = this.cartItems().reduce((sum, i) => sum + (Number(i.total) || 0), 0);
+    const stay = (v ? parseFloat(v.ReservationTotalAfterTax) : cartSum) + (v ? 0 : this.extensionCost());
+    const extras = this.extrasTotal();
+    const total = stay + extras;
+    const deposit = v ? parseFloat(v.DepositAmount) : Math.max(total * 0.5, total / this.nights());
+    const dueToday = this.state.payMode === "full" ? total : deposit;
+    return { stay, extras, total, deposit, surcharge: deposit * 0.02, dueToday, dueSurcharge: dueToday * 0.02 };
+  }
+
+  bump(id, delta, max) {
+    this.setState(s => {
+      const next = Math.max(0, Math.min(max, (s.counts[id] || 0) + delta));
+      return { counts: { ...s.counts, [id]: next }, validated: null };
+    });
+  }
+
+  reservation() {
+    const p = this.params();
+    const s = this.state;
+    const guest = {
+      ID: "g1", FirstName: s.firstName, LastName: s.lastName, Email: s.email,
+      Mobile: s.mobile, Address: s.address, City: s.city, PostalCode: s.postcode, Country: "Australia"
+    };
+    const profile = (s.profileFields || []).filter(f => s.answers[f.ExternalId]).map(f => ({
+      Id: f.ExternalId, Name: f.Name, Type: f.FieldType, Value: s.answers[f.ExternalId]
+    }));
+    const extras = (s.extras || []).filter(x => s.counts[x.Id]).map(x => ({
+      Id: x.Id, Name: x.Name, Nights: x.Nights || 1,
+      Counts: [{ Count: s.counts[x.Id] }],
+      Total: String(parseFloat(x.UnitPrice || "0") * (s.counts[x.Id] || 0) * (x.Nights || 1))
+    }));
+    return {
+      Adults: p.adults, Children: p.children, Infants: p.infants,
+      RoomStays: this.roomStays(),
+      Guests: [guest], BookingContact: guest,
+      Extras: extras,
+      ProfileFields: profile.filter(f => f.Type === "reservation" || true),
+      ExtraInfo: [
+        this.isSite() && s.eqType ? "Equipment: " + s.eqType + " " + s.eqLength + s.unit + " x " + s.eqWidth + s.unit : "",
+        s.sitePref ? "Site requested: " + s.sitePref + " (request only, not guaranteed)" : ""
+      ].filter(Boolean).join(" | "),
+      EstimatedArrival: s.answers["arrival-time"] || "",
+      MarketingOptIn: s.marketing, ConsentGiven: s.consent,
+      ReservationTotal: String(this.totals().total)
+    };
+  }
+
+  /** The single source of truth for the details step: returns the first problem, or null. */
+  detailsError() {
+    const s = this.state;
+    if (!s.lastName.trim() || !s.email.trim()) return "Surname and email are required so we can send your confirmation.";
+    if (!/.+@.+\..+/.test(s.email)) return "That email address doesn't look right.";
+    if (!s.mobile.trim()) return "A mobile number is required in case we need to reach you on arrival day.";
+    if (!s.consent) return "Please accept the terms and conditions to continue.";
+    const missing = (s.profileFields || []).filter(f => f.Required && !s.answers[f.ExternalId]);
+    if (missing.length) return missing[0].Name + " is required.";
+    if (this.isSite() && (!s.eqType || !s.eqLength || !s.eqWidth)) return "Please give the type and size of your van or tent so we can allocate a suitable site.";
+    if (!this.isSite() && !s.eqType) return "Please tell us your vehicle type for the parking record.";
+    return null;
+  }
+
+  goOptions() {
+    const s = this.state;
+    const p = this.params();
+    const problem = this.detailsError();
+    if (problem) { this.setState({ step: "details", error: problem }); return; }
+    if (this.gp) {
+      this.gp.captureLead({
+        firstName: s.firstName, lastName: s.lastName, email: s.email, mobile: s.mobile,
+        arrival: p.arrival, departure: p.departure, roomTypeId: p.room, ratePlanId: p.plan,
+        adults: p.adults, children: p.children, infants: p.infants, quotedTotal: this.totals().total,
+        equipment: this.isSite() ? { type: s.eqType, length: s.eqLength, width: s.eqWidth, unit: s.unit } : null,
+        stage: "details-complete"
+      });
+    }
+    this.setState({ step: "options", error: "", holdUntil: Date.now() + 15 * 60 * 1000 });
+    if (!this._tick) this._tick = setInterval(() => this.forceUpdate(), 1000);
+  }
+
+  componentWillUnmount() { clearInterval(this._tick); }
+
+  async goReview() {
+    const problem = this.detailsError();
+    if (problem) { this.setState({ step: "details", error: problem }); return; }
+    this.setState({ busy: true, error: "" });
+    try {
+      const validated = await this.gp.validateReservation(this.reservation());
+      this.setState({ validated, step: "review", busy: false });
+    } catch (e) {
+      this.setState({ busy: false, error: e.message || "We couldn't confirm those dates are still free. Please try again." });
+    }
+  }
+
+  async confirm() {
+    const s = this.state;
+    if (!s.cardName.trim() || s.cardNumber.replace(/\s/g, "").length < 12 || !s.cardExpiry.trim() || !s.cardCvv.trim()) {
+      this.setState({ error: "Please complete the card details to secure the booking." });
+      return;
+    }
+    if (!s.ackSurcharge) { this.setState({ error: "Please acknowledge the card payment surcharge." }); return; }
+    this.setState({ busy: true, error: "" });
+    try {
+      const payload = {
+        ...this.reservation(),
+        ConfNum: s.validated && s.validated.ConfNum,
+        VerificationCode: s.validated && s.validated.VerificationCode,
+        DepositAmount: String(this.totals().dueToday.toFixed(2)),
+        PaymentCard: {
+          CardHolderName: s.cardName,
+          CardNumberToken: "tok_" + s.cardNumber.replace(/\s/g, "").slice(-4),
+          CardNumberMask: "**** **** **** " + s.cardNumber.replace(/\s/g, "").slice(-4),
+          CvvToken: "cvv_token",
+          CardExpiry: s.cardExpiry
+        },
+        Payment: [{ Type: "payment", Status: "Verified", Amount: String(this.totals().dueToday.toFixed(2)), Surcharge: String(this.totals().dueSurcharge.toFixed(2)), Currency: "AUD" }]
+      };
+      const booked = await this.gp.createReservation(payload);
+      this.gp.clearCart();
+      this.setState({ booked, step: "done", busy: false });
+    } catch (e) {
+      const gone = e.status === 409 || /avail|expired|taken|no longer/i.test(e.message || "");
+      this.setState({
+        busy: false,
+        error: gone
+          ? "Sorry — that one went while you were checking out. Nothing has been charged. Reception can often find something on 02 6456 2224, or check other dates below."
+          : (e.message || "The booking couldn't be completed. Nothing has been charged.")
+      });
+    }
+  }
+
+  fmtDate(v) {
+    const p = (v || "").split("-");
+    return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" });
+  }
+
+  field(key, label, placeholder, wide) {
+    return {
+      label, placeholder, isText: true, isSelect: false, options: [],
+      value: this.state[key],
+      onChange: e => this.setState({ [key]: e.target.value, error: "" }),
+      wrapStyle: (wide ? "grid-column:1/-1; " : "") + "display:flex; flex-direction:column; gap:7px; padding:14px 18px; border-radius:14px; background:#F3ECE0; border:1px solid rgba(29,55,48,0.08)"
+    };
+  }
+
+  renderVals() {
+    const p = this.params();
+    const s = this.state;
+    const t = this.totals();
+    const money = n => this.gp ? this.gp.money(n) : "$" + Number(n).toFixed(2);
+    const nights = this.nights();
+    const items = this.cartItems();
+    const priced = this.totals().total > 0;
+    const d = this.dates();
+    const firstStay = items[0];
+    const quoteFits = !!firstStay && s.quoteKey === (firstStay.roomTypeId + ":" + firstStay.arrival + ":" + firstStay.departure);
+    const q = quoteFits ? (s.quotes || {}) : {};
+    const rates = [q.before && q.before.rate, q.after && q.after.rate].filter(r => typeof r === "number" && r > 0);
+    const cheapestExtra = rates.length ? Math.min.apply(null, rates) : 0;
+    const fmtMoney = n => this.gp ? this.gp.money(n) : "$" + Number(n).toFixed(0);
+    let unlock = "";
+    if (nights === 1) unlock = "Winter weekends and the Christmas period need a minimum of two nights — worth adding one below.";
+    else if (cheapestExtra && nights >= 5 && nights < 7) unlock = "Stay " + (7 - nights) + " more " + (7 - nights === 1 ? "night" : "nights") + " and the seventh is free, saving about " + fmtMoney(cheapestExtra) + " on a full week.";
+    else if (cheapestExtra) unlock = "An extra night here costs " + fmtMoney(cheapestExtra) + " — the rates either side of your stay are below.";
+    let holdText = "";
+    if (s.holdUntil && s.step !== "done") {
+      const left = Math.max(0, Math.round((s.holdUntil - Date.now()) / 1000));
+      holdText = left > 0
+        ? "This price is confirmed for " + Math.floor(left / 60) + ":" + String(left % 60).padStart(2, "0") + ". Nothing is reserved until payment goes through."
+        : "We'll re-check the price and availability when you continue — nothing has been charged.";
+    }
+
+    const stepDefs = [
+      { key: "details", label: "1 · Booking details" },
+      { key: "options", label: "2 · Options" },
+      { key: "review", label: "3 · Payment" }
+    ];
+
+    const fields = [
+      this.field("firstName", "First name", "Anh"),
+      this.field("lastName", "Surname", "Nguyen"),
+      this.field("email", "Email", "you@example.com", true),
+      this.field("mobile", "Mobile", "0400 000 000"),
+      this.field("address", "Street address", "12 Gippsland St"),
+      this.field("city", "Suburb / town", "Jindabyne"),
+      this.field("postcode", "Postcode", "2627")
+    ].concat((s.profileFields || []).map(f => {
+      const isLookup = f.FieldType === "lookup";
+      return {
+        label: f.Name + (f.Required ? " *" : ""),
+        placeholder: isLookup ? "" : "",
+        isText: !isLookup,
+        isSelect: isLookup,
+        options: isLookup ? [{ value: "", label: "Please choose" }].concat((f.ProfileFieldValues || []).map(v => ({ value: v.ExternalId, label: v.Value }))) : [],
+        value: s.answers[f.ExternalId] || "",
+        onChange: e => this.setState(x => ({ answers: { ...x.answers, [f.ExternalId]: e.target.value }, error: "" })),
+        wrapStyle: "display:flex; flex-direction:column; gap:7px; padding:14px 18px; border-radius:14px; background:#F3ECE0; border:1px solid rgba(29,55,48,0.08)"
+      };
+    }));
+
+    const extras = (s.extras || []).map(x => {
+      const count = s.counts[x.Id] || 0;
+      const unit = parseFloat(x.UnitPrice || "0");
+      const nightsFor = x.Nights || 1;
+      const max = x.PerPerson ? (p.adults + p.children) : 6;
+      return {
+        name: x.Name,
+        detail: (x.Description ? x.Description + " · " : "") + money(unit) + (x.PerPerson ? " per person per night" : (nightsFor > 1 ? " per night" : " each")),
+        count,
+        lineTotal: count ? money(unit * count * nightsFor) : "",
+        inc: () => this.bump(x.Id, 1, max),
+        dec: () => this.bump(x.Id, -1, max)
+      };
+    });
+
+    return {
+      isEmpty: s.loaded && items.length === 0 && s.step !== "done",
+      notDone: s.step !== "done" && items.length > 0,
+      isDone: s.step === "done",
+      roomName: NAMES[p.room] || p.room,
+      headline: items.length > 1 ? items.length + " stays in one booking" : (items[0] ? items[0].name : NAMES[p.room] || p.room),
+      stayCount: items.length > 1 ? items.length + " stays" : "1 stay",
+      stays: items.map((it, i) => ({
+        name: it.name,
+        total: money(Number(it.total) + (i === 0 ? this.extensionCost() : 0)),
+        detail: this.fmtDate(i === 0 ? d.arrival : it.arrival) + " → " + this.fmtDate(i === 0 ? d.departure : it.departure) +
+          " · " + (i === 0 ? nights : it.nights) + ((i === 0 ? nights : it.nights) === 1 ? " night" : " nights") +
+          " · " + this.partyLabel(it),
+        removeStyle: items.length > 1
+          ? "border:0; background:transparent; font:600 11px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; color:#8C3B2A; cursor:pointer; padding:10px 0 0"
+          : "display:none",
+        remove: () => {
+          const next = this.gp.removeFromCart(it.id);
+          this.setState({ cart: next, validated: null });
+        }
+      })),
+
+      steps: stepDefs.map((d, i) => ({
+        label: d.label,
+        style: "border:1px solid " + (s.step === d.key ? "rgba(29,55,48,0.55)" : "rgba(29,55,48,0.14)") +
+          "; background:" + (s.step === d.key ? "#1D3730" : "transparent") +
+          "; color:" + (s.step === d.key ? "#FCFAF6" : "#56534C") +
+          "; font:600 12px/1 Figtree, sans-serif; letter-spacing:.08em; border-radius:999px; padding:14px 18px; cursor:pointer",
+        go: () => {
+          // no route forward may skip the details checks
+          if (d.key !== "details") {
+            const problem = this.detailsError();
+            if (problem) { this.setState({ step: "details", error: problem }); return; }
+          }
+          if (d.key === "review" && !s.validated) { this.goReview(); return; }
+          this.setState({ step: d.key, error: "" });
+        }
+      })),
+
+      onExtras: s.step === "options",
+      onDetails: s.step === "details",
+      onReview: s.step === "review",
+      extras,
+      backToDetails: () => this.setState({ step: "details", error: "" }),
+      toOptions: () => this.goOptions(),
+
+      equipStyle: this.isSite()
+        ? "margin-top:26px; padding-top:22px; border-top:1px solid rgba(29,55,48,0.10)"
+        : "display:none",
+      vehicleStyle: this.isSite()
+        ? "display:none"
+        : "margin-top:26px; padding-top:22px; border-top:1px solid rgba(29,55,48,0.10)",
+      quotesReady: quoteFits,
+      toggleGuide: () => this.setState(x => ({ guideOpen: !x.guideOpen })),
+      guideLabel: s.guideOpen ? "Hide measurement guide" : "Caravan measurement guide",
+      guideStyle: s.guideOpen
+        ? "margin-top:16px; background:#FCFAF6; border:1px solid rgba(29,55,48,0.10); border-radius:13px; padding:18px; animation:riseIn .18s ease both"
+        : "display:none",
+      conversions: [[15, 4.6], [16, 4.9], [17, 5.2], [18, 5.5], [19, 5.8], [20, 6.1], [21, 6.4], [22, 6.7], [23, 7.0], [24, 7.3]].reduce((rows, pair, i) => {
+        const cell = (txt, head) => ({
+          label: txt,
+          style: "padding:8px 10px; background:" + (head ? "#E9EEE3" : "#FFFFFF") +
+            "; box-shadow:0 0 0 1px rgba(29,55,48,0.08); font:" + (head ? "700 10px" : "500 12px") +
+            "/1.4 Figtree, sans-serif; letter-spacing:" + (head ? ".12em" : "0") + "; color:" + (head ? "#74836A" : "#292724") +
+            (head ? "; text-transform:uppercase" : "")
+        });
+        if (i === 0) rows.push(cell("FEET", true), cell("METRES", true));
+        rows.push(cell(String(pair[0])), cell(pair[1].toFixed(1)));
+        return rows;
+      }, []),
+      unlockText: unlock,
+      unlockStyle: unlock
+        ? "margin:0 0 20px; font:500 13.5px/1.6 Figtree, sans-serif; color:#4C5C40; background:#E9EEE3; border-radius:11px; padding:14px 16px"
+        : "display:none",
+      eqType: s.eqType, eqLength: s.eqLength, eqWidth: s.eqWidth, sitePref: s.sitePref,
+      onEqType: e => this.setState({ eqType: e.target.value, error: "" }),
+      onEqLength: e => this.setState({ eqLength: e.target.value, error: "" }),
+      onEqWidth: e => this.setState({ eqWidth: e.target.value, error: "" }),
+      onSitePref: e => this.setState({ sitePref: e.target.value }),
+      toggleUnit: () => this.setState(x => ({ unit: x.unit === "m" ? "ft" : "m" })),
+      unitToggleLabel: s.unit === "m" ? "Switch to feet" : "Switch to metres",
+      lengthLabel: "Length (" + s.unit + ") *",
+      widthLabel: "Width (" + s.unit + ") *",
+      lengthPlaceholder: s.unit === "m" ? "6.4" : "21",
+      widthPlaceholder: s.unit === "m" ? "2.4" : "8",
+
+      extendStyle: (s.quotes && (s.quotes.before || s.quotes.after)) ? "" : "display:none",
+      extendOptions: [
+        s.quotes && s.quotes.before ? {
+          label: (s.addBefore ? "✓ " + this.fmtDate(s.quotes.before.date) + " added" : "+ " + money(s.quotes.before.rate) + " for " + this.fmtDate(s.quotes.before.date)),
+          style: "border:0; border-radius:999px; font:600 13px/1 Figtree, sans-serif; padding:16px 22px; cursor:pointer; " +
+            (s.addBefore ? "background:#1D3730; color:#FCFAF6" : "background:#E9EEE3; color:#1D3730"),
+          toggle: () => this.setState(x => ({ addBefore: !x.addBefore, validated: null }))
+        } : null,
+        s.quotes && s.quotes.after ? {
+          label: (s.addAfter ? "✓ " + this.fmtDate(s.quotes.after.date) + " added" : "+ " + money(s.quotes.after.rate) + " for " + this.fmtDate(s.quotes.after.date)),
+          style: "border:0; border-radius:999px; font:600 13px/1 Figtree, sans-serif; padding:16px 22px; cursor:pointer; " +
+            (s.addAfter ? "background:#1D3730; color:#FCFAF6" : "background:#E9EEE3; color:#1D3730"),
+          toggle: () => this.setState(x => ({ addAfter: !x.addAfter, validated: null }))
+        } : null
+      ].filter(Boolean),
+
+      ackSurcharge: s.ackSurcharge,
+      onAckSurcharge: e => this.setState({ ackSurcharge: e.target.checked, error: "" }),
+      holdText: holdText,
+      holdStyle: holdText
+        ? "margin:0 0 16px; font:500 13px/1.5 Figtree, sans-serif; color:#4C5C40; background:#E9EEE3; border-radius:10px; padding:12px 14px"
+        : "display:none",
+
+      fields,
+      marketing: s.marketing,
+      consent: s.consent,
+      onMarketing: e => this.setState({ marketing: e.target.checked }),
+      onConsent: e => this.setState({ consent: e.target.checked, error: "" }),
+      reviewLabel: s.busy ? "Checking availability…" : "Continue to payment",
+      toReview: () => { if (!s.busy) this.goReview(); },
+
+      payOptions: [
+        {
+          key: "deposit", label: "Pay deposit now", amount: money(t.deposit),
+          surcharge: "+ " + money(t.deposit * 0.02) + " card surcharge",
+          balance: "Balance of " + money(t.total - t.deposit) + " charged 8 days before arrival"
+        },
+        {
+          key: "full", label: "Pay in full", amount: money(t.total),
+          surcharge: "+ " + money(t.total * 0.02) + " card surcharge",
+          balance: "Nothing further to pay before you arrive"
+        }
+      ].map(o => ({
+        label: o.label, amount: o.amount, surcharge: o.surcharge, balance: o.balance,
+        style: "text-align:left; cursor:pointer; border-radius:14px; padding:18px; background:" +
+          (s.payMode === o.key ? "#E9EEE3" : "#FCFAF6") + "; border:1.5px solid " +
+          (s.payMode === o.key ? "#1D3730" : "rgba(29,55,48,0.12)"),
+        pick: () => this.setState({ payMode: o.key, error: "" })
+      })),
+      policyText: (s.validated && s.validated.RoomStays && s.validated.RoomStays[0] && s.validated.RoomStays[0].PolicyText) ||
+        "Cancellation 15+ days out retains the greater of 10% or one night. Within 7 days the booking is non-refundable.",
+      cardName: s.cardName, cardNumber: s.cardNumber, cardExpiry: s.cardExpiry, cardCvv: s.cardCvv,
+      onCardName: e => this.setState({ cardName: e.target.value, error: "" }),
+      onCardNumber: e => this.setState({ cardNumber: e.target.value, error: "" }),
+      onCardExpiry: e => this.setState({ cardExpiry: e.target.value, error: "" }),
+      onCardCvv: e => this.setState({ cardCvv: e.target.value, error: "" }),
+      confirmLabel: s.busy ? "Confirming…" : (priced ? "Pay " + money(t.dueToday + t.dueSurcharge) + " and confirm" : "We couldn't price this stay"),
+      confirmStyle: "margin-top:20px; border:0; border-radius:14px; background:" +
+        (!priced ? "#EFEDE7" : s.busy ? "#74836A" : "#1D3730") +
+        "; color:" + (priced ? "#FCFAF6" : "#8B877E") +
+        "; font:700 13px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; cursor:" +
+        (!priced ? "not-allowed" : s.busy ? "wait" : "pointer") + "; padding:19px 28px",
+      confirm: () => { if (!s.busy && priced) this.confirm(); },
+      payHeading: s.payMode === "full" ? "Review & pay in full" : "Review & pay deposit",
+      unpriced: !priced,
+      unpricedText: priced ? "" : "We couldn't price this stay. Please call reception on 02 6456 2224 and we'll book it for you — nothing has been charged.",
+      unpricedStyle: priced ? "display:none" : "margin:16px 0 0; font:500 13.5px/1.6 Figtree, sans-serif; color:#8C3B2A",
+
+      errorText: s.error,
+      errorStyle: s.error ? "margin:16px 0 0; font:500 13.5px/1.6 Figtree, sans-serif; color:#8C3B2A" : "display:none",
+
+      summaryRows: [
+        { k: "Arrive", v: this.fmtDate(d.arrival) + " · from 3pm" },
+        { k: "Depart", v: this.fmtDate(d.departure) + " · by 10am" },
+        { k: "Guests", v: this.partyTotalLabel(items) }
+      ],
+      priceRows: [
+        { k: "Accommodation", v: money(t.stay), kStyle: "font:400 14px/1.5 Figtree, sans-serif; color:#8B877E", vStyle: "margin:0; font:500 14px/1.5 Figtree, sans-serif; color:#292724" },
+        { k: "Extra nights", v: this.extensionCost() ? money(this.extensionCost()) : "—", kStyle: "font:400 14px/1.5 Figtree, sans-serif; color:#8B877E", vStyle: "margin:0; font:500 14px/1.5 Figtree, sans-serif; color:#292724" },
+        { k: "Extras", v: t.extras ? money(t.extras) : "—", kStyle: "font:400 14px/1.5 Figtree, sans-serif; color:#8B877E", vStyle: "margin:0; font:500 14px/1.5 Figtree, sans-serif; color:#292724" },
+        { k: "Total", v: money(t.total), kStyle: "font:600 15px/1.5 Figtree, sans-serif; color:#1D3730", vStyle: "margin:0; font:400 19px/1.3 Petrona, Georgia, serif; color:#1D3730" },
+        { k: "Due today", v: money(t.dueToday), kStyle: "font:400 14px/1.5 Figtree, sans-serif; color:#8B877E", vStyle: "margin:0; font:500 14px/1.5 Figtree, sans-serif; color:#4C5C40" },
+        { k: "Card surcharge 2%", v: money(t.dueSurcharge), kStyle: "font:400 13px/1.5 Figtree, sans-serif; color:#8B877E", vStyle: "margin:0; font:400 13px/1.5 Figtree, sans-serif; color:#8B877E" }
+      ],
+
+      doneLine: s.booked
+        ? "Your reference is " + s.booked.ConfNum + ". " + money(t.dueToday + t.dueSurcharge) + " has been charged" + (t.dueToday < t.total ? ", with the balance of " + money(t.total - t.dueToday) + " taken 8 days before arrival." : " — nothing further to pay before you arrive.")
+        : "",
+      doneRows: s.booked
+        ? [{ k: "Reference", v: s.booked.ConfNum }]
+            .concat(items.map((it, i) => ({
+              k: it.name,
+              v: this.fmtDate(i === 0 ? d.arrival : it.arrival) + " → " + this.fmtDate(i === 0 ? d.departure : it.departure) +
+                " · " + (i === 0 ? nights : it.nights) + ((i === 0 ? nights : it.nights) === 1 ? " night" : " nights") +
+                " · " + this.partyLabel(it)
+            })))
+            .concat([
+              { k: "Guests in total", v: this.partyTotalLabel(items) },
+              { k: "Total", v: money(t.total) },
+              { k: "Paid today", v: money(t.dueToday + t.dueSurcharge) }
+            ])
+        : []
+    };
+  }
+}
+
+</script>
+</body>
+</html>

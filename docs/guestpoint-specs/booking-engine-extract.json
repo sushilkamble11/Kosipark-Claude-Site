@@ -1,0 +1,3265 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "version": "2.0",
+    "title": "Booking Engine API (booking flow subset)",
+    "description": "This API allows 3rd parties to become a sales channel for GuestPoint.\n\nOnly endpoints available to 3rd-party channels are documented here. Every request must be authenticated with the `X-API-KEY` header (a partner backend key or a session key generated from it).\n\nAll property-scoped endpoints live under `/properties/{propertyId}/...`, where `propertyId` is the GuestPoint property id.\n\n### Response envelope\nSuccessful responses are wrapped:\n```json\n{ \"success\": true, \"data\": { ... }, \"traceId\": \"01HAM2Z9R2...\" }\n```\nErrors are returned as:\n```json\n{ \"success\": false, \"message\": \"Human readable reason\" }\n```\nSome validation errors return a list instead:\n```json\n{ \"success\": false, \"messages\": [\"reason one\", \"reason two\"] }\n```\n\n### Value formats\n- Monetary amounts are returned as **strings** (e.g. `\"337.5\"`) to preserve\n  decimal precision.\n- Dates are `YYYY-MM-DD` strings; timestamps are RFC3339 strings. - Rates are in the currency of the Property. Use the Exchange Rate endpoint\n  to convert for display.",
+    "contact": {
+      "name": "Chris Curtis"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://beapi.guestpoint.dev/api/v1"
+    }
+  ],
+  "paths": {
+    "/properties/{propertyId}/availabilities": {
+      "get": {
+        "tags": [
+          "Booking"
+        ],
+        "summary": "Get Availability",
+        "description": "Get Room, Availability and Rate data for the given query parameters.\n\nThis returns enough information to complete a booking:\n - Property information, images and messages to display\n - Room Type information and images, availability for the selected dates,\n   and any urgency messaging\n - Rate Plan information and nightly rates for the selected dates,\n   including a strike-through rate (the rate prior to any promo discount)\n   where appropriate\n - Policy information for each rate plan\n\n\nNormally, if a room type has no availability for one of the nights, or a rate is closed or otherwise unsuitable due to restrictions, that room type or rate is omitted, so **only sellable data is returned**.\n\nIf `calendarMode=true` is supplied, unsellable data is also returned and the client must handle it (for example, a calendar showing unsellable dates).\nRates are returned in the currency of the Property. Use the Get Exchange Rate endpoint to get an exchange rate to apply when displaying rates in the local currency.\nImages may be omitted if they are of no interest.\nAn array of properties is returned to support future functionality, even though a single property is currently returned.",
+        "operationId": "get-availabilities",
+        "parameters": [
+          {
+            "name": "arrivalDate",
+            "in": "query",
+            "description": "Date of arrival (YYYY-MM-DD).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "departureDate",
+            "in": "query",
+            "description": "Date of departure (YYYY-MM-DD). Must be after arrivalDate.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "numAdults",
+            "in": "query",
+            "description": "Number of adults. Must be greater than 0.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "numChildren",
+            "in": "query",
+            "description": "Number of children. Defaults to 0.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "calendarMode",
+            "in": "query",
+            "description": "Include dates with no availability or closed rates.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "promoCode",
+            "in": "query",
+            "description": "Promotion code.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "roomTypes",
+            "in": "query",
+            "description": "Comma-separated list of room-type external ids to filter to.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ratePlans",
+            "in": "query",
+            "description": "Comma-separated list of rate-plan external ids to filter to.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "propertyGroupId",
+            "in": "query",
+            "description": "Property group id. Only required when calling the group-scoped variant of this endpoint without a propertyId.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/PropertyId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/InventoryOutput"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "examples": {
+                  "Example 1": {
+                    "$ref": "#/components/examples/AvailabilityResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          }
+        ],
+        "servers": [
+          {
+            "url": "http://beapi.guestpoint.dev/api/v1"
+          }
+        ]
+      }
+    },
+    "/properties/{propertyId}/bestavailablerates": {
+      "get": {
+        "tags": [
+          "Booking"
+        ],
+        "summary": "Get Best Available Rates",
+        "description": "Returns the best available rate per day across a date range, suitable for driving calendar widgets. Each property entry contains a `Days` map keyed by date.",
+        "operationId": "get-bestavailablerates",
+        "parameters": [
+          {
+            "name": "fromDate",
+            "in": "query",
+            "description": "Start of the range (YYYY-MM-DD).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "toDate",
+            "in": "query",
+            "description": "End of the range (YYYY-MM-DD). Must be after fromDate; maximum range is 365 nights.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "roomType",
+            "in": "query",
+            "description": "Restrict to a single room-type external id.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "promoCode",
+            "in": "query",
+            "description": "Promotion code.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "numAdults",
+            "in": "query",
+            "description": "Number of adults.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "numChildren",
+            "in": "query",
+            "description": "Number of children.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/PropertyId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/BAROutput"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "examples": {
+                  "Example 1": {
+                    "$ref": "#/components/examples/BestAvailableRatesResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          }
+        ],
+        "servers": [
+          {
+            "url": "http://beapi.guestpoint.dev/api/v1"
+          }
+        ]
+      }
+    },
+    "/properties/{propertyId}/promocodes/{code}": {
+      "get": {
+        "tags": [
+          "Booking"
+        ],
+        "summary": "Validate Promo Code",
+        "description": "Check whether a promo code is valid for the property. Returns an array of matching promotions (a single code may resolve to more than one applicable promotion).",
+        "operationId": "get-promocode",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PropertyId"
+          },
+          {
+            "name": "code",
+            "in": "path",
+            "description": "The promo code to validate.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/BookingEnginePromoOutput"
+                      }
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          }
+        ],
+        "servers": [
+          {
+            "url": "http://beapi.guestpoint.dev/api/v1"
+          }
+        ]
+      }
+    },
+    "/properties/{propertyId}/extras": {
+      "post": {
+        "tags": [
+          "Booking"
+        ],
+        "summary": "Get Eligible Extras",
+        "description": "Returns the extras (add-ons) that are eligible for the supplied room stays. Called for the guest-details step after room stays have been selected.",
+        "operationId": "post-extras",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PropertyId"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BookingExtraInput"
+              },
+              "examples": {
+                "Example 1": {
+                  "summary": "The selected room stay",
+                  "description": "Only the dates, room type and rate plan of each room stay are needed to work out which extras are on offer.",
+                  "value": {
+                    "RoomStays": [
+                      {
+                        "Arrival": "2026-08-13",
+                        "Departure": "2026-08-14",
+                        "RoomTypeId": "3d75eb32-9f15-43e4-a451-d79b8490ca45",
+                        "RatePlanId": "e3c6aefc-45f4-4050-a85f-640995c61f73"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/BookingExtraOutput"
+                      }
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "examples": {
+                  "Example 1": {
+                    "summary": "Three of the extras on offer",
+                    "description": "Send the ones the booker chooses back on the room stay as `Extras`, using the `Id` here and one `Counts` entry per price. A `perRoom`, `perNight` or `perBooking` extra has a single unnamed price, so it takes a single count.",
+                    "value": {
+                      "success": true,
+                      "data": [
+                        {
+                          "Id": "6ea13f98-64a5-4d25-bb3c-58ed9b9b29c8",
+                          "Name": "Buffet Style Dinner",
+                          "Description": "Dinner in the restaurant each night of the stay",
+                          "ExtraType": "checkout",
+                          "CheckoutType": "service",
+                          "MaxItems": 1,
+                          "PriceType": "perPersonPerNight",
+                          "DisplayOrder": 0,
+                          "Images": null,
+                          "Prices": [
+                            {
+                              "Id": 0,
+                              "Name": "Adult",
+                              "Price": "39"
+                            },
+                            {
+                              "Id": 1,
+                              "Name": "Child",
+                              "Price": "19"
+                            }
+                          ],
+                          "RatePlans": [
+                            "e3c6aefc-45f4-4050-a85f-640995c61f73"
+                          ]
+                        },
+                        {
+                          "Id": "d35f19b5-fc44-4835-bf5e-06d358b7e8ac",
+                          "Name": "Bike Hire",
+                          "Description": "Bike Hire. Per person. Enter number of adults and Children requiring bicycles.",
+                          "ExtraType": "checkout",
+                          "CheckoutType": "quantity",
+                          "MaxItems": 0,
+                          "PriceType": "perPerson",
+                          "DisplayOrder": 0,
+                          "Images": [
+                            {
+                              "URL": "https://images.guestpoint.com/dev-images/b073cbae-3de7-4f85-b4f9-babad03ae601/AddonPhoto/BikeHire.png",
+                              "Captions": {
+                                "en-AU": ""
+                              },
+                              "Sequence": "0"
+                            }
+                          ],
+                          "Prices": [
+                            {
+                              "Id": 0,
+                              "Name": "Adult",
+                              "Price": "17"
+                            },
+                            {
+                              "Id": 1,
+                              "Name": "Child",
+                              "Price": "12"
+                            }
+                          ],
+                          "RatePlans": [
+                            "e3c6aefc-45f4-4050-a85f-640995c61f73"
+                          ]
+                        },
+                        {
+                          "Id": "10cf57ab-2292-4a09-bee9-cab4cd638918",
+                          "Name": "Champagne on Arrival",
+                          "Description": "Lovely chilled bottle of Veuve Cliquot NV",
+                          "ExtraType": "checkout",
+                          "CheckoutType": "quantity",
+                          "MaxItems": 0,
+                          "PriceType": "perRoom",
+                          "DisplayOrder": 0,
+                          "Images": [
+                            {
+                              "URL": "https://images.guestpoint.com/dev-images/b073cbae-3de7-4f85-b4f9-babad03ae601/AddonPhoto/champagne.jpg",
+                              "Captions": {
+                                "en-AU": ""
+                              },
+                              "Sequence": "0"
+                            }
+                          ],
+                          "Prices": [
+                            {
+                              "Id": 0,
+                              "Name": "",
+                              "Price": "80"
+                            }
+                          ],
+                          "RatePlans": [
+                            "e3c6aefc-45f4-4050-a85f-640995c61f73"
+                          ]
+                        }
+                      ],
+                      "traceId": "01KZFWERC42S7CEZCENG2VANJ0"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          }
+        ],
+        "servers": [
+          {
+            "url": "http://beapi.guestpoint.dev/api/v1"
+          }
+        ]
+      }
+    },
+    "/properties/{propertyId}/beprofilefields": {
+      "get": {
+        "tags": [
+          "Booking"
+        ],
+        "summary": "Get Profile Fields",
+        "description": "Get the profile fields the property collects in addition to the standard guest details. Use these to build your booking form, then send the answers back as `ProfileFields` - on a guest for a `person`, `company` or `both` field, and on the reservation for a `reservation` field.\n\nFor a `lookup` field the booker must choose one of the supplied `Values`, and it is that value's `ExternalId` that is sent back.",
+        "operationId": "get-beprofilefields",
+        "parameters": [
+          {
+            "name": "includeInactive",
+            "in": "query",
+            "description": "Include fields that are no longer in use. Off by default.",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "$ref": "#/components/parameters/PropertyId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": [
+                        "array",
+                        "null"
+                      ],
+                      "items": {
+                        "$ref": "#/components/schemas/BookingEngineProfileField"
+                      }
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "examples": {
+                  "Example 1": {
+                    "value": {
+                      "success": true,
+                      "data": [
+                        {
+                          "PropertyId": "b073cbae-3de7-4f85-b4f9-babad03ae601",
+                          "ExternalId": "25fd2e0d-bb89-42a7-9185-8651a94b3bc3",
+                          "Name": "Floor Preference",
+                          "GroupName": "Preferences",
+                          "FieldType": "lookup",
+                          "FieldScope": "person",
+                          "Values": [
+                            {
+                              "ExternalId": "d0d8e23b-952f-4123-b84c-8e9c9cabd0e4",
+                              "Value": "Ground Floor"
+                            },
+                            {
+                              "ExternalId": "3c17f4a8-6d21-4f9b-8e0a-71bd25c4f8e2",
+                              "Value": "Upper Floor"
+                            }
+                          ],
+                          "Sequence": 1,
+                          "Status": "Active"
+                        },
+                        {
+                          "PropertyId": "b073cbae-3de7-4f85-b4f9-babad03ae601",
+                          "ExternalId": "038d93a1-db22-45b6-9433-8f6c25017445",
+                          "Name": "Primary Reason for Stay",
+                          "GroupName": "Marketing",
+                          "FieldType": "lookup",
+                          "FieldScope": "reservation",
+                          "Values": [
+                            {
+                              "ExternalId": "7abd5fb5-954d-4d14-ae24-c1ce39c2d7ae",
+                              "Value": "Holiday"
+                            },
+                            {
+                              "ExternalId": "b2e6c419-8f30-4a52-9c7d-1e4f83ba5d06",
+                              "Value": "Business"
+                            }
+                          ],
+                          "Sequence": 2,
+                          "Status": "Active"
+                        }
+                      ],
+                      "traceId": "01KZFQDRHPRB2HHBH2AEYZCD0B"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          }
+        ],
+        "servers": [
+          {
+            "url": "http://beapi.guestpoint.dev/api/v1"
+          }
+        ]
+      }
+    },
+    "/properties/{propertyId}/reservations": {
+      "patch": {
+        "tags": [
+          "Booking"
+        ],
+        "summary": "Validate Reservation",
+        "description": "Validate the provided reservation to check that it can be created. If availability and restrictions are met, prices are recalculated and the validated reservation is returned, including a `VerificationCode` and payment details.\n\nThe prices calculated here should be displayed to the booker and used for payment. Any prices sent by the client are ignored when saving a booking.",
+        "operationId": "patch-reservations",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PropertyId"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReservationInput"
+              },
+              "examples": {
+                "Booked by one of the guests": {
+                  "summary": "One room, one guest, no separate booking contact",
+                  "description": "`BookingContact` is omitted, so the first guest is used as the booking contact. Every guest carries an `ID`, and the room stay points at it with `GuestId`.",
+                  "value": {
+                    "TraceId": "01KZ4P3NBNHYP36B8N1X83AYMM",
+                    "PropertyId": "b073cbae-3de7-4f85-b4f9-babad03ae601",
+                    "Status": "Booked",
+                    "ExtraInfo": "Feather Pillow please",
+                    "Adults": 1,
+                    "Children": 0,
+                    "Infants": 0,
+                    "ConsentGiven": null,
+                    "PromoCode": "",
+                    "EstimatedArrival": "11:30",
+                    "RoomStays": [
+                      {
+                        "Arrival": "2026-08-13",
+                        "Departure": "2026-08-14",
+                        "RoomTypeId": "7aea26b1-2585-4dd4-87cf-ea41a742f719",
+                        "RatePlanId": "34b76b4c-47a1-42bd-9755-f2ea9c076572",
+                        "Adults": 1,
+                        "Children": 0,
+                        "Infants": 0,
+                        "GuestId": "28bc36af-a27d-49f2-83b0-b84fddb74efd",
+                        "GuestName": "Buddy Holly",
+                        "ExtraInfo": "Feather Pillow please",
+                        "Extras": [
+                          {
+                            "Id": "10cf57ab-2292-4a09-bee9-cab4cd638918",
+                            "Name": "Champagne on Arrival",
+                            "Counts": [
+                              {
+                                "Id": 0,
+                                "Name": "Adult",
+                                "Count": 1
+                              },
+                              {
+                                "Id": 1,
+                                "Name": "Child",
+                                "Count": 0
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ],
+                    "Guests": [
+                      {
+                        "ID": "28bc36af-a27d-49f2-83b0-b84fddb74efd",
+                        "FirstName": "Buddy",
+                        "LastName": "Holly",
+                        "Email": "buddy.holly@example.com",
+                        "Phone": "+61444444444",
+                        "Country": "AU",
+                        "ProfileFields": [
+                          {
+                            "Id": "25fd2e0d-bb89-42a7-9185-8651a94b3bc3",
+                            "Name": "Floor Preference",
+                            "Type": "lookup",
+                            "Value": "d0d8e23b-952f-4123-b84c-8e9c9cabd0e4"
+                          }
+                        ]
+                      }
+                    ],
+                    "ProfileFields": [
+                      {
+                        "Id": "945eef5a-08b0-4cbd-bfa9-bec580dcfed0",
+                        "Name": "How did you hear about us",
+                        "Type": "lookup"
+                      },
+                      {
+                        "Id": "038d93a1-db22-45b6-9433-8f6c25017445",
+                        "Name": "Primary Reason for Stay",
+                        "Type": "lookup",
+                        "Value": "7abd5fb5-954d-4d14-ae24-c1ce39c2d7ae"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ReservationOutput"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "examples": {
+                  "Booked by one of the guests": {
+                    "summary": "Response to the request example above",
+                    "description": "Prices have been recalculated and a `ConfNum` and `VerificationCode` generated, both of which must be sent to Create Reservation. `BookingContact` has been filled in from the first guest.",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "ID": 0,
+                        "PropertyId": "b073cbae-3de7-4f85-b4f9-babad03ae601",
+                        "ChannelCode": "MYCHANNEL",
+                        "SalesChannelCode": "MYCHANNEL",
+                        "CurrencyCode": "AUD",
+                        "Status": "Booked",
+                        "SaleTime": "2026-08-08T03:42:18.240272267Z",
+                        "ReceivedTime": "2026-08-08T03:42:18.240272267Z",
+                        "ExtraInfo": "Feather Pillow please",
+                        "ConfNum": "1YIBPD457P",
+                        "Adults": 1,
+                        "Children": 0,
+                        "ReservationTotal": "290",
+                        "ReservationTotalTax": "0",
+                        "ReservationTotalAfterTax": "290",
+                        "Surcharge": "0",
+                        "DepositAmount": "0",
+                        "EstimatedArrival": "11:30",
+                        "MarketingOptIn": false,
+                        "ConsentGiven": null,
+                        "RoomStays": [
+                          {
+                            "Arrival": "2026-08-13",
+                            "Departure": "2026-08-14",
+                            "RoomTotal": "290",
+                            "ArrivalTime": "",
+                            "RoomTypeId": "7aea26b1-2585-4dd4-87cf-ea41a742f719",
+                            "RoomTypeName": "1-Bedroom Deluxe Apartment",
+                            "PolicyId": null,
+                            "Adults": 1,
+                            "Children": 0,
+                            "Infants": 0,
+                            "GuestName": "Buddy Holly",
+                            "GuestId": "28bc36af-a27d-49f2-83b0-b84fddb74efd",
+                            "ExtraInfo": "",
+                            "IsCancelled": false,
+                            "RoomStayConfNum": "1",
+                            "RateDetails": [
+                              {
+                                "RatePlanId": "34b76b4c-47a1-42bd-9755-f2ea9c076572",
+                                "RatePlanName": "Standard Flexible Rate",
+                                "FromDate": "2026-08-13",
+                                "ToDate": "2026-08-13",
+                                "StrikeOutRate": "210",
+                                "RoomRate": "210",
+                                "Discount": "0",
+                                "TaxIncluded": true,
+                                "TaxAmount": "0"
+                              }
+                            ],
+                            "Extras": [
+                              {
+                                "Id": "10cf57ab-2292-4a09-bee9-cab4cd638918",
+                                "Name": "Champagne on Arrival",
+                                "Nights": 1,
+                                "Counts": [
+                                  {
+                                    "Id": 0,
+                                    "Name": "",
+                                    "Count": 1,
+                                    "Price": "80"
+                                  }
+                                ],
+                                "Total": "80",
+                                "Tax": "0"
+                              }
+                            ],
+                            "PolicyText": "No deposit is required at time of booking. The remaining balance is to be paid on Arrival. Free cancellation up to 3 days before arrival.",
+                            "BeddingConfigurationText": "",
+                            "Discounts": null,
+                            "RoomStayLevelDiscounts": "0",
+                            "RoomTotalBeforeDiscount": "210"
+                          }
+                        ],
+                        "Guests": [
+                          {
+                            "ID": "28bc36af-a27d-49f2-83b0-b84fddb74efd",
+                            "FirstName": "Buddy",
+                            "LastName": "Holly",
+                            "Email": "buddy.holly@example.com",
+                            "Phone": "+61444444444",
+                            "Mobile": "+61444444444",
+                            "City": "",
+                            "State": "",
+                            "PostalCode": "",
+                            "Country": "AU",
+                            "ProfileFields": [
+                              {
+                                "Id": "25fd2e0d-bb89-42a7-9185-8651a94b3bc3",
+                                "Name": "Floor Preference",
+                                "Type": "lookup",
+                                "Value": "d0d8e23b-952f-4123-b84c-8e9c9cabd0e4"
+                              }
+                            ]
+                          }
+                        ],
+                        "BookingContact": {
+                          "ID": "28bc36af-a27d-49f2-83b0-b84fddb74efd",
+                          "FirstName": "Buddy",
+                          "LastName": "Holly",
+                          "Email": "buddy.holly@example.com",
+                          "Phone": "+61444444444",
+                          "Mobile": "+61444444444",
+                          "City": "",
+                          "State": "",
+                          "PostalCode": "",
+                          "Country": "AU",
+                          "ProfileFields": [
+                            {
+                              "Id": "25fd2e0d-bb89-42a7-9185-8651a94b3bc3",
+                              "Name": "Floor Preference",
+                              "Type": "lookup",
+                              "Value": "d0d8e23b-952f-4123-b84c-8e9c9cabd0e4"
+                            }
+                          ]
+                        },
+                        "PaymentRequired": "0",
+                        "PayLater": "290",
+                        "GuaranteeRequired": false,
+                        "VerificationCode": "U2F0IEF1ZyAgOCAwMzo1MjoxOCBVVEMgMjAyNg==.MVlJQlBENDU3UA==.WIBUtwFPKQWXw8AJeOXtEb9itrQcSLeZL0oWTl+nZMs=",
+                        "Extras": null,
+                        "Discounts": null,
+                        "ProfileFields": [
+                          {
+                            "Id": "945eef5a-08b0-4cbd-bfa9-bec580dcfed0",
+                            "Name": "How did you hear about us",
+                            "Type": "lookup",
+                            "Value": ""
+                          },
+                          {
+                            "Id": "038d93a1-db22-45b6-9433-8f6c25017445",
+                            "Name": "Primary Reason for Stay",
+                            "Type": "lookup",
+                            "Value": "7abd5fb5-954d-4d14-ae24-c1ce39c2d7ae"
+                          }
+                        ]
+                      },
+                      "traceId": "01KZFQDRHPRB2HHBH2AEYZCD0B"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          }
+        ],
+        "servers": [
+          {
+            "url": "http://beapi.guestpoint.dev/api/v1"
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Booking"
+        ],
+        "summary": "Create Reservation",
+        "description": "Create a reservation for your channel. When verification is enabled, the `VerificationCode` returned by Validate Reservation must be supplied and must match the `ConfNum`, otherwise the reservation is rejected as expired.",
+        "operationId": "post-reservation",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PropertyId"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReservationInput"
+              },
+              "examples": {
+                "Booked by an agent": {
+                  "summary": "The same booking, with a separate booking contact",
+                  "description": "The `ConfNum` and `VerificationCode` returned by Validate Reservation are sent back unchanged. The booking was made by someone who is not staying, so `BookingContact` is supplied with its own `ID` - required here because the guests have ids.",
+                  "value": {
+                    "TraceId": "01KZ4P3NBNHYP36B8N1X83AYMM",
+                    "PropertyId": "b073cbae-3de7-4f85-b4f9-babad03ae601",
+                    "ConfNum": "1YIBPD457P",
+                    "VerificationCode": "U2F0IEF1ZyAgOCAwMzo1MjoxOCBVVEMgMjAyNg==.MVlJQlBENDU3UA==.WIBUtwFPKQWXw8AJeOXtEb9itrQcSLeZL0oWTl+nZMs=",
+                    "Status": "Booked",
+                    "ExtraInfo": "Feather Pillow please",
+                    "Adults": 1,
+                    "Children": 0,
+                    "Infants": 0,
+                    "ConsentGiven": true,
+                    "MarketingOptIn": false,
+                    "PromoCode": "",
+                    "EstimatedArrival": "11:30",
+                    "RoomStays": [
+                      {
+                        "Arrival": "2026-08-13",
+                        "Departure": "2026-08-14",
+                        "RoomTypeId": "7aea26b1-2585-4dd4-87cf-ea41a742f719",
+                        "RatePlanId": "34b76b4c-47a1-42bd-9755-f2ea9c076572",
+                        "Adults": 1,
+                        "Children": 0,
+                        "Infants": 0,
+                        "GuestId": "28bc36af-a27d-49f2-83b0-b84fddb74efd",
+                        "GuestName": "Buddy Holly",
+                        "ExtraInfo": "Feather Pillow please",
+                        "Extras": [
+                          {
+                            "Id": "10cf57ab-2292-4a09-bee9-cab4cd638918",
+                            "Name": "Champagne on Arrival",
+                            "Counts": [
+                              {
+                                "Id": 0,
+                                "Name": "Adult",
+                                "Count": 1
+                              },
+                              {
+                                "Id": 1,
+                                "Name": "Child",
+                                "Count": 0
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ],
+                    "Guests": [
+                      {
+                        "ID": "28bc36af-a27d-49f2-83b0-b84fddb74efd",
+                        "FirstName": "Buddy",
+                        "LastName": "Holly",
+                        "Email": "buddy.holly@example.com",
+                        "Phone": "+61444444444",
+                        "Country": "AU"
+                      }
+                    ],
+                    "BookingContact": {
+                      "ID": "6f0a1c92-7b44-4c1e-9a3d-2e5b8c07d411",
+                      "FirstName": "Norman",
+                      "LastName": "Petty",
+                      "Email": "bookings@example.com",
+                      "Phone": "+61255555555",
+                      "CompanyName": "Clovis Travel",
+                      "Address": "118 Norfolk Street",
+                      "City": "Sydney",
+                      "State": "NSW",
+                      "PostalCode": "2000",
+                      "Country": "AU"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ReservationOutput"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "examples": {
+                  "Booked by an agent": {
+                    "summary": "Response to the request example above",
+                    "description": "The saved reservation. `ID` is now set, and `BookingContact` is the agent rather than the guest. No `VerificationCode` is returned, as it has been consumed.",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "ID": 4182,
+                        "PropertyId": "b073cbae-3de7-4f85-b4f9-babad03ae601",
+                        "ChannelCode": "MYCHANNEL",
+                        "SalesChannelCode": "MYCHANNEL",
+                        "CurrencyCode": "AUD",
+                        "Status": "Booked",
+                        "SaleTime": "2026-08-08T03:52:41.118203441Z",
+                        "ReceivedTime": "2026-08-08T03:52:41.118203441Z",
+                        "ExtraInfo": "Feather Pillow please",
+                        "ConfNum": "1YIBPD457P",
+                        "Adults": 1,
+                        "Children": 0,
+                        "ReservationTotal": "290",
+                        "ReservationTotalTax": "0",
+                        "ReservationTotalAfterTax": "290",
+                        "Surcharge": "0",
+                        "DepositAmount": "0",
+                        "EstimatedArrival": "11:30",
+                        "MarketingOptIn": false,
+                        "ConsentGiven": true,
+                        "RoomStays": [
+                          {
+                            "Arrival": "2026-08-13",
+                            "Departure": "2026-08-14",
+                            "RoomTotal": "290",
+                            "ArrivalTime": "",
+                            "RoomTypeId": "7aea26b1-2585-4dd4-87cf-ea41a742f719",
+                            "RoomTypeName": "1-Bedroom Deluxe Apartment",
+                            "PolicyId": null,
+                            "Adults": 1,
+                            "Children": 0,
+                            "Infants": 0,
+                            "GuestName": "Buddy Holly",
+                            "GuestId": "28bc36af-a27d-49f2-83b0-b84fddb74efd",
+                            "ExtraInfo": "",
+                            "IsCancelled": false,
+                            "RoomStayConfNum": "1",
+                            "RateDetails": [
+                              {
+                                "RatePlanId": "34b76b4c-47a1-42bd-9755-f2ea9c076572",
+                                "RatePlanName": "Standard Flexible Rate",
+                                "FromDate": "2026-08-13",
+                                "ToDate": "2026-08-13",
+                                "StrikeOutRate": "210",
+                                "RoomRate": "210",
+                                "Discount": "0",
+                                "TaxIncluded": true,
+                                "TaxAmount": "0"
+                              }
+                            ],
+                            "Extras": [
+                              {
+                                "Id": "10cf57ab-2292-4a09-bee9-cab4cd638918",
+                                "Name": "Champagne on Arrival",
+                                "Nights": 1,
+                                "Counts": [
+                                  {
+                                    "Id": 0,
+                                    "Name": "",
+                                    "Count": 1,
+                                    "Price": "80"
+                                  }
+                                ],
+                                "Total": "80",
+                                "Tax": "0"
+                              }
+                            ],
+                            "PolicyText": "No deposit is required at time of booking. The remaining balance is to be paid on Arrival. Free cancellation up to 3 days before arrival.",
+                            "BeddingConfigurationText": "",
+                            "Discounts": null,
+                            "RoomStayLevelDiscounts": "0",
+                            "RoomTotalBeforeDiscount": "210"
+                          }
+                        ],
+                        "Guests": [
+                          {
+                            "ID": "28bc36af-a27d-49f2-83b0-b84fddb74efd",
+                            "FirstName": "Buddy",
+                            "LastName": "Holly",
+                            "Email": "buddy.holly@example.com",
+                            "Phone": "+61444444444",
+                            "Mobile": "+61444444444",
+                            "City": "",
+                            "State": "",
+                            "PostalCode": "",
+                            "Country": "AU"
+                          }
+                        ],
+                        "BookingContact": {
+                          "ID": "6f0a1c92-7b44-4c1e-9a3d-2e5b8c07d411",
+                          "FirstName": "Norman",
+                          "LastName": "Petty",
+                          "Email": "bookings@example.com",
+                          "Mobile": "+61255555555",
+                          "CompanyName": "Clovis Travel",
+                          "Address": "118 Norfolk Street",
+                          "City": "Sydney",
+                          "State": "NSW",
+                          "PostalCode": "2000",
+                          "Country": "AU"
+                        },
+                        "PaymentRequired": "0",
+                        "PayLater": "0",
+                        "GuaranteeRequired": false,
+                        "Extras": null,
+                        "Discounts": null,
+                        "ProfileFields": null
+                      },
+                      "traceId": "01KZFQDT4M8QW1J6ZC0YV3PN9E"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          }
+        ],
+        "servers": [
+          {
+            "url": "http://beapi.guestpoint.dev/api/v1"
+          }
+        ],
+        "x-internal": false
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "RatePlan": {
+        "type": "object",
+        "title": "RatePlan",
+        "properties": {
+          "Id": {
+            "type": "string"
+          },
+          "Name": {
+            "type": "string"
+          },
+          "Description": {
+            "type": "string"
+          },
+          "Status": {
+            "type": "string"
+          },
+          "Type": {
+            "type": "string"
+          },
+          "MealPlan": {
+            "type": "string"
+          },
+          "MinStay": {
+            "type": "integer"
+          },
+          "IncludedGuests": {
+            "type": "integer"
+          },
+          "Rates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RatePlanRate"
+            }
+          },
+          "UrgencyMessages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UrgencyMessage"
+            }
+          },
+          "Policy": {
+            "$ref": "#/components/schemas/RatePlanPolicy"
+          },
+          "PolicyText": {
+            "type": "string"
+          },
+          "Inclusions": {
+            "type": "string"
+          },
+          "WebSortOrder": {
+            "type": "integer"
+          }
+        }
+      },
+      "Image": {
+        "type": "object",
+        "title": "Image",
+        "properties": {
+          "URL": {
+            "type": "string"
+          },
+          "Captions": {
+            "type": "object",
+            "description": "Map of language code to caption.",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "Sequence": {
+            "type": "string"
+          }
+        }
+      },
+      "ReservationOutput": {
+        "type": "object",
+        "title": "ReservationOutput",
+        "properties": {
+          "ID": {
+            "type": "integer"
+          },
+          "PropertyId": {
+            "type": "string"
+          },
+          "ChannelCode": {
+            "type": "string"
+          },
+          "SalesChannelCode": {
+            "type": "string"
+          },
+          "CurrencyCode": {
+            "type": "string"
+          },
+          "Status": {
+            "type": "string"
+          },
+          "SaleTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ReceivedTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "CancelTime": {
+            "type": "string",
+            "description": "Omitted if the reservation has not been cancelled.",
+            "format": "date-time"
+          },
+          "ModifyTime": {
+            "type": "string",
+            "description": "Omitted if the reservation has not been modified.",
+            "format": "date-time"
+          },
+          "ExtraInfo": {
+            "type": "string"
+          },
+          "ConfNum": {
+            "type": "string"
+          },
+          "Adults": {
+            "type": "integer"
+          },
+          "Children": {
+            "type": "integer"
+          },
+          "Infants": {
+            "type": "integer"
+          },
+          "ReservationTotal": {
+            "type": "string",
+            "description": "Total before tax."
+          },
+          "ReservationTotalTax": {
+            "type": "string"
+          },
+          "ReservationTotalAfterTax": {
+            "type": "string"
+          },
+          "Surcharge": {
+            "type": "string"
+          },
+          "DepositAmount": {
+            "type": "string"
+          },
+          "EstimatedArrival": {
+            "type": "string"
+          },
+          "MarketingOptIn": {
+            "type": "boolean"
+          },
+          "ConsentGiven": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "RoomStays": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReservationRoomStay"
+            }
+          },
+          "Guests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Guest"
+            }
+          },
+          "BookingContact": {
+            "$ref": "#/components/schemas/Guest",
+            "description": "The person who made the booking, echoed back with any generated ids. Falls back to the first guest when the request did not supply one. Null if the reservation has no booking contact recorded."
+          },
+          "PaymentRequired": {
+            "type": "string"
+          },
+          "PayLater": {
+            "type": "string"
+          },
+          "GuaranteeRequired": {
+            "type": "boolean"
+          },
+          "VerificationCode": {
+            "type": "string"
+          },
+          "PaymentDetails": {
+            "$ref": "#/components/schemas/ReservationOutputPaymentDetails"
+          },
+          "PaymentCard": {
+            "$ref": "#/components/schemas/ReservationPaymentCard"
+          },
+          "Extras": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extra"
+            }
+          },
+          "Discounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReservationDiscount"
+            }
+          },
+          "ProfileFields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReservationProfileField"
+            }
+          }
+        }
+      },
+      "ReservationRoomStay": {
+        "type": "object",
+        "title": "ReservationRoomStay",
+        "properties": {
+          "Arrival": {
+            "type": "string",
+            "format": "date"
+          },
+          "Departure": {
+            "type": "string",
+            "format": "date"
+          },
+          "RoomTotal": {
+            "type": "string"
+          },
+          "ArrivalTime": {
+            "type": "string"
+          },
+          "RoomTypeId": {
+            "type": "string"
+          },
+          "RoomTypeName": {
+            "type": "string"
+          },
+          "RatePlanId": {
+            "type": "string",
+            "description": "Required on input; not returned on output."
+          },
+          "PolicyId": {
+            "type": "integer"
+          },
+          "Adults": {
+            "type": "integer"
+          },
+          "Children": {
+            "type": "integer"
+          },
+          "Infants": {
+            "type": "integer"
+          },
+          "GuestName": {
+            "type": "string"
+          },
+          "GuestId": {
+            "type": "string",
+            "description": "Matches an id in the reservation's Guests array. If omitted, the guest in the same position in that array is used."
+          },
+          "ExtraInfo": {
+            "type": "string"
+          },
+          "IsCancelled": {
+            "type": "boolean"
+          },
+          "RoomStayConfNum": {
+            "type": "string"
+          },
+          "RateDetails": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReservationRoomStayRate"
+            }
+          },
+          "Extras": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extra"
+            }
+          },
+          "PolicyText": {
+            "type": "string"
+          },
+          "BeddingConfigurationText": {
+            "type": "string"
+          },
+          "Discounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReservationDiscount"
+            }
+          },
+          "RoomStayLevelDiscounts": {
+            "type": "string"
+          },
+          "RoomTotalBeforeDiscount": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "Arrival",
+          "Departure",
+          "RoomTypeId",
+          "Adults",
+          "GuestName"
+        ]
+      },
+      "ReservationOutputPaymentDetails": {
+        "type": "object",
+        "title": "ReservationOutputPaymentDetails",
+        "properties": {
+          "Gateway": {
+            "type": "string"
+          },
+          "MerchantId": {
+            "type": "string"
+          },
+          "CollectSurcharge": {
+            "type": "boolean"
+          },
+          "VerifyGuaranteeWithPreAuth": {
+            "type": "boolean"
+          },
+          "PreAuthAmount": {
+            "type": "string"
+          },
+          "AcceptedCards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReservationOutputCardType"
+            }
+          },
+          "Session": {
+            "$ref": "#/components/schemas/SessionKeySetOutput"
+          }
+        }
+      },
+      "BARDay": {
+        "type": "object",
+        "title": "BARDay",
+        "properties": {
+          "RoomAvailable": {
+            "type": "boolean"
+          },
+          "BestRate": {
+            "type": "string"
+          },
+          "StrikeOutRate": {
+            "type": "string"
+          },
+          "DiscountReason": {
+            "type": "string"
+          },
+          "MinStay": {
+            "type": "integer"
+          },
+          "ClosedToArrival": {
+            "type": "boolean"
+          },
+          "ClosedToDeparture": {
+            "type": "boolean"
+          },
+          "RoomType": {
+            "type": "string"
+          },
+          "RatePlan": {
+            "type": "string"
+          }
+        }
+      },
+      "BookingExtraInput": {
+        "type": "object",
+        "title": "BookingExtraInput",
+        "properties": {
+          "RoomStays": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BookingEngineRoomStay"
+            }
+          }
+        }
+      },
+      "ProfileFieldValue": {
+        "type": "object",
+        "title": "ProfileFieldValue",
+        "properties": {
+          "ExternalId": {
+            "type": "string",
+            "description": "Send this as the `Value` of the answer."
+          },
+          "Value": {
+            "type": "string",
+            "description": "The text to display to the booker."
+          }
+        }
+      },
+      "BookingEngineRoomStay": {
+        "type": "object",
+        "title": "BookingEngineRoomStay",
+        "properties": {
+          "Arrival": {
+            "type": "string",
+            "format": "date"
+          },
+          "Departure": {
+            "type": "string",
+            "format": "date"
+          },
+          "RoomTotal": {
+            "type": "string"
+          },
+          "RoomTypeId": {
+            "type": "string"
+          },
+          "RatePlanId": {
+            "type": "string"
+          },
+          "Adults": {
+            "type": "integer"
+          },
+          "Children": {
+            "type": "integer"
+          },
+          "Infants": {
+            "type": "integer"
+          },
+          "GuestName": {
+            "type": "string"
+          },
+          "ExtraInfo": {
+            "type": "string"
+          },
+          "RateDetails": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "RatePlanId": {
+                  "type": "string"
+                },
+                "FromDate": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "ToDate": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "RoomRate": {
+                  "type": "string"
+                },
+                "TaxIncluded": {
+                  "type": "boolean"
+                },
+                "TaxAmount": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ReservationOutputCardType": {
+        "type": "object",
+        "title": "ReservationOutputCardType",
+        "properties": {
+          "Code": {
+            "type": "string"
+          },
+          "Name": {
+            "type": "string"
+          },
+          "Surcharge": {
+            "type": "string"
+          },
+          "SurchargeAmount": {
+            "type": "string"
+          },
+          "TaxAmount": {
+            "type": "string"
+          }
+        }
+      },
+      "ReservationInputPaymentDetails": {
+        "type": "object",
+        "title": "ReservationInputPaymentDetails",
+        "properties": {
+          "Type": {
+            "type": "string",
+            "description": "Constant \"payment\"."
+          },
+          "Status": {
+            "type": "string",
+            "description": "Constant \"Verified\"."
+          },
+          "Amount": {
+            "type": "string"
+          },
+          "Surcharge": {
+            "type": "string"
+          },
+          "SurchargeTaxAmount": {
+            "type": "string"
+          },
+          "Currency": {
+            "type": "string"
+          },
+          "Reference": {
+            "type": "string"
+          },
+          "ProviderResponse": {
+            "$ref": "#/components/schemas/ProviderResponse"
+          },
+          "Id": {
+            "type": "string"
+          }
+        }
+      },
+      "BookingEnginePromoOutput": {
+        "type": "object",
+        "title": "BookingEnginePromoOutput",
+        "properties": {
+          "PropertyId": {
+            "type": "integer"
+          },
+          "GroupId": {
+            "type": "integer"
+          },
+          "ExternalId": {
+            "type": "string"
+          },
+          "Code": {
+            "type": "string"
+          },
+          "Name": {
+            "type": "string"
+          },
+          "Description": {
+            "type": "string"
+          },
+          "DiscountType": {
+            "type": "string"
+          },
+          "Value": {
+            "type": "string"
+          },
+          "DiscountOn": {
+            "type": "string"
+          },
+          "ValidFrom": {
+            "type": "string",
+            "format": "date"
+          },
+          "ValidTo": {
+            "type": "string",
+            "format": "date"
+          },
+          "BookFrom": {
+            "type": "string",
+            "format": "date"
+          },
+          "BookTo": {
+            "type": "string",
+            "format": "date"
+          },
+          "BookFilters": {
+            "type": "string"
+          },
+          "UsageType": {
+            "type": "string"
+          },
+          "UsageValue": {
+            "type": "integer"
+          },
+          "UsedValue": {
+            "type": "integer"
+          },
+          "CanCombine": {
+            "type": "boolean"
+          },
+          "MinimumNight": {
+            "type": "integer"
+          },
+          "AppliedTo": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "RoomTypeId": {
+                  "type": "integer"
+                },
+                "RatePlanId": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "Status": {
+            "type": "string"
+          }
+        }
+      },
+      "BookingEngineProfileField": {
+        "type": "object",
+        "title": "BookingEngineProfileField",
+        "description": "The definition of an additional field the property collects. Retrieved from Get Profile Fields; answers are sent back as `ReservationProfileField`.",
+        "properties": {
+          "PropertyId": {
+            "type": "string"
+          },
+          "ExternalId": {
+            "type": "string",
+            "description": "Send this as the `Id` of the answer."
+          },
+          "Name": {
+            "type": "string"
+          },
+          "GroupName": {
+            "type": "string",
+            "description": "Used to group related fields together for display."
+          },
+          "FieldType": {
+            "type": "string",
+            "enum": [
+              "text",
+              "notes",
+              "lookup",
+              "number",
+              "decimal",
+              "currency",
+              "percentage",
+              "checkbox",
+              "date"
+            ],
+            "description": "Determines what the answer may contain."
+          },
+          "FieldScope": {
+            "type": "string",
+            "enum": [
+              "person",
+              "company",
+              "both",
+              "reservation"
+            ],
+            "description": "Where the answer belongs. `person`, `company` and `both` are asked of a guest and returned in that guest's `ProfileFields`; `reservation` is asked once and returned in the reservation's `ProfileFields`."
+          },
+          "Values": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "description": "The options to choose from. Only set for a `lookup` field.",
+            "items": {
+              "$ref": "#/components/schemas/ProfileFieldValue"
+            }
+          },
+          "Sequence": {
+            "type": "integer",
+            "description": "The order in which to display the fields."
+          },
+          "Status": {
+            "type": "string",
+            "enum": [
+              "Active",
+              "Inactive"
+            ]
+          }
+        },
+        "required": [
+          "ExternalId",
+          "Name",
+          "FieldType",
+          "FieldScope"
+        ]
+      },
+      "BeddingConfig": {
+        "type": "object",
+        "title": "BeddingConfig",
+        "description": "Bed counts. Each field is null when that bed type is not present.",
+        "properties": {
+          "SingleBeds": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "DoubleBeds": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "QueenBeds": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "KingBeds": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "KingSingleBeds": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "KingZipBeds": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "SingleSofaBeds": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "DoubleSofaBeds": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "BunkBeds": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "TripleBunkBeds": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        }
+      },
+      "Extra": {
+        "type": "object",
+        "title": "Extra",
+        "properties": {
+          "Id": {
+            "type": "string"
+          },
+          "Name": {
+            "type": "string"
+          },
+          "Nights": {
+            "type": "integer"
+          },
+          "Counts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExtraCount"
+            }
+          },
+          "Total": {
+            "type": "string"
+          },
+          "Tax": {
+            "type": "string"
+          }
+        }
+      },
+      "RatePlanRate": {
+        "type": "object",
+        "title": "RatePlanRate",
+        "properties": {
+          "Date": {
+            "type": "string",
+            "format": "date"
+          },
+          "SellRate": {
+            "type": "string"
+          },
+          "StrikeOutRate": {
+            "type": "string"
+          },
+          "IncludedGuests": {
+            "type": "integer"
+          },
+          "Closed": {
+            "type": "boolean"
+          },
+          "ClosedToArrival": {
+            "type": "boolean"
+          },
+          "ClosedToDeparture": {
+            "type": "boolean"
+          },
+          "ClosedDueToCriteria": {
+            "type": "boolean"
+          },
+          "MinStayArrival": {
+            "type": "integer"
+          },
+          "DiscountType": {
+            "type": "string"
+          },
+          "DiscountMethod": {
+            "type": "string"
+          }
+        }
+      },
+      "BARCalendar": {
+        "type": "object",
+        "title": "BARCalendar",
+        "properties": {
+          "PropertyId": {
+            "type": "string"
+          },
+          "PropertyName": {
+            "type": "string"
+          },
+          "RoomTypeId": {
+            "type": "string",
+            "description": "Only present when the roomType query parameter is supplied."
+          },
+          "RoomTypeName": {
+            "type": "string",
+            "description": "Only present when the roomType query parameter is supplied."
+          },
+          "RatingType": {
+            "type": "string"
+          },
+          "Rating": {
+            "type": "string"
+          },
+          "Images": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Image"
+            }
+          },
+          "Days": {
+            "type": "object",
+            "description": "Map keyed by date (YYYY-MM-DD).",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/BARDay"
+            }
+          }
+        }
+      },
+      "BAROutput": {
+        "type": "object",
+        "title": "BAROutput",
+        "properties": {
+          "Properties": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BARCalendar"
+            }
+          }
+        }
+      },
+      "ExtraCount": {
+        "type": "object",
+        "title": "ExtraCount",
+        "properties": {
+          "Id": {
+            "type": "integer"
+          },
+          "Name": {
+            "type": "string"
+          },
+          "Count": {
+            "type": "integer"
+          },
+          "Price": {
+            "type": "string",
+            "description": "Unit price."
+          }
+        }
+      },
+      "RatePlanPolicy": {
+        "type": "object",
+        "title": "RatePlanPolicy",
+        "properties": {
+          "DepositRule": {
+            "type": "object",
+            "properties": {
+              "DepositRule": {
+                "type": "string"
+              },
+              "DepositRuleNumNights": {
+                "type": "integer"
+              },
+              "DepositRuleFixedAmount": {
+                "type": "string"
+              },
+              "DepositRulePercentOfTotal": {
+                "type": "string"
+              },
+              "DepositRuleAmountPerRoom": {
+                "type": "string"
+              }
+            }
+          },
+          "CancelRule": {
+            "type": "object",
+            "properties": {
+              "CancelRule": {
+                "type": "string"
+              },
+              "CancelRuleNumPeriods": {
+                "type": "integer"
+              },
+              "CancelRulePeriod": {
+                "type": "string"
+              },
+              "CancelRulePeriodText": {
+                "type": "string"
+              },
+              "CancelRuleText": {
+                "type": "string"
+              }
+            }
+          },
+          "PaymentRule": {
+            "type": "object",
+            "properties": {
+              "PaymentRule": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "InventoryOutput": {
+        "type": "object",
+        "title": "InventoryOutput",
+        "properties": {
+          "Properties": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PropertyAvailability"
+            }
+          }
+        }
+      },
+      "ProviderResponse": {
+        "type": "object",
+        "title": "ProviderResponse",
+        "properties": {
+          "AuthCode": {
+            "type": "string"
+          },
+          "Message": {
+            "type": "string"
+          }
+        }
+      },
+      "Contact": {
+        "type": "object",
+        "title": "Contact",
+        "properties": {
+          "Phone": {
+            "type": "string"
+          },
+          "Email": {
+            "type": "string"
+          }
+        }
+      },
+      "ReservationRoomStayRate": {
+        "type": "object",
+        "title": "ReservationRoomStayRate",
+        "description": "Server-generated pricing detail; not required on input.",
+        "properties": {
+          "RatePlanId": {
+            "type": "string"
+          },
+          "RatePlanName": {
+            "type": "string"
+          },
+          "FromDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "ToDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "StrikeOutRate": {
+            "type": "string"
+          },
+          "RoomRate": {
+            "type": "string"
+          },
+          "Discount": {
+            "type": "string"
+          },
+          "TaxIncluded": {
+            "type": "boolean"
+          },
+          "TaxAmount": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "RatePlanId",
+          "FromDate"
+        ]
+      },
+      "PropertyAvailability": {
+        "type": "object",
+        "title": "PropertyAvailability",
+        "properties": {
+          "Id": {
+            "type": "string"
+          },
+          "Name": {
+            "type": "string"
+          },
+          "Description": {
+            "type": "string"
+          },
+          "CurrencyCode": {
+            "type": "string"
+          },
+          "StreetAddress": {
+            "$ref": "#/components/schemas/PropertyAddress"
+          },
+          "Contact": {
+            "$ref": "#/components/schemas/Contact"
+          },
+          "Country": {
+            "type": "string"
+          },
+          "RoomTypes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoomTypeAvailability"
+            }
+          },
+          "PropertyImages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Image"
+            }
+          },
+          "Messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Message"
+            }
+          },
+          "Facilities": {
+            "type": "object",
+            "description": "Map of facility category to a list of facility names.",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "Latitude": {
+            "type": "string"
+          },
+          "Longitude": {
+            "type": "string"
+          },
+          "ZoomLevel": {
+            "type": "string"
+          },
+          "RatingType": {
+            "type": "string"
+          },
+          "Rating": {
+            "type": "string"
+          }
+        }
+      },
+      "UrgencyMessage": {
+        "type": "object",
+        "title": "UrgencyMessage",
+        "properties": {
+          "Message": {
+            "type": "string"
+          }
+        }
+      },
+      "RoomAvailability": {
+        "type": "object",
+        "title": "RoomAvailability",
+        "properties": {
+          "Date": {
+            "type": "string",
+            "format": "date"
+          },
+          "Closed": {
+            "type": "boolean"
+          },
+          "ForSale": {
+            "type": "integer"
+          }
+        }
+      },
+      "Guest": {
+        "type": "object",
+        "title": "Guest",
+        "properties": {
+          "ID": {
+            "type": "string",
+            "description": "A unique id for this guest within the booking, used by `ReservationRoomStay.GuestId`. Should always be supplied. If it is omitted, the guest's position in the Guests array is used instead (\"1\" for the first guest), in which case ids must be omitted for every guest and for the booking contact."
+          },
+          "FirstName": {
+            "type": "string"
+          },
+          "LastName": {
+            "type": "string"
+          },
+          "Email": {
+            "type": "string"
+          },
+          "Phone": {
+            "type": "string"
+          },
+          "Mobile": {
+            "type": "string"
+          },
+          "CompanyName": {
+            "type": "string"
+          },
+          "Address": {
+            "type": "string"
+          },
+          "City": {
+            "type": "string"
+          },
+          "State": {
+            "type": "string"
+          },
+          "PostalCode": {
+            "type": "string"
+          },
+          "Country": {
+            "type": "string"
+          },
+          "ProfileFields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReservationProfileField"
+            }
+          }
+        },
+        "required": [
+          "ID",
+          "LastName",
+          "Email"
+        ]
+      },
+      "ReservationProfileField": {
+        "type": "object",
+        "title": "ReservationProfileField",
+        "description": "An answer to one of the property's profile fields.",
+        "properties": {
+          "Id": {
+            "type": "string",
+            "description": "The `ExternalId` of the profile field being answered."
+          },
+          "Name": {
+            "type": "string"
+          },
+          "Type": {
+            "type": "string",
+            "description": "The `FieldType` of the profile field being answered."
+          },
+          "Value": {
+            "type": "string",
+            "description": "For a `lookup` field this is the `ExternalId` of the chosen `ProfileFieldValue`, otherwise the answer itself."
+          }
+        }
+      },
+      "PropertyAddress": {
+        "type": "object",
+        "title": "PropertyAddress",
+        "properties": {
+          "Line1": {
+            "type": "string"
+          },
+          "Line2": {
+            "type": "string"
+          },
+          "City": {
+            "type": "string"
+          },
+          "PostalCode": {
+            "type": "string"
+          },
+          "StateProvince": {
+            "type": "string"
+          }
+        }
+      },
+      "RoomTypeAvailability": {
+        "type": "object",
+        "title": "RoomTypeAvailability",
+        "properties": {
+          "Id": {
+            "type": "string"
+          },
+          "PropertyId": {
+            "type": "string"
+          },
+          "Name": {
+            "type": "string"
+          },
+          "Description": {
+            "type": "string"
+          },
+          "MaxGuests": {
+            "type": "integer"
+          },
+          "IncludedGuests": {
+            "type": "integer"
+          },
+          "MaxAdults": {
+            "type": "integer"
+          },
+          "MaxChildren": {
+            "type": "integer"
+          },
+          "BedroomCount": {
+            "type": "integer"
+          },
+          "BathroomCount": {
+            "type": "integer"
+          },
+          "RoomSize": {
+            "type": "integer"
+          },
+          "RoomSizeUnit": {
+            "type": "string"
+          },
+          "Classification": {
+            "type": "string"
+          },
+          "WebSortOrder": {
+            "type": "integer"
+          },
+          "RoomImages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Image"
+            }
+          },
+          "Availabilities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoomAvailability"
+            }
+          },
+          "UrgencyMessages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UrgencyMessage"
+            }
+          },
+          "RatePlans": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RatePlan"
+            }
+          },
+          "Facilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "Bedding": {
+            "$ref": "#/components/schemas/BeddingConfig"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "title": "Error",
+        "description": "Standard error envelope.",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "examples": [
+              false
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "messages": {
+            "type": "array",
+            "description": "Present instead of `message` for multi-error validation failures.",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ReservationInput": {
+        "type": "object",
+        "title": "ReservationInput",
+        "description": "Reservation payload for Validate and Create. Pricing fields (`ReservationTotal`, rate details, discounts) are recalculated server-side; supplied values are ignored for pricing.",
+        "properties": {
+          "PropertyId": {
+            "type": "string"
+          },
+          "ConfNum": {
+            "type": "string"
+          },
+          "Status": {
+            "type": "string",
+            "description": "One of Booked, Modified, Cancelled."
+          },
+          "ExtraInfo": {
+            "type": "string"
+          },
+          "Adults": {
+            "type": "integer"
+          },
+          "Children": {
+            "type": "integer"
+          },
+          "Infants": {
+            "type": "integer"
+          },
+          "PromoCode": {
+            "type": "string"
+          },
+          "VerificationCode": {
+            "type": "string",
+            "description": "Returned by Validate Reservation; required by Create when verification is enabled."
+          },
+          "ReservationTotal": {
+            "type": "string"
+          },
+          "DepositAmount": {
+            "type": "string"
+          },
+          "EstimatedArrival": {
+            "type": "string"
+          },
+          "MarketingOptIn": {
+            "type": "boolean"
+          },
+          "ConsentGiven": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "RoomStays": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReservationRoomStay"
+            }
+          },
+          "Guests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Guest"
+            }
+          },
+          "BookingContact": {
+            "$ref": "#/components/schemas/Guest",
+            "description": "The person who made the booking. Only needed when they are not one of the guests; if omitted, the first guest is used. An `ID` must be supplied when the guests have ids, otherwise it is generated as the number of room stays plus one."
+          },
+          "Extras": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extra"
+            }
+          },
+          "PaymentCard": {
+            "$ref": "#/components/schemas/ReservationPaymentCard"
+          },
+          "Payment": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReservationInputPaymentDetails"
+            }
+          },
+          "ProfileFields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReservationProfileField"
+            }
+          },
+          "TraceId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "PropertyId",
+          "RoomStays",
+          "Guests"
+        ]
+      },
+      "SessionKeySetOutput": {
+        "type": "object",
+        "title": "SessionKeySetOutput",
+        "properties": {
+          "Session2Token": {
+            "type": "string"
+          },
+          "Session2Expiry": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "PayUrl": {
+            "type": "string"
+          },
+          "TokeniseUrl": {
+            "type": "string"
+          }
+        }
+      },
+      "BookingExtraOutput": {
+        "type": "object",
+        "title": "BookingExtraOutput",
+        "properties": {
+          "Id": {
+            "type": "string"
+          },
+          "Name": {
+            "type": "string"
+          },
+          "Description": {
+            "type": "string"
+          },
+          "ExtraType": {
+            "type": "string",
+            "enum": [
+              "checkout",
+              "ratePlan"
+            ],
+            "description": "Only `checkout` extras are offered at present."
+          },
+          "CheckoutType": {
+            "type": "string",
+            "enum": [
+              "service",
+              "quantity"
+            ],
+            "description": "`quantity` lets the booker choose how many; `service` is taken once or not at all."
+          },
+          "MaxItems": {
+            "type": "integer",
+            "description": "The most that can be taken. 0 means no limit."
+          },
+          "PriceType": {
+            "type": "string",
+            "enum": [
+              "perNight",
+              "perBooking",
+              "perPerson",
+              "perPersonPerNight",
+              "perRoom"
+            ],
+            "description": "How the `Prices` are applied when totalling. `perPerson` and `perPersonPerNight` use the per-guest-type prices; the others use the single unnamed price."
+          },
+          "DisplayOrder": {
+            "type": "integer"
+          },
+          "Images": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/Image"
+            }
+          },
+          "Prices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "Id": {
+                  "type": "integer"
+                },
+                "Name": {
+                  "type": "string"
+                },
+                "Price": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "RatePlans": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ReservationPaymentCard": {
+        "type": "object",
+        "title": "ReservationPaymentCard",
+        "description": "Card details. On output only the non-sensitive fields (CardHolderName, CardNumberMask, CardExpiry, CardType) are returned, and only for the booking engine channel.",
+        "properties": {
+          "CardHolderName": {
+            "type": "string"
+          },
+          "CardNumberToken": {
+            "type": "string"
+          },
+          "CardNumberMask": {
+            "type": "string"
+          },
+          "CvvToken": {
+            "type": "string"
+          },
+          "CardType": {
+            "type": "string"
+          },
+          "CardExpiry": {
+            "type": "string",
+            "description": "Format mm/yy."
+          }
+        }
+      },
+      "ReservationDiscount": {
+        "type": "object",
+        "title": "ReservationDiscount",
+        "properties": {
+          "Date": {
+            "type": "string",
+            "format": "date"
+          },
+          "Type": {
+            "type": "string"
+          },
+          "Code": {
+            "type": "string"
+          },
+          "PromoId": {
+            "type": "integer"
+          },
+          "Name": {
+            "type": "string"
+          },
+          "Description": {
+            "type": "string"
+          },
+          "AlreadyIncluded": {
+            "type": "boolean"
+          },
+          "OriginalPrice": {
+            "type": "string"
+          },
+          "Price": {
+            "type": "string"
+          },
+          "Discount": {
+            "type": "string"
+          },
+          "NumberOfUnits": {
+            "type": "integer"
+          },
+          "TotalAmount": {
+            "type": "string"
+          }
+        }
+      },
+      "Message": {
+        "type": "object",
+        "title": "Message",
+        "properties": {
+          "Type": {
+            "type": "string"
+          },
+          "Message": {
+            "type": "object",
+            "properties": {
+              "Text": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "Styles": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "Placement": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "examples": {
+      "BestAvailableRatesResponse": {
+        "summary": "Best rate per day for a calendar widget (trimmed to 3 days)",
+        "value": {
+          "success": true,
+          "data": {
+            "Properties": [
+              {
+                "PropertyId": "b073cbae-3de7-4f85-b4f9-babad03ae601",
+                "PropertyName": "Admiral Motor Lodge",
+                "RatingType": "self",
+                "Rating": "3.5",
+                "Images": null,
+                "Days": {
+                  "2026-08-11": {
+                    "RoomAvailable": true,
+                    "BestRate": "136.68",
+                    "StrikeOutRate": "150",
+                    "DiscountReason": "FlashSale",
+                    "MinStay": 2,
+                    "ClosedToArrival": false,
+                    "ClosedToDeparture": false,
+                    "RoomType": "Deluxe King Room + Single",
+                    "RatePlan": "Deluxe King Room 2 Night"
+                  },
+                  "2026-08-12": {
+                    "RoomAvailable": true,
+                    "BestRate": "136.68",
+                    "StrikeOutRate": "150",
+                    "DiscountReason": "FlashSale",
+                    "MinStay": 2,
+                    "ClosedToArrival": false,
+                    "ClosedToDeparture": false,
+                    "RoomType": "Deluxe King Room + Single",
+                    "RatePlan": "Deluxe King Room 2 Night"
+                  },
+                  "2026-08-13": {
+                    "RoomAvailable": true,
+                    "BestRate": "136.68",
+                    "StrikeOutRate": "150",
+                    "DiscountReason": "FlashSale",
+                    "MinStay": 2,
+                    "ClosedToArrival": false,
+                    "ClosedToDeparture": false,
+                    "RoomType": "Deluxe King Room + Single",
+                    "RatePlan": "COUPLES R & R PACKAGE"
+                  }
+                }
+              }
+            ]
+          },
+          "traceId": "01KYKRZX9ZEPWWCYWAF8GKN4G6"
+        }
+      },
+      "AvailabilityResponse": {
+        "summary": "Two sellable room types for a 2-night stay (trimmed to 2 dates)",
+        "value": {
+          "success": true,
+          "data": {
+            "Properties": [
+              {
+                "Id": "b073cbae-3de7-4f85-b4f9-babad03ae601",
+                "Name": "Admiral Motor Lodge",
+                "Description": "The Admiral Motor Lodge in Eight Mile Plains is a TEST Property.",
+                "CurrencyCode": "AUD",
+                "StreetAddress": {
+                  "Line1": "1 Clunies Ross Court",
+                  "Line2": "",
+                  "City": "Eight Mile Plains",
+                  "PostalCode": "4113",
+                  "StateProvince": "QLD"
+                },
+                "Contact": {
+                  "Phone": "(07) 5999 9999",
+                  "Email": "c.curtis@guestpoint.com"
+                },
+                "Country": "Australia",
+                "RoomTypes": [
+                  {
+                    "Id": "72e107a5-7fb9-4733-9e5c-45523822bc93",
+                    "PropertyId": "b073cbae-3de7-4f85-b4f9-babad03ae601",
+                    "Name": "3-Bedroom S/C Spa Apartment",
+                    "Description": "3-Bedroom self contained serviced apartment. 1 King bed, 1 queen bed and 2 single beds.",
+                    "MaxGuests": 6,
+                    "IncludedGuests": 6,
+                    "MaxAdults": 6,
+                    "MaxChildren": 4,
+                    "BedroomCount": 0,
+                    "BathroomCount": 0,
+                    "RoomSize": 0,
+                    "RoomSizeUnit": "sqm",
+                    "Classification": "",
+                    "WebSortOrder": 3,
+                    "RoomImages": [
+                      {
+                        "URL": "https://images.guestpoint.com/dev-images/b073cbae-3de7-4f85-b4f9-babad03ae601/RoomTypePhoto/893A523E-90A2-4331-8284-272EA90926EF.jpg",
+                        "Captions": {
+                          "en-AU": "3 Bedroom S/C"
+                        },
+                        "Sequence": "1"
+                      }
+                    ],
+                    "Availabilities": [
+                      {
+                        "Date": "2026-08-11",
+                        "Closed": false,
+                        "ForSale": 1
+                      },
+                      {
+                        "Date": "2026-08-12",
+                        "Closed": false,
+                        "ForSale": 1
+                      }
+                    ],
+                    "UrgencyMessages": [
+                      {
+                        "Message": "Only 1 room remaining of this type"
+                      }
+                    ],
+                    "RatePlans": [
+                      {
+                        "Id": "6d4dbb18-77a0-41b6-86b1-51c5870b596c",
+                        "Name": "Standard Rate",
+                        "Description": "Our Standard Room-only flexible rate",
+                        "Status": "Active",
+                        "Type": "RatePlan",
+                        "MealPlan": "RoomOnly",
+                        "MinStay": 1,
+                        "IncludedGuests": 6,
+                        "Rates": [
+                          {
+                            "Date": "2026-08-11",
+                            "SellRate": "315",
+                            "StrikeOutRate": "315",
+                            "IncludedGuests": 6,
+                            "Closed": false,
+                            "ClosedToArrival": false,
+                            "ClosedToDeparture": false,
+                            "ClosedDueToCriteria": false,
+                            "MinStayArrival": 1,
+                            "DiscountType": "None",
+                            "DiscountMethod": ""
+                          },
+                          {
+                            "Date": "2026-08-12",
+                            "SellRate": "315",
+                            "StrikeOutRate": "315",
+                            "IncludedGuests": 6,
+                            "Closed": false,
+                            "ClosedToArrival": false,
+                            "ClosedToDeparture": false,
+                            "ClosedDueToCriteria": false,
+                            "MinStayArrival": 1,
+                            "DiscountType": "None",
+                            "DiscountMethod": ""
+                          }
+                        ],
+                        "UrgencyMessages": null,
+                        "Policy": {
+                          "DepositRule": {
+                            "DepositRule": "noDeposit",
+                            "DepositRuleNumNights": 0,
+                            "DepositRuleFixedAmount": "",
+                            "DepositRulePercentOfTotal": "",
+                            "DepositRuleAmountPerRoom": ""
+                          },
+                          "CancelRule": {
+                            "CancelRule": "freeUntil",
+                            "CancelRuleNumPeriods": 3,
+                            "CancelRulePeriod": "day",
+                            "CancelRulePeriodText": "3 days",
+                            "CancelRuleText": "Free cancellation up to 3 days before arrival."
+                          },
+                          "PaymentRule": {
+                            "PaymentRule": ""
+                          }
+                        },
+                        "PolicyText": "No deposit is required at time of booking. The remaining balance is to be paid on Arrival. Free cancellation up to 3 days before arrival.",
+                        "Inclusions": "",
+                        "WebSortOrder": 0
+                      }
+                    ],
+                    "Facilities": [
+                      "Balcony / Courtyard",
+                      "Air Conditioning",
+                      "Bath"
+                    ],
+                    "Bedding": {
+                      "SingleBeds": 2,
+                      "DoubleBeds": null,
+                      "QueenBeds": 1,
+                      "KingBeds": 1,
+                      "KingSingleBeds": null,
+                      "KingZipBeds": null,
+                      "SingleSofaBeds": null,
+                      "DoubleSofaBeds": null,
+                      "BunkBeds": null,
+                      "TripleBunkBeds": null
+                    }
+                  },
+                  {
+                    "Id": "1b75f0ac-4151-408c-9ea9-ddb828967cda",
+                    "PropertyId": "b073cbae-3de7-4f85-b4f9-babad03ae601",
+                    "Name": "Deluxe King Room + Single",
+                    "Description": "Studio style Deluxe King Room, features include a comfy king bed, with ensuite and amenities.",
+                    "MaxGuests": 4,
+                    "IncludedGuests": 4,
+                    "MaxAdults": 3,
+                    "MaxChildren": 2,
+                    "BedroomCount": 0,
+                    "BathroomCount": 0,
+                    "RoomSize": 0,
+                    "RoomSizeUnit": "sqm",
+                    "Classification": "",
+                    "WebSortOrder": 0,
+                    "RoomImages": [
+                      {
+                        "URL": "https://images.guestpoint.com/Properties/b073cbae-3de7-4f85-b4f9-babad03ae601/RoomTypeImages/1b75f0ac-4151-408c-9ea9-ddb828967cda/shutterstock_756956185_Blw-A9Xrd.jpg?updatedAt=1694578710248",
+                        "Captions": {
+                          "en-AU": "King Room"
+                        },
+                        "Sequence": "1"
+                      }
+                    ],
+                    "Availabilities": [
+                      {
+                        "Date": "2026-08-11",
+                        "Closed": false,
+                        "ForSale": 8
+                      },
+                      {
+                        "Date": "2026-08-12",
+                        "Closed": false,
+                        "ForSale": 8
+                      }
+                    ],
+                    "UrgencyMessages": null,
+                    "RatePlans": [
+                      {
+                        "Id": "573adc27-6bf0-443b-925d-1f9cbf9c571f",
+                        "Name": "Couples Weekend Package",
+                        "Description": "Enjoy a two night stay with a late checkout and breakfast for two.",
+                        "Status": "Active",
+                        "Type": "RatePlan",
+                        "MealPlan": "RoomOnly",
+                        "MinStay": 2,
+                        "IncludedGuests": 2,
+                        "Rates": [
+                          {
+                            "Date": "2026-08-11",
+                            "SellRate": "136.68",
+                            "StrikeOutRate": "150",
+                            "IncludedGuests": 2,
+                            "Closed": false,
+                            "ClosedToArrival": false,
+                            "ClosedToDeparture": false,
+                            "ClosedDueToCriteria": false,
+                            "MinStayArrival": 2,
+                            "DiscountType": "FlashSale",
+                            "DiscountMethod": "PercentagePerNight"
+                          },
+                          {
+                            "Date": "2026-08-12",
+                            "SellRate": "136.68",
+                            "StrikeOutRate": "150",
+                            "IncludedGuests": 2,
+                            "Closed": false,
+                            "ClosedToArrival": false,
+                            "ClosedToDeparture": false,
+                            "ClosedDueToCriteria": false,
+                            "MinStayArrival": 2,
+                            "DiscountType": "FlashSale",
+                            "DiscountMethod": "PercentagePerNight"
+                          }
+                        ],
+                        "UrgencyMessages": null,
+                        "Policy": {
+                          "DepositRule": {
+                            "DepositRule": "percentOfTotal",
+                            "DepositRuleNumNights": 0,
+                            "DepositRuleFixedAmount": "",
+                            "DepositRulePercentOfTotal": "0.1",
+                            "DepositRuleAmountPerRoom": ""
+                          },
+                          "CancelRule": {
+                            "CancelRule": "none",
+                            "CancelRuleNumPeriods": 0,
+                            "CancelRulePeriod": "day",
+                            "CancelRulePeriodText": "0 days",
+                            "CancelRuleText": "If cancelled the total price of the reservation will be charged."
+                          },
+                          "PaymentRule": {
+                            "PaymentRule": ""
+                          }
+                        },
+                        "PolicyText": "A 10.00% deposit is required at the time of booking. The remaining balance is to be paid on Arrival.",
+                        "Inclusions": "Free home made cooked breakfast for two.",
+                        "WebSortOrder": 0
+                      },
+                      {
+                        "Id": "bde0e598-983c-4466-bc39-ac1058b54584",
+                        "Name": "Standard Rate",
+                        "Description": "Standard Flexible Rate",
+                        "Status": "Active",
+                        "Type": "RatePlan",
+                        "MealPlan": "RoomOnly",
+                        "MinStay": 1,
+                        "IncludedGuests": 2,
+                        "Rates": [
+                          {
+                            "Date": "2026-08-11",
+                            "SellRate": "141.24",
+                            "StrikeOutRate": "155",
+                            "IncludedGuests": 2,
+                            "Closed": false,
+                            "ClosedToArrival": false,
+                            "ClosedToDeparture": false,
+                            "ClosedDueToCriteria": false,
+                            "MinStayArrival": 1,
+                            "DiscountType": "FlashSale",
+                            "DiscountMethod": "PercentagePerNight"
+                          },
+                          {
+                            "Date": "2026-08-12",
+                            "SellRate": "141.24",
+                            "StrikeOutRate": "155",
+                            "IncludedGuests": 2,
+                            "Closed": false,
+                            "ClosedToArrival": false,
+                            "ClosedToDeparture": false,
+                            "ClosedDueToCriteria": false,
+                            "MinStayArrival": 1,
+                            "DiscountType": "FlashSale",
+                            "DiscountMethod": "PercentagePerNight"
+                          }
+                        ],
+                        "UrgencyMessages": null,
+                        "Policy": {
+                          "DepositRule": {
+                            "DepositRule": "noDeposit",
+                            "DepositRuleNumNights": 0,
+                            "DepositRuleFixedAmount": "",
+                            "DepositRulePercentOfTotal": "",
+                            "DepositRuleAmountPerRoom": ""
+                          },
+                          "CancelRule": {
+                            "CancelRule": "freeUntil",
+                            "CancelRuleNumPeriods": 3,
+                            "CancelRulePeriod": "day",
+                            "CancelRulePeriodText": "3 days",
+                            "CancelRuleText": "Free cancellation up to 3 days before arrival."
+                          },
+                          "PaymentRule": {
+                            "PaymentRule": ""
+                          }
+                        },
+                        "PolicyText": "No deposit is required at time of booking. Free cancellation up to 3 days before arrival.",
+                        "Inclusions": "",
+                        "WebSortOrder": 0
+                      }
+                    ],
+                    "Facilities": [
+                      "CD player",
+                      "Air Conditioning",
+                      "Bath"
+                    ],
+                    "Bedding": {
+                      "SingleBeds": 1,
+                      "DoubleBeds": 1,
+                      "QueenBeds": 1,
+                      "KingBeds": null,
+                      "KingSingleBeds": 1,
+                      "KingZipBeds": null,
+                      "SingleSofaBeds": null,
+                      "DoubleSofaBeds": null,
+                      "BunkBeds": null,
+                      "TripleBunkBeds": null
+                    }
+                  }
+                ],
+                "PropertyImages": [
+                  {
+                    "URL": "https://images.guestpoint.com/dev-images/b073cbae-3de7-4f85-b4f9-babad03ae601/PropertyPhoto/7E6953FF-CF14-4FB0-AE3F-EC1835693A13.jpg",
+                    "Captions": {
+                      "en-AU": "Headline Image"
+                    },
+                    "Sequence": "2"
+                  }
+                ],
+                "Messages": [
+                  {
+                    "Type": "banner",
+                    "Message": {
+                      "Text": {
+                        "en-AU": "<p>This is a test Banner message. It should appear in the room types area.</p>"
+                      },
+                      "Styles": {
+                        "background-color": "#FEF6AB",
+                        "text-color": "#ff0000"
+                      },
+                      "Placement": "roomType"
+                    }
+                  }
+                ],
+                "Facilities": {
+                  "Car Parking": [
+                    "Off-site secure undercover parking",
+                    "Parking for boats and trailers"
+                  ],
+                  "Guest Services": [
+                    "24 hour front desk",
+                    "Concierge"
+                  ]
+                },
+                "Latitude": "-27.577325",
+                "Longitude": "153.092122",
+                "ZoomLevel": "",
+                "RatingType": "self",
+                "Rating": "3.5"
+              }
+            ]
+          },
+          "traceId": "01KYKRZX3X14A4CQGTT3RBKBAC"
+        }
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Unauthorized \u2014 missing or invalid API key.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "BadRequest": {
+        "description": "Bad Request",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "examples": {
+              "Example 1": {
+                "value": {
+                  "success": false,
+                  "message": "Property not connected"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "parameters": {
+      "PropertyId": {
+        "name": "propertyId",
+        "in": "path",
+        "description": "External GuestPoint property id.",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "securitySchemes": {
+      "ApiKey": {
+        "type": "apiKey",
+        "description": "Partner backend key or a session key generated from it.",
+        "name": "X-API-KEY",
+        "in": "header"
+      }
+    }
+  },
+  "security": [
+    {
+      "ApiKey": []
+    }
+  ]
+}
