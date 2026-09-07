@@ -321,14 +321,33 @@ export function cancelReservation(reservationId, confNum) {
    plus a site. The cart lives in the browser until checkout builds RoomStays[]. */
 
 const CART_KEY = "kosipark-cart";
-/** A held stay is only a browser convenience — it lapses after ten minutes. */
-export const CART_TTL = 10 * 60 * 1000;
 
+/* The cart used to lapse after ten minutes, counted from the OLDEST item.
+   That is what made a second stay look like it never added: pick a cabin,
+   read a room page, choose dates on a chalet — eleven ordinary minutes — and
+   the first stay was quietly binned by the read that ran just before the
+   second was pushed. The count stayed at one, so the new stay looked lost.
+
+   Nothing is reserved by sitting in this cart, so there was never a reason to
+   throw the guest's work away that fast. It now keeps a selection for a day,
+   and every item ages on its own clock rather than inheriting the oldest. */
+export const CART_TTL = 24 * 60 * 60 * 1000;
+
+/** Rates move. Past this, checkout re-quotes rather than trusting what's stored. */
+export const CART_PRICE_TTL = 30 * 60 * 1000;
+
+/** Time until the next item lapses — the honest answer to "when does this go?". */
 export function cartExpiresIn() {
   const items = readCart();
   if (!items.length) return 0;
   const oldest = Math.min.apply(null, items.map(i => i.addedAt || 0));
   return Math.max(0, CART_TTL - (Date.now() - oldest));
+}
+
+/** True when any stored price is old enough that it must be re-quoted. */
+export function cartPricingStale() {
+  const now = Date.now();
+  return readCart().some(i => now - (i.pricedAt || i.addedAt || 0) > CART_PRICE_TTL);
 }
 
 export function readCart() {
@@ -351,12 +370,25 @@ export function writeCart(items) {
 }
 
 export function addToCart(item) {
-  const items = readCart();
-  const id = item.id || (item.roomTypeId + ":" + item.arrival + ":" + item.departure + ":" + Date.now());
+  const now = Date.now();
+  // Read the raw store, not readCart(): adding a stay must never be the thing
+  // that expires an earlier one. A guest choosing a second cabin is the most
+  // engaged they will ever be — that is the worst possible moment to prune.
+  let items;
+  try {
+    const parsed = JSON.parse(localStorage.getItem(CART_KEY) || "[]");
+    items = Array.isArray(parsed) ? parsed.filter(i => Number(i.total) > 0) : [];
+  } catch (e) { items = []; }
+
+  const id = item.id || (item.roomTypeId + ":" + item.arrival + ":" + item.departure + ":" + now);
   const exists = items.some(i => i.roomTypeId === item.roomTypeId && i.arrival === item.arrival && i.departure === item.departure);
-  if (exists) return items;
-  items.push({ ...item, id, addedAt: Date.now() });
-  return writeCart(items);
+  if (exists) return readCart();
+  items.push({ ...item, id, addedAt: now, pricedAt: item.pricedAt || now });
+  // Still browsing, so the whole selection stays alive together rather than
+  // one stay outliving the others for no reason the guest can see.
+  const refreshed = items.map(i => ({ ...i, addedAt: Math.max(i.addedAt || 0, now - CART_PRICE_TTL) }));
+  writeCart(refreshed);
+  return readCart();
 }
 
 export function removeFromCart(id) {
