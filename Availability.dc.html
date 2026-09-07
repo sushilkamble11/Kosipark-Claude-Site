@@ -86,6 +86,19 @@
               <p style="font:400 13px/1.5 Figtree, sans-serif; color:#8B877E; margin:0">Prices shown are totals for the whole stay</p>
             </div>
 
+            <!-- Booking here rather than through an agent is worth real money to
+                 the park, and the reasons are plain facts, not a sales pitch. -->
+            <div style="{{ directStyle }}">
+              <p style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A; margin:0">Booking direct with the park</p>
+              <div style="display:flex; flex-wrap:wrap; gap:10px 26px; margin-top:12px">
+                <sc-for list="{{ directPoints }}" as="d" hint-placeholder-count="3">
+                  <span style="display:flex; align-items:baseline; gap:8px; font:400 13.5px/1.55 Figtree, sans-serif; color:#3A4E3C">
+                    <span style="color:#74836A">✓</span>{{ d }}
+                  </span>
+                </sc-for>
+              </div>
+            </div>
+
             <div style="display:grid; gap:14px">
               <sc-for list="{{ rooms }}" as="r" hint-placeholder-count="4">
                 <article style="{{ r.cardStyle }}">
@@ -112,6 +125,10 @@
                     </div>
                     <p style="font:400 14.5px/1.65 Figtree, sans-serif; color:#56534C; margin:0; max-width:60ch">{{ r.blurb }}</p>
                     <p style="font:400 13px/1.6 Figtree, sans-serif; color:#8B877E; margin:0">{{ r.policy }}</p>
+                    <div style="{{ r.upgradeStyle }}">
+                      <span style="font:500 13px/1.5 Figtree, sans-serif; color:#4C5C40; min-width:0; flex:1 1 200px">{{ r.upgradeLine }}</span>
+                      <button type="button" onClick="{{ r.upgradeGo }}" style="border:1px solid rgba(29,55,48,0.22); border-radius:999px; background:transparent; color:#1D3730; font:600 11.5px/1 Figtree, sans-serif; letter-spacing:.08em; text-transform:uppercase; padding:12px 16px; cursor:pointer; white-space:nowrap">See it</button>
+                    </div>
                     <div style="{{ r.restrictStyle }}">
                       <div style="display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; justify-content:space-between">
                         <span style="display:flex; flex-direction:column; gap:5px; min-width:0">
@@ -306,6 +323,49 @@ class Component extends DCLogic {
       return (a.total || 1e9) - (b.total || 1e9);
     });
 
+    /* An upgrade nudge, from real availability only.
+       For each room the guest is looking at, find the cheapest type that is
+       genuinely better — dearer, and either sleeping more or with more
+       bedrooms — and that is actually free for these exact dates. Same nights,
+       higher rate: the best margin in the place. It says the real per-night
+       difference and nothing else; if nothing better is free, nothing shows. */
+    const upgradeFor = r => {
+      if (!r.available || !r.total) return null;
+      const better = s.rooms.filter(o =>
+        o.available && o.total > r.total && o.roomTypeId !== r.roomTypeId &&
+        // Genuinely better, not merely dearer.
+        ((o.sleeps || 0) > (r.sleeps || 0) || (o.bedrooms || 0) > (r.bedrooms || 0)) &&
+        // Within reach. Someone pricing a tent site is not going to take a
+        // chalet at four times the money, and showing it reads as a shop
+        // that has not understood the question. Half again is the ceiling.
+        o.total <= r.total * 1.5 &&
+        // Cabins are offered against cabins, sites against sites. A powered
+        // site is a fair step up from an unpowered one; a chalet is not.
+        category(o) === category(r));
+      if (!better.length) return null;
+      const pick = better.sort((a, b) => a.total - b.total)[0];
+      const diff = (pick.total - r.total) / nights;
+      // Under a few dollars a night it is noise, not an offer.
+      if (diff < 5) return null;
+      const bits = [];
+      if (pick.sleeps) bits.push("sleeps " + pick.sleeps);
+      if (pick.bedrooms) bits.push(pick.bedrooms + (pick.bedrooms === 1 ? " bedroom" : " bedrooms"));
+      return {
+        name: pick.name,
+        line: pick.name + " is free these nights — " + money(Math.round(diff)) + " more a night" +
+              (bits.length ? ", " + bits.join(", ") : ""),
+        slug: pick.slug,
+        total: pick.total,
+        planId: (pick.plans && pick.plans[0] && pick.plans[0].ratePlanId) || ""
+      };
+    };
+
+    const directPoints = [
+      "No booking fee, and no agent's commission in the price",
+      "Changes and questions handled by reception, not a call centre",
+      "Your site or cabin preference goes straight to the people who allocate it"
+    ];
+
     const rooms = sorted.map(r => {
       const highlight = p.room && r.roomTypeId === p.room;
       const perNight = r.total ? r.total / nights : null;
@@ -354,7 +414,22 @@ class Component extends DCLogic {
         });
         window.location.href = "/book/checkout?" + q.toString();
       };
+      const up = upgradeFor(r);
       return {
+        hasUpgrade: !!up,
+        upgradeLine: up ? up.line : "",
+        upgradeStyle: up
+          ? "display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between; margin-top:12px; padding:11px 14px; border-radius:12px; background:#F3ECE0; border:1px solid rgba(29,55,48,0.08)"
+          : "display:none",
+        upgradeGo: up ? (() => {
+          const q = new URLSearchParams({
+            room: up.slug, plan: up.planId,
+            arrival: p.arrival, departure: p.departure,
+            adults: String(p.adults), children: String(p.children), infants: String(p.infants),
+            total: String(up.total)
+          });
+          window.location.href = "/book/checkout?" + q.toString();
+        }) : () => {},
         imgId: "av-" + r.slug + "-" + (shot + 1),
         dots: [0, 1, 2].map(i => "width:6px; height:6px; border-radius:999px; background:" + (i === shot ? "#FCFAF6" : "rgba(252,250,246,0.45)")),
         prevImg: () => this.setState(x => ({ imgIdx: { ...x.imgIdx, [r.slug]: (shot + 2) % 3 } })),
@@ -460,6 +535,8 @@ class Component extends DCLogic {
       noneAvailable: !s.loading && !s.error && rooms.length > 0 && available === 0,
       resultCount: available + (available === 1 ? " option available" : " options available") + (rooms.length > available ? " · " + (rooms.length - available) + " unavailable" : ""),
       rooms,
+      directPoints,
+      directStyle: "background:#E9EEE3; border-radius:16px; padding:16px 18px; margin-bottom:14px",
       stayRows: [
         { k: "Check in", v: this.fmtDate(p.arrival) + " from 3pm" },
         { k: "Check out", v: this.fmtDate(p.departure) + " by 10am" },

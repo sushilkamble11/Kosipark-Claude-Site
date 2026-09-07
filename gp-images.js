@@ -64,13 +64,29 @@
     return lines;
   }
 
-  function placeholderFor(caption, seed) {
+  /* The panel is drawn in an 800-wide viewBox and then stretched to whatever
+     the slot happens to be. On a card that is about right; on a full-bleed
+     hero it scaled a 27px caption up to nearly fifty, so the home page led
+     with two lines of grey placeholder text across the middle of the picture.
+     Size the caption against the slot's real width so it lands at roughly the
+     same reading size everywhere. */
+  function captionSizeFor(width) {
+    if (!width) return 27;
+    var scale = 800 / width;               // viewBox units per rendered pixel
+    return Math.max(11, Math.min(46, Math.round(17 * scale)));
+  }
+
+  function placeholderFor(caption, seed, width) {
     var t = TONES[hashOf(seed || caption || "x") % TONES.length];
-    var lines = wrap(caption || "Photograph to come", 34, 3);
-    var startY = 300 - (lines.length - 1) * 19;
+    var size = captionSizeFor(width);
+    // Wrap by the width actually available at this size, not a fixed count.
+    var perLine = Math.max(18, Math.round(680 / (size * 0.52)));
+    var lines = wrap(caption || "Photograph to come", perLine, 3);
+    var lead = Math.round(size * 1.4);
+    var startY = 300 - (lines.length - 1) * (lead / 2);
     var text = lines.map(function (l, i) {
-      return '<text x="400" y="' + (startY + i * 38) + '" text-anchor="middle" ' +
-             'font-family="Georgia, serif" font-size="27" fill="#EDE4D4">' + esc(l) + '</text>';
+      return '<text x="400" y="' + (startY + i * lead) + '" text-anchor="middle" ' +
+             'font-family="Georgia, serif" font-size="' + size + '" fill="#EDE4D4">' + esc(l) + '</text>';
     }).join("");
 
     var svg =
@@ -87,6 +103,10 @@
         text +
       '</svg>';
     return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+  }
+
+  function widthOf(el) {
+    try { return Math.round(el.getBoundingClientRect().width) || 0; } catch (e) { return 0; }
   }
 
   var CONVENTION = /^(?:r|av)-(.+)-(\d+)$/;
@@ -131,19 +151,33 @@
       if (!cap) return;
       filled.add(el);
       el.setAttribute("alt", cap);
-      el.setAttribute("src", placeholderFor(cap, el.id || cap));
+      el.setAttribute("src", placeholderFor(cap, el.id || cap, widthOf(el)));
       el.setAttribute("data-kosipark-placeholder", "");
       return;
     }
     filled.add(el);
     // A caption is real alt text: it is what the property wrote about the photo.
+    var caption = img.caption || el.getAttribute("placeholder") || "";
     if (img.caption) {
       el.setAttribute("alt", img.caption);
       if (!el.hasAttribute("data-keep-placeholder")) {
         el.setAttribute("placeholder", img.caption);
       }
     }
-    el.setAttribute("src", img.url);
+
+    // A URL that 404s left the slot showing its placeholder TEXT at the slot's
+    // own size — which on the hero meant two lines of grey caption a hundred
+    // pixels tall across the middle of the page. Check the photo actually
+    // loads, and if it doesn't, draw the panel instead. Every photo fails this
+    // way while the site is on sample data, so this is what most visitors see.
+    var probe = new Image();
+    probe.onload = function () { el.setAttribute("src", img.url); };
+    probe.onerror = function () {
+      el.setAttribute("alt", caption);
+      el.setAttribute("src", placeholderFor(caption, el.id || caption, widthOf(el)));
+      el.setAttribute("data-kosipark-placeholder", "");
+    };
+    probe.src = img.url;
   }
 
   function sweep(root) {
