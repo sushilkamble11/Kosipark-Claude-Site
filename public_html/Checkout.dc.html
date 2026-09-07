@@ -378,6 +378,7 @@ class Component extends DCLogic {
     const today = new Date();
     const plus = n => { const d = new Date(today); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
     return {
+      selection: q.get("selection") || "",
       room: q.get("room") || "two-bedroom-chalet",
       plan: q.get("plan") || "standard",
       arrival: q.get("arrival") || plus(14),
@@ -493,6 +494,7 @@ class Component extends DCLogic {
       if (q.get("room") && Number(q.get("total")) > 0) {
         const p = this.params();
         const stay = {
+          id: p.selection || undefined,
           roomTypeId: p.room, name: this.roomName(p.room), ratePlanId: p.plan,
           arrival: p.arrival, departure: p.departure, nights: this.nights(),
           adults: p.adults, children: p.children, infants: p.infants, total: p.total
@@ -503,9 +505,8 @@ class Component extends DCLogic {
         // it. Whatever happens, say so.
         const already = gp.cartHas(stay);
         if (already) {
-          notice = stay.name + " for these nights is already in your booking. " +
-                   "To add a second one, choose different dates — or call reception on 02 6456 2224 " +
-                   "and they'll put two on the one booking.";
+          notice = stay.name + " is already in your booking. Your booking still has " +
+                   cart.length + (cart.length === 1 ? " stay." : " stays.");
         } else {
           cart = gp.addToCart(stay);
           if (cart.length > 1) {

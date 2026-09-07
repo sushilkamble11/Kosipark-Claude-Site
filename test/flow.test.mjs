@@ -14,11 +14,17 @@ import { chromium } from "playwright";
 import { spawn } from "node:child_process";
 import { setTimeout as sleep } from "node:timers/promises";
 
-const PORT = 8811, BASE = `http://localhost:${PORT}`;
-const server = spawn("python3", ["dev-server.py", String(PORT)], {
+const PORT = 8811;
+const LIVE_BASE = (process.env.KOSIPARK_BASE_URL || "").replace(/\/$/, "");
+const BASE = LIVE_BASE || `http://localhost:${PORT}`;
+// The live header makes a best-effort weather request. Waiting for complete
+// network silence would make a healthy page look hung when that provider is
+// slow, so live checks wait for the page itself and then for its components.
+const READY = LIVE_BASE ? "domcontentloaded" : "networkidle";
+const server = LIVE_BASE ? null : spawn("python3", ["dev-server.py", String(PORT)], {
   cwd: new URL("..", import.meta.url).pathname, stdio: "ignore",
 });
-process.on("exit", () => server.kill());
+process.on("exit", () => { if (server) server.kill(); });
 
 let failures = 0;
 const ok = (c, label, extra = "") => { if (!c) failures++; console.log(`${c ? "PASS" : "FAIL"}  ${label}${extra ? "  " + extra : ""}`); };
@@ -31,7 +37,7 @@ page.on("pageerror", e => { failures++; console.log("FAIL  uncaught: " + e.messa
 const cart = () => page.evaluate(() => JSON.parse(localStorage.getItem("kosipark-cart") || "[]"));
 
 const search = "arrival=2026-10-02&departure=2026-10-05&adults=2";
-await page.goto(`${BASE}/book?${search}`, { waitUntil: "networkidle" });
+await page.goto(`${BASE}/book?${search}`, { waitUntil: READY });
 await sleep(1500);
 
 // --- pick the first stay ---------------------------------------------------
@@ -54,7 +60,7 @@ await addAnother.click();
 await sleep(1200);
 
 // The guest searches again for the same dates.
-await page.goto(`${BASE}/book?${search}`, { waitUntil: "networkidle" });
+await page.goto(`${BASE}/book?${search}`, { waitUntil: READY });
 await sleep(1500);
 
 // --- pick a DIFFERENT second stay -----------------------------------------
@@ -95,26 +101,33 @@ const badge = await page.evaluate(() => {
 });
 ok(/2/.test(badge), "the cart badge counts two", badge);
 
-// --- picking the same thing twice must SAY so, not silently do nothing -----
-// This is what the guest actually hit: choose the same type and dates again,
-// land on a page showing one stay, and get no hint why.
-await page.goto(`${BASE}/book?${search}`, { waitUntil: "networkidle" });
+// --- the same room type can be booked twice --------------------------------
+// A family may need two of the same cabin or site for the same dates. This is
+// a deliberate second selection, not a double-click: it must add another unit.
+await page.goto(`${BASE}/book?${search}`, { waitUntil: READY });
 await sleep(1400);
-await page.locator("article").nth(0).locator('button:has-text("Select")').first().click();
+const sameRoom = page.locator("article").nth(0);
+const sameName = (await sameRoom.locator("h2").first().innerText()).trim();
+await sameRoom.locator('button:has-text("Select")').first().click();
 await page.waitForURL(/\/book\/checkout/, { timeout: 8000 }).catch(() => {});
 await sleep(1800);
-const dupText = await page.evaluate(() => document.body.innerText);
-ok(/already in your booking/i.test(dupText),
-   "choosing the same stay twice explains itself instead of failing quietly",
-   (dupText.match(/.{0,60}already in your booking.{0,40}/i) || ["(no message)"])[0]);
-const afterDup = await cart();
-ok(afterDup.length === 2, "and it does not duplicate the stay", String(afterDup.length));
+const afterSame = await cart();
+ok(afterSame.length === 3, "a deliberate second unit of the same room type is added", JSON.stringify(afterSame.map(i => i.name)));
+ok(afterSame.filter(i => i.name === sameName).length >= 2,
+   "both units of the same room type stay in the booking", sameName);
+
+// Reloading the checkout URL replays the same selection token. That must not
+// create an accidental extra unit.
+await page.reload({ waitUntil: READY });
+await sleep(1200);
+const afterReload = await cart();
+ok(afterReload.length === 3, "refreshing checkout does not duplicate a unit", String(afterReload.length));
 
 // --- one timer, not two ----------------------------------------------------
 const timers = (text.match(/\d+:\d\d/g) || []);
 ok(timers.length <= 1, "at most one countdown is shown on the checkout screen", timers.join(", "));
 
 await browser.close();
-server.kill();
+if (server) server.kill();
 console.log(failures === 0 ? "\nAll flow checks passed." : `\n${failures} flow check(s) failed.`);
 process.exit(failures === 0 ? 0 : 1);

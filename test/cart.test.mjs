@@ -95,7 +95,19 @@ ok(gp.cartPricingStale() === true, "a 45-minute-old price is flagged for re-quot
 reset();
 gp.addToCart(stay("Cedar Cabin", "cedar-cabin"));
 gp.addToCart(stay("Cedar Cabin", "cedar-cabin"));
-ok(gp.readCart().length === 1, "adding the same cabin and dates twice does not duplicate it");
+ok(gp.readCart().length === 1, "legacy same-stay replay without a selection id does not duplicate it");
+
+// Two deliberate selections may be the same type and dates: a family can book
+// two Cedar Cabins. Replaying one selection id (for example on refresh) must
+// still be idempotent.
+reset();
+const firstUnit = stay("Cedar Cabin", "cedar-cabin", { id: gp.newCartItemId() });
+const secondUnit = stay("Cedar Cabin", "cedar-cabin", { id: gp.newCartItemId() });
+gp.addToCart(firstUnit);
+gp.addToCart(secondUnit);
+ok(gp.readCart().length === 2, "two deliberate selections add two units of the same cabin and dates");
+gp.addToCart(secondUnit);
+ok(gp.readCart().length === 2, "replaying one selection id does not add an accidental third unit");
 
 // --- an unpriced stay never becomes a payable line -------------------------
 reset();
