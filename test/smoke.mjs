@@ -39,6 +39,8 @@ const IGNORE = [
   /Booking service is not configured/i,
   /\/api\/gp/,
   /fonts\.(googleapis|gstatic)\.com/,
+  /google\.(com|com\.au)\/maps/,
+  /maps\.googleapis\.com/,
   /ERR_TUNNEL_CONNECTION_FAILED/,
   /ERR_NAME_NOT_RESOLVED/,
   // SiteNav's weather pill. A third-party call from the guest's browser on
@@ -141,6 +143,18 @@ line(home.wiredFromApi === home.wired, "home: every API-wired slot shows its Gue
 line(home.empty === 0, "home: no slot is left as a grey hole", `${home.empty} empty`);
 line(home.panels > 0, "home: unmapped slots get a designed panel", `${home.panels} panels`);
 line(home.unlabelled === 0, "home: every slot has alt text", `${home.unlabelled} missing`);
+
+const homeMap = await page.locator('iframe[title^="Map showing Kosciuszko Tourist Park"]');
+line(await homeMap.count() === 1, "home: Google map is embedded once");
+line((await homeMap.getAttribute("src") || "").includes("output=embed"),
+     "home: map uses the key-free Google embed");
+
+await page.goto(BASE + "/contact", { waitUntil: "networkidle" });
+await sleep(500);
+const contactMap = await page.locator('iframe[title^="Map showing Kosciuszko Tourist Park"]');
+line(await contactMap.count() === 1, "contact: Google map is embedded once");
+line((await contactMap.getAttribute("src") || "").includes("output=embed"),
+     "contact: map uses the key-free Google embed");
 
 await page.goto(BASE + "/accommodation/cedar-cabin", { waitUntil: "networkidle" });
 await sleep(1200);
