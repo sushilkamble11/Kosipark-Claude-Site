@@ -31,6 +31,7 @@
   }
   @media (max-width: 520px) {
     .room-photo-secondary { grid-template-columns: minmax(0, 1fr); }
+    .room-photo-more { grid-template-columns: minmax(0, 1fr) !important; }
   }
 </style>
 </helmet>
@@ -65,6 +66,11 @@
         <div style="border-radius:16px; overflow:hidden; aspect-ratio:16/10; position:relative"><image-slot id="{{ room.img2 }}" data-room-photo="1" shape="rect" placeholder="{{ room.ph2 }}"></image-slot></div>
         <div style="border-radius:16px; overflow:hidden; aspect-ratio:16/10; position:relative"><image-slot id="{{ room.img3 }}" data-room-photo="2" shape="rect" placeholder="{{ room.ph3 }}"></image-slot></div>
       </div>
+    </div>
+    <div class="room-photo-more" style="display:grid; gap:12px; grid-template-columns:repeat(3, minmax(0, 1fr)); margin-top:12px">
+      <div data-room-photo-wrap="3" style="display:none; border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative; min-width:0"><image-slot id="room-photo-4" data-room-photo="3" shape="rect" placeholder="Additional accommodation photo"></image-slot></div>
+      <div data-room-photo-wrap="4" style="display:none; border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative; min-width:0"><image-slot id="room-photo-5" data-room-photo="4" shape="rect" placeholder="Additional accommodation photo"></image-slot></div>
+      <div data-room-photo-wrap="5" style="display:none; border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative; min-width:0"><image-slot id="room-photo-6" data-room-photo="5" shape="rect" placeholder="Additional accommodation photo"></image-slot></div>
     </div>
   </section>
 
@@ -210,9 +216,9 @@ const ROOMS = [
       { k: "Parking", v: "Carport parking" },
       { k: "Linen", v: "All linen provided; queen and bottom bunks made up, with top bunk linen supplied but not made up" }
     ],
-    ph: ["Two Bedroom Chalet living room", "Kitchen and dining area", "Bunk room"],
-    images: ["/assets/accommodation/two-bedroom-chalet/living-room.jpg", "/assets/accommodation/two-bedroom-chalet/kitchen.jpg", "/assets/accommodation/two-bedroom-chalet/bunk-room-one.jpg"],
-    alts: ["Living room in the Two Bedroom Chalet", "Kitchen in the Two Bedroom Chalet", "Bunk room in the Two Bedroom Chalet"]
+    ph: ["Two Bedroom Heritage Chalet main room", "Queen bed and dining area", "Kitchen", "First bunk room", "Second bunk room", "Chalet exterior in snow"],
+    images: ["/assets/accommodation/two-bedroom-chalet/living-room.jpg", "/assets/accommodation/two-bedroom-chalet/dining-kitchen.jpg", "/assets/accommodation/two-bedroom-chalet/kitchen.jpg", "/assets/accommodation/two-bedroom-chalet/bunk-room-one.jpg", "/assets/accommodation/two-bedroom-chalet/bunk-room-two.jpg", "/assets/accommodation/two-bedroom-chalet/exterior-snow.jpg"],
+    alts: ["Main room in the Two Bedroom Heritage Chalet", "Queen bed and dining area in the Two Bedroom Heritage Chalet", "Self-contained kitchen in the Two Bedroom Heritage Chalet", "First bunk room in the Two Bedroom Heritage Chalet", "Second bunk room in the Two Bedroom Heritage Chalet", "Two Bedroom Heritage Chalet among snow-covered snowgums"]
   },
   {
     slug: "cedar-cabin", name: "Cedar Cabin", category: "Cabins", noun: "cabin",
@@ -358,6 +364,10 @@ class Component extends DCLogic {
       const index = Number(slot.getAttribute("data-room-photo"));
       if (r.images[index]) slot.setAttribute("src", r.images[index]);
       if (r.alts[index]) slot.setAttribute("alt", r.alts[index]);
+    });
+    document.querySelectorAll("[data-room-photo-wrap]").forEach(wrap => {
+      const index = Number(wrap.getAttribute("data-room-photo-wrap"));
+      wrap.style.display = r.images[index] ? "block" : "none";
     });
   }
 
