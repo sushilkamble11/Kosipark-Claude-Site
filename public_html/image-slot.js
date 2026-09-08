@@ -1198,3 +1198,30 @@
           a.setAttribute('href', linkHref);
           a.textContent = text;
           return a;
+        };
+        // Unsplash's prescribed credit is TWO links — the photographer's
+        // name to their profile (credit-href) and 'Unsplash' to the
+        // homepage. Render that split whenever the text has the canonical
+        // shape; other text keeps the legacy single-link rendering.
+        const m = /^Photo by (.+) on Unsplash$/.exec(credit);
+        if (m) {
+          this._credit.appendChild(document.createTextNode('Photo by '));
+          this._credit.appendChild(
+            href ? mkLink(m[1], href) : document.createTextNode(m[1])
+          );
+          this._credit.appendChild(document.createTextNode(' on '));
+          this._credit.appendChild(mkLink('Unsplash', UNSPLASH_HOMEPAGE_HREF));
+        } else if (href) {
+          this._credit.appendChild(mkLink(credit, href));
+        } else {
+          this._credit.textContent = credit;
+        }
+      }
+      this.toggleAttribute('data-credit', showCredit);
+    }
+  }
+
+  if (!customElements.get('image-slot')) {
+    customElements.define('image-slot', ImageSlot);
+  }
+})();
