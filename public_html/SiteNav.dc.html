@@ -301,7 +301,10 @@ class Component extends DCLogic {
         style: "font:500 13.5px/1 Figtree, sans-serif; letter-spacing:.01em; white-space:nowrap; padding-bottom:4px; " +
           (d.key === active ? "color:#1D3730; border-bottom:1.5px solid #96592A" : "color:#56534C; border-bottom:1.5px solid transparent")
       })),
-      weatherStyle: (!haveWeather || w < 760)
+      // A compact temperature + icon fits beside the cart on normal phones;
+      // only the 320px edge case drops it. The place label still disappears
+      // first, so the header never crowds or wraps.
+      weatherStyle: (!haveWeather || w < 360)
         ? "display:none"
         : "display:flex; align-items:center; gap:7px; padding:0 2px",
       // Says where the reading is from, so it reads as the park's own weather

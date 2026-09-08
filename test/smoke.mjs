@@ -177,6 +177,59 @@ const href = await page.evaluate(() =>
   (document.querySelector('a[href^="/accommodation/"]') || {}).getAttribute?.("href"));
 line(!!href && !href.includes(".dc.html"), "links use clean URLs", String(href));
 
+// --- responsive homepage --------------------------------------------------
+// These sizes cover the layout modes, plus awkward landscape/tablet edges.
+// Pixel-perfect snapshots are optional; geometry and overflow always gate CI.
+const VIEWPORTS = [
+  { name: "desktop", width: 1920, height: 1080 },
+  { name: "desktop-tall", width: 1440, height: 1200 },
+  { name: "tablet-portrait", width: 768, height: 1024 },
+  { name: "tablet-landscape", width: 1024, height: 768 },
+  { name: "phone", width: 390, height: 844 },
+  { name: "phone-small", width: 320, height: 700 },
+];
+
+// Make the weather layout deterministic even when CI has no outbound network.
+await page.addInitScript(() => {
+  localStorage.setItem("kosipark-weather-sawpit-v3", JSON.stringify({
+    t: 4, code: 0, day: true, ts: Date.now(),
+  }));
+});
+
+for (const viewport of VIEWPORTS) {
+  await page.setViewportSize({ width: viewport.width, height: viewport.height });
+  await page.goto(BASE + "/", { waitUntil: "networkidle" });
+  await sleep(700);
+  const layout = await page.evaluate(() => {
+    const hero = document.querySelector(".home-hero").getBoundingClientRect();
+    const title = document.querySelector(".home-hero-title").getBoundingClientRect();
+    const lede = document.querySelector(".home-hero-lede").getBoundingClientRect();
+    const book = document.querySelector(".home-booking").getBoundingClientRect();
+    const weather = document.querySelector('[data-weather="sawpit-creek"]');
+    return {
+      overflow: document.documentElement.scrollWidth - window.innerWidth,
+      heroHeight: Math.round(hero.height),
+      copyGap: Math.round(book.top - lede.bottom),
+      titleLeft: Math.round(title.left),
+      titleRight: Math.round(title.right),
+      weatherVisible: getComputedStyle(weather).display !== "none",
+    };
+  });
+  line(layout.overflow <= 1, `home ${viewport.name}: no horizontal overflow`, JSON.stringify(layout));
+  line(layout.copyGap >= 24, `home ${viewport.name}: search does not cover hero copy`, `${layout.copyGap}px gap`);
+  line(layout.titleLeft >= 12 && layout.titleRight <= viewport.width - 12,
+       `home ${viewport.name}: headline stays inside viewport`, `${layout.titleLeft}–${layout.titleRight}px`);
+  line(layout.heroHeight <= 660, `home ${viewport.name}: hero remains bounded`, `${layout.heroHeight}px`);
+  line(layout.weatherVisible === (viewport.width >= 360),
+       `home ${viewport.name}: weather visibility fits the header`, String(layout.weatherVisible));
+  if (SHOTS) {
+    await page.screenshot({
+      path: new URL(`shots/home-${viewport.name}.png`, import.meta.url).pathname,
+      fullPage: false,
+    });
+  }
+}
+
 await browser.close();
 server.kill();
 console.log(failures === 0 ? "\nAll checks passed." : `\n${failures} check(s) failed.`);

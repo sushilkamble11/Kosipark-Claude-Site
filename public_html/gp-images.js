@@ -76,12 +76,12 @@
     return Math.max(11, Math.min(46, Math.round(17 * scale)));
   }
 
-  function placeholderFor(caption, seed, width) {
+  function placeholderFor(caption, seed, width, suppressCaption) {
     var t = TONES[hashOf(seed || caption || "x") % TONES.length];
     var size = captionSizeFor(width);
     // Wrap by the width actually available at this size, not a fixed count.
     var perLine = Math.max(18, Math.round(680 / (size * 0.52)));
-    var lines = wrap(caption || "Photograph to come", perLine, 3);
+    var lines = suppressCaption ? [] : wrap(caption || "Photograph to come", perLine, 3);
     var lead = Math.round(size * 1.4);
     var startY = 300 - (lines.length - 1) * (lead / 2);
     var text = lines.map(function (l, i) {
@@ -151,7 +151,9 @@
       if (!cap) return;
       filled.add(el);
       el.setAttribute("alt", cap);
-      el.setAttribute("src", placeholderFor(cap, el.id || cap, widthOf(el)));
+      // The hero already carries the page's main message. Repeating a photo
+      // brief inside that full-bleed panel competes with the real headline.
+      el.setAttribute("src", placeholderFor(cap, el.id || cap, widthOf(el), el.id === "h-hero"));
       el.setAttribute("data-kosipark-placeholder", "");
       return;
     }
@@ -174,7 +176,7 @@
     probe.onload = function () { el.setAttribute("src", img.url); };
     probe.onerror = function () {
       el.setAttribute("alt", caption);
-      el.setAttribute("src", placeholderFor(caption, el.id || caption, widthOf(el)));
+      el.setAttribute("src", placeholderFor(caption, el.id || caption, widthOf(el), el.id === "h-hero"));
       el.setAttribute("data-kosipark-placeholder", "");
     };
     probe.src = img.url;
