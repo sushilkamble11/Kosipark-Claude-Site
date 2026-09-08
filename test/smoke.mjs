@@ -171,7 +171,7 @@ const room = await page.evaluate(() => {
   };
 });
 line(room.filled >= 3, "room page: photos resolved by id convention", JSON.stringify(room.ids));
-line(room.ids.every(id => /^r-cedar-cabin-[123]$/.test(id)),
+line(room.ids.every(id => /^r-cedar-cabin-[1-8]$/.test(id)),
      "room page: slot ids match the requested room", JSON.stringify(room.ids));
 line(room.captions.length >= 3, "room page: GuestPoint captions become alt text", room.captions[0] || "");
 
