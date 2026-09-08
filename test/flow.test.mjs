@@ -124,8 +124,11 @@ const afterReload = await cart();
 ok(afterReload.length === 3, "refreshing checkout does not duplicate a unit", String(afterReload.length));
 
 // --- one timer, not two ----------------------------------------------------
-const timers = (text.match(/\d+:\d\d/g) || []);
-ok(timers.length <= 1, "at most one countdown is shown on the checkout screen", timers.join(", "));
+const finalText = await page.evaluate(() => document.body.innerText);
+const timers = (finalText.match(/\d+:\d\d/g) || []);
+ok(timers.length === 1, "one countdown is shown on the checkout screen", timers.join(", "));
+ok(/(?:Refundable|Non-refundable|Cancellation terms)/.test(finalText),
+   "each stay shows its cancellation status", (finalText.match(/(?:Refundable|Non-refundable|Cancellation terms)/g) || []).join(", "));
 
 await browser.close();
 if (server) server.kill();
