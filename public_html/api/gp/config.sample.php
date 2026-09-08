@@ -19,6 +19,30 @@ return [
     // GuestPoint Booking Engine base. Change only if GuestPoint moves it.
     'upstream'    => 'https://beapi.guestpoint.dev/api/v1',
 
+    // GuestPoint Core/PMS API. GuestPoint must supply the correct environment
+    // URL; the uploaded Core specification deliberately does not declare one.
+    // This is used server-side to verify reference + surname + stored mobile
+    // before the Booking Engine manage endpoint is called.
+    'core_upstream' => getenv('GP_CORE_UPSTREAM') ?: '',
+    'core_api_key'  => getenv('GP_CORE_API_KEY') ?: (getenv('GP_API_KEY') ?: 'REPLACE_WITH_API_KEY'),
+
+    // Short guest-request notifications from the manage-booking portal.
+    // Confirm this address before production if the park uses .com.au instead.
+    'notification_email' => getenv('GP_NOTIFICATION_EMAIL') ?: 'stay@kosipark.com',
+
+    // Hostinger mailbox used for one-time booking access codes. Create the
+    // mailbox in hPanel, then keep its password in an environment variable —
+    // never put the real password in this file. Hostinger Email uses encrypted
+    // SMTP on smtp.hostinger.com:465.
+    'smtp_host'     => getenv('KOSIPARK_SMTP_HOST') ?: 'smtp.hostinger.com',
+    'smtp_port'     => (int)(getenv('KOSIPARK_SMTP_PORT') ?: 465),
+    'smtp_username' => getenv('KOSIPARK_SMTP_USERNAME') ?: '',
+    'smtp_password' => getenv('KOSIPARK_SMTP_PASSWORD') ?: '',
+    'otp_from_email'=> getenv('KOSIPARK_OTP_FROM_EMAIL') ?: (getenv('KOSIPARK_SMTP_USERNAME') ?: ''),
+    'otp_from_name' => 'Kosciuszko Tourist Park',
+    'otp_ttl'       => 10 * 60,
+    'otp_max_attempts' => 5,
+
     // Server-side cache directory. Must be writable and OUTSIDE public_html.
     // Falls back to the system temp dir when this path is not writable.
     'cache_dir'   => dirname($_SERVER['DOCUMENT_ROOT']) . '/gp-cache',

@@ -179,7 +179,9 @@ GuestPoint, not here.
 1. **Card tokenisation is stubbed** (`CardNumberToken: "tok_" + last4`). A real
    payment provider is required before any live payment. This is the one hard
    blocker to taking money.
-2. **`/manage` still runs on mock bookings.** It no longer has to — see below.
+2. **`/manage` needs the Core API environment URL.** The live page is built,
+   but reference + surname + mobile verification cannot leave sample mode until
+   GuestPoint supplies the Core/PMS API base URL and credentials.
 3. **Google Maps embed** — the Contact and home map slots are placeholders.
 4. **The weather pill** calls `api.open-meteo.com` from each visitor's browser.
    It fails soft, but it is a third-party request on every page load.
@@ -196,9 +198,9 @@ they say otherwise:
   confirmation number plus the lead guest's email and surname and returns the
   booking, with a `Login` object saying which actions the property permits.
   `PATCH /reservations/manage/{confNum}` modifies; `DELETE /reservations/{id}`
-  cancels. All three are wired in `guestpoint.js` (`lookupReservation`,
-  `modifyReservation`, `cancelReservation`) and allowed through the proxy.
-  `Manage.dc.html` still needs rebuilding on top of them — no middleware required.
+  cancels. The portal now verifies the guest's preferred reference + surname +
+  mobile combination against the Core API, then uses the stored email for the
+  Booking Engine manage call. The browser never receives either API key.
 - **Scarcity and restrictions are both real.** `Availabilities[].ForSale` is an
   integer per night, so "Only 1 left" is honest. `ClosedToArrival`,
   `ClosedToDeparture`, `Closed` and `MinStayArrival` are per-date on the rate, so
