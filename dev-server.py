@@ -24,6 +24,7 @@ ROUTES = [
     (re.compile(r"^/book/checkout/?$"),                  lambda m: ("/Checkout.dc.html", "")),
     (re.compile(r"^/manage/?$"),                         lambda m: ("/Manage.dc.html", "")),
     (re.compile(r"^/terms/?$"),                          lambda m: ("/Terms.dc.html", "")),
+    (re.compile(r"^/privacy/?$"),                        lambda m: ("/Privacy.dc.html", "")),
     (re.compile(r"^/attractions/?$"),                    lambda m: ("/Attractions.dc.html", "")),
     (re.compile(r"^/gallery/?$"),                        lambda m: ("/Gallery.dc.html", "")),
     (re.compile(r"^/contact/?$"),                        lambda m: ("/Contact.dc.html", "")),

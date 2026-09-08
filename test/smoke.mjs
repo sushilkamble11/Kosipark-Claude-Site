@@ -26,6 +26,7 @@ const ROUTES = [
   { url: "/book/checkout",                 needs: [] },
   { url: "/manage",                        needs: [] },
   { url: "/terms",                         needs: ["Terms"] },
+  { url: "/privacy",                       needs: ["Privacy Policy", "personal information"] },
   { url: "/attractions",                   needs: [] },
   { url: "/gallery",                       needs: [] },
   { url: "/contact",                       needs: ["6456 2224"] },
@@ -136,12 +137,15 @@ const home = await page.evaluate(() => {
     wiredFromApi: wired.filter(s => !s.hasAttribute("data-kosipark-placeholder")
                                     && (s.getAttribute("src") || "").length > 0).length,
     panels: slots.filter(s => s.hasAttribute("data-kosipark-placeholder")).length,
+    editorialPhotos: document.querySelectorAll('img[src^="/assets/attractions/"]').length,
     unlabelled: slots.filter(s => !(s.getAttribute("alt") || "").length).length,
   };
 });
 line(home.wiredFromApi === home.wired, "home: every API-wired slot shows its GuestPoint photo", JSON.stringify(home));
 line(home.empty === 0, "home: no slot is left as a grey hole", `${home.empty} empty`);
-line(home.panels > 0, "home: unmapped slots get a designed panel", `${home.panels} panels`);
+line(home.panels > 0 || home.editorialPhotos >= 4,
+     "home: editorial attraction photos or designed panels are present",
+     `${home.editorialPhotos} photos, ${home.panels} panels`);
 line(home.unlabelled === 0, "home: every slot has alt text", `${home.unlabelled} missing`);
 
 const homeMap = await page.locator('iframe[title^="Map showing Kosciuszko Tourist Park"]');

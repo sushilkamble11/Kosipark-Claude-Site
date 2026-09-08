@@ -36,6 +36,7 @@ ErrorDocument 404 /404.html
   RewriteRule ^book/checkout/?$                Checkout.dc.html        [L,QSA]
   RewriteRule ^manage/?$                       Manage.dc.html          [L,QSA]
   RewriteRule ^terms/?$                        Terms.dc.html           [L]
+  RewriteRule ^privacy/?$                      Privacy.dc.html         [L]
   RewriteRule ^attractions/?$                  Attractions.dc.html     [L]
   RewriteRule ^gallery/?$                      Gallery.dc.html         [L]
   RewriteRule ^contact/?$                      Contact.dc.html         [L]
@@ -48,6 +49,7 @@ ErrorDocument 404 /404.html
   RewriteRule ^Contact\.dc\.html$       /contact     [L,R=301]
   RewriteRule ^Manage\.dc\.html$        /manage      [L,R=301]
   RewriteRule ^Terms\.dc\.html$         /terms       [L,R=301]
+  RewriteRule ^Privacy\.dc\.html$       /privacy     [L,R=301]
 </IfModule>
 
 # --- Never serve secrets or VCS metadata --------------------------------
