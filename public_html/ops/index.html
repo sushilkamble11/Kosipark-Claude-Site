@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="color-scheme" content="light">
+  <title>Kosipark Operations</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <section id="login-view" class="login-view">
+    <div class="login-brand brand-plaque"><img src="../assets/kosipark-logo-2015.png" alt="Kosciuszko Tourist Park"></div>
+    <form id="login-form" class="login-card">
+      <h1>Operations</h1>
+      <p>Private access to integration health, keys and event logs.</p>
+      <label for="username">Username</label>
+      <input id="username" type="text" autocomplete="username" required autofocus>
+      <label for="password">Password</label>
+      <input id="password" type="password" autocomplete="current-password" required>
+      <button type="submit" class="button primary">Open operations</button>
+      <button type="button" id="forgot-password" class="login-link">Forgot password?</button>
+      <p id="login-error" class="form-message error" role="alert"></p>
+    </form>
+    <form id="forgot-form" class="login-card" hidden>
+      <h1>Reset password</h1>
+      <p>Enter your username. If recovery is configured, we’ll email a secure reset link.</p>
+      <label for="forgot-username">Username</label>
+      <input id="forgot-username" type="text" autocomplete="username" required>
+      <button type="submit" class="button primary">Send reset link</button>
+      <button type="button" id="back-to-login" class="login-link">Back to sign in</button>
+      <p id="forgot-message" class="form-message" role="status"></p>
+    </form>
+    <form id="reset-form" class="login-card" hidden>
+      <h1>Choose a password</h1>
+      <p>Use at least 12 characters. The reset link can only be used once.</p>
+      <input id="reset-token" type="hidden">
+      <label for="reset-username">Username</label>
+      <input id="reset-username" type="text" autocomplete="username" required>
+      <label for="new-password">New password</label>
+      <input id="new-password" type="password" autocomplete="new-password" minlength="12" required>
+      <button type="submit" class="button primary">Reset password</button>
+      <button type="button" id="reset-back-to-login" class="login-link">Back to sign in</button>
+      <p id="reset-message" class="form-message" role="status"></p>
+    </form>
+  </section>
+
+  <div id="app-view" class="app-shell" hidden>
+    <aside class="sidebar">
+      <div class="sidebar-brand"><div class="brand-plaque"><img src="../assets/kosipark-logo-2015.png" alt="Kosciuszko Tourist Park"></div><small>Operations</small></div>
+      <nav aria-label="Operations sections">
+        <button class="nav-item active" data-section="overview"><span class="nav-icon">▥</span>Overview</button>
+        <button class="nav-item" data-section="connections"><span class="nav-icon">⌁</span>Connections</button>
+        <button class="nav-item" data-section="events"><span class="nav-icon">≋</span>Event stream</button>
+        <button class="nav-item" data-section="mappings"><span class="nav-icon">⌘</span>Access mappings</button>
+        <button class="nav-item" data-section="issues"><span class="nav-icon">△</span>Issues <span id="issue-count-nav" class="nav-count" hidden></span></button>
+        <button class="nav-item" data-section="ai-diagnostic"><span class="nav-icon">◎</span>AI diagnostic</button>
+      </nav>
+      <div class="sidebar-foot">
+        <div class="operator"><span>S</span><div><strong>Sushil</strong><small>Administrator</small></div></div>
+        <button id="logout" class="signout">↪ <span>Sign out</span></button>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <header class="workspace-head">
+        <h1>Operations</h1>
+        <div class="head-tools">
+          <label class="environment"><span></span><select aria-label="Environment"><option>Live</option><option>Test</option></select></label>
+          <label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Search booking, lock or event"></label>
+          <button id="run-sync" class="button outline"><span aria-hidden="true">↻</span> Run sync</button>
+        </div>
+      </header>
+
+      <section id="overview" class="provider-flow" aria-label="Integration health">
+        <article class="flow-node source"><span class="provider-logo gp">GP</span><div><strong>GuestPoint</strong><span id="gp-health" class="health"><i></i> Setup needed</span><small id="gp-seen">Never checked</small></div></article>
+        <div class="flow-line"><i></i></div>
+        <article class="flow-node middleware"><span class="provider-logo core">≡</span><div><strong>Middleware</strong><span class="health connected"><i></i> Healthy</span><small>Authenticated now</small></div></article>
+        <div class="flow-branch"><span></span><i></i><b></b></div>
+        <div class="targets">
+          <article class="flow-node"><span class="provider-logo tt">TT</span><div><strong>TTLock</strong><span id="tt-health" class="health"><i></i> Setup needed</span><small id="tt-seen">Never checked</small></div></article>
+          <article class="flow-node"><span class="provider-logo gate">BG</span><div><strong>Boom gate</strong><span id="bg-health" class="health"><i></i> Awaiting vendor</span><small>Control disabled</small></div></article>
+        </div>
+      </section>
+
+      <div class="content-grid">
+        <section id="events" class="surface event-surface">
+          <div class="surface-head">
+            <h2>Live event stream</h2>
+            <div class="filters">
+              <select id="status-filter" aria-label="Filter by status"><option value="all">All events</option><option value="failed">Errors only</option><option value="processing">Processing</option><option value="delivered">Delivered</option></select>
+              <select id="provider-filter" aria-label="Filter by provider"><option value="all">All providers</option><option>GuestPoint</option><option>TTLock</option><option>Boom gate</option><option>Middleware</option></select>
+            </div>
+          </div>
+          <div class="event-table-wrap">
+            <table class="event-table">
+              <thead><tr><th>Time</th><th>Source</th><th>Event</th><th>Target</th><th>Status</th><th>Correlation ID</th></tr></thead>
+              <tbody id="event-rows"></tbody>
+            </table>
+            <div id="event-empty" class="empty-state" hidden><strong>No matching events</strong><span>Change the filters or run a sync.</span></div>
+          </div>
+        </section>
+
+        <aside id="issues" class="surface issues-surface">
+          <div class="surface-head"><h2>Needs attention <span id="issue-count" class="count">0</span></h2><button id="show-all-issues" class="link-button">View all issues</button></div>
+          <div id="issues-list" class="issues-list"></div>
+        </aside>
+
+        <section id="connections" class="surface connections-surface">
+          <div class="surface-head"><div><h2>Connections &amp; secrets</h2><p>Only masked values and metadata leave the backend.</p></div></div>
+          <div class="connection-table-wrap">
+            <table class="connection-table">
+              <thead><tr><th>Provider</th><th>Scope</th><th>Status</th><th>Last verified</th><th>Secret (current)</th><th>Version</th><th>Rotation</th><th></th></tr></thead>
+              <tbody id="connection-rows"></tbody>
+            </table>
+          </div>
+          <footer>ⓘ Secrets stay server-side. Rotate provider credentials at least every 90 days where supported.</footer>
+        </section>
+
+        <aside id="event-detail" class="surface detail-surface">
+          <div class="surface-head"><div><h2>Event detail</h2><p id="detail-correlation">Select an event</p></div><button id="close-detail" class="icon-button" aria-label="Close event detail">×</button></div>
+          <div id="trace" class="trace"></div>
+          <footer>Payloads and credentials are redacted before display.</footer>
+        </aside>
+      </div>
+
+      <section id="mappings" class="surface mappings-surface">
+        <div class="surface-head"><div><h2>Access mappings</h2><p>One GuestPoint room to one physical lock, with optional gate access.</p></div><button id="add-mapping" class="button primary">Add mapping</button></div>
+        <div id="mapping-table"></div>
+      </section>
+
+      <p id="action-message" class="toast" role="status" hidden></p>
+    </main>
+  </div>
+
+  <dialog id="mapping-dialog">
+    <form id="mapping-form" method="dialog">
+      <div class="dialog-head"><div><h2 id="dialog-title">Add access mapping</h2><p>Connect a GuestPoint room to its TTLock.</p></div><button type="button" id="close-dialog" class="icon-button" aria-label="Close">×</button></div>
+      <input id="mapping-id" type="hidden">
+      <div class="form-grid">
+        <label>Unit name<input id="unit-name" placeholder="Cabin 4" required></label>
+        <label>GuestPoint room ID<input id="unit-id" placeholder="Room UUID" required></label>
+        <label>TTLock<input id="lock-id" list="lock-options" placeholder="Lock ID" required><datalist id="lock-options"></datalist></label>
+        <label>Lock name<input id="lock-name" placeholder="Front door"></label>
+      </div>
+      <label class="checkbox"><input id="gate-access" type="checkbox"><span><strong>Include boom-gate access</strong><small>Applied when the gate integration is enabled.</small></span></label>
+      <div class="dialog-actions"><button type="button" id="cancel-dialog" class="button ghost">Cancel</button><button type="submit" class="button primary">Save mapping</button></div>
+      <p id="mapping-error" class="form-message error" role="alert"></p>
+    </form>
+  </dialog>
+  <dialog id="ai-diagnostic">
+    <form method="dialog" class="diagnostic-dialog">
+      <div class="dialog-head"><div><p class="eyebrow">Read-only assistant</p><h2>AI diagnostic</h2><p>Only redacted issue and trace data is sent to the configured provider.</p></div><button type="submit" class="icon-button" aria-label="Close">×</button></div>
+      <div id="diagnostic-body" class="diagnostic-body"><p>Select <strong>Diagnose</strong> on an issue to begin.</p></div>
+      <div class="diagnostic-guard"><strong>Guardrail</strong><span>Suggestions do not change locks, gates, code, credentials or hosting.</span></div>
+    </form>
+  </dialog>
+  <script defer src="./app.js"></script>
+</body>
+</html>

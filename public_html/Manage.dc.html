@@ -29,26 +29,43 @@
   <section data-screen-label="Manage booking" style="max-width:1320px; width:100%; margin:0 auto; padding:clamp(26px,3.6vw,50px) clamp(20px,5vw,56px) clamp(38px,5.2vw,70px)">
     <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#74836A; margin:0">Your Reservation</p>
     <h1 style="font:300 clamp(26px,3.8vw,42px)/1.05 Petrona, Georgia, serif; letter-spacing:-0.02em; color:#1D3730; margin:14px 0 0; max-width:20ch; text-wrap:balance">Manage your booking</h1>
-    <p style="font:400 clamp(14px,1.4vw,16px)/1.75 Figtree, sans-serif; color:#56534C; margin:16px 0 0; max-width:56ch">Look up your stay to request a date change, adjust guest numbers or cancel. All amendment and cancellation requests are handled through this form only.</p>
+    <p style="font:400 clamp(14px,1.4vw,16px)/1.75 Figtree, sans-serif; color:#56534C; margin:16px 0 0; max-width:58ch">View your stay, update permitted details and understand any fee before you make a change. Your original booking terms remain protected throughout.</p>
 
     <div style="display:grid; gap:clamp(20px,3vw,40px); grid-template-columns:repeat(auto-fit, minmax(min(100%, 320px), 1fr)); margin-top:clamp(26px,4vw,44px); align-items:start">
       <div style="min-width:0">
 
         <sc-if value="{{ showFind }}" hint-placeholder-val="{{ true }}">
           <div style="background:#FFFFFF; border:1px solid rgba(29,55,48,0.10); border-radius:16px; padding:clamp(20px,3vw,32px); box-shadow:0 22px 50px -34px rgba(18,39,32,0.45)">
-            <h2 style="font:400 19px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:0">Find your booking</h2>
-            <p style="font:400 14.5px/1.7 Figtree, sans-serif; color:#6C6862; margin:10px 0 22px">Enter the reference from your confirmation email and the surname it was booked under.</p>
-            <div style="display:flex; flex-direction:column; gap:12px">
-              <label style="display:flex; flex-direction:column; gap:7px; padding:14px 18px; border-radius:14px; background:#F3ECE0; border:1px solid rgba(29,55,48,0.08)">
-                <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.18em; text-transform:uppercase; color:#74836A">Booking reference</span>
-                <input value="{{ refValue }}" onChange="{{ onRefChange }}" placeholder="KTP-48213" style="border:0; background:transparent; outline:none; font:500 17px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0" />
-              </label>
-              <label style="display:flex; flex-direction:column; gap:7px; padding:14px 18px; border-radius:14px; background:#F3ECE0; border:1px solid rgba(29,55,48,0.08)">
-                <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.18em; text-transform:uppercase; color:#74836A">Surname</span>
-                <input value="{{ nameValue }}" onChange="{{ onNameChange }}" placeholder="Nguyen" style="border:0; background:transparent; outline:none; font:500 17px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0" />
-              </label>
-              <button type="button" onClick="{{ find }}" style="min-height:62px; border:0; border-radius:14px; background:#1D3730; color:#FCFAF6; font:700 13.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; cursor:pointer" style-hover="background:#96592A">Find my booking</button>
-            </div>
+            <h2 style="font:400 19px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:0">{{ accessTitle }}</h2>
+            <p style="font:400 14.5px/1.7 Figtree, sans-serif; color:#6C6862; margin:10px 0 22px">{{ accessIntro }}</p>
+            <sc-if value="{{ showCredentials }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex; flex-direction:column; gap:12px">
+                <label style="display:flex; flex-direction:column; gap:7px; padding:14px 18px; border-radius:14px; background:#F3ECE0; border:1px solid rgba(29,55,48,0.08)">
+                  <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.18em; text-transform:uppercase; color:#74836A">Booking reference</span>
+                  <input value="{{ refValue }}" onChange="{{ onRefChange }}" placeholder="KTP-48213" autocomplete="off" style="border:0; background:transparent; outline:none; font:500 17px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0" />
+                </label>
+                <label style="display:flex; flex-direction:column; gap:7px; padding:14px 18px; border-radius:14px; background:#F3ECE0; border:1px solid rgba(29,55,48,0.08)">
+                  <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.18em; text-transform:uppercase; color:#74836A">Surname</span>
+                  <input value="{{ nameValue }}" onChange="{{ onNameChange }}" placeholder="Nguyen" autocomplete="family-name" style="border:0; background:transparent; outline:none; font:500 17px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0" />
+                </label>
+                <label style="display:flex; flex-direction:column; gap:7px; padding:14px 18px; border-radius:14px; background:#F3ECE0; border:1px solid rgba(29,55,48,0.08)">
+                  <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.18em; text-transform:uppercase; color:#74836A">Mobile number</span>
+                  <input value="{{ mobileValue }}" onChange="{{ onMobileChange }}" inputmode="tel" autocomplete="tel" placeholder="0412 345 678" style="border:0; background:transparent; outline:none; font:500 17px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0" />
+                </label>
+                <button type="button" onClick="{{ find }}" disabled="{{ findDisabled }}" style="{{ findButtonStyle }}" style-hover="background:#96592A">{{ findLabel }}</button>
+              </div>
+            </sc-if>
+            <sc-if value="{{ showOtp }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex; flex-direction:column; gap:12px; animation:riseIn .2s ease both">
+                <label style="display:flex; flex-direction:column; gap:9px; padding:16px 18px; border-radius:14px; background:#F3ECE0; border:1px solid rgba(29,55,48,0.08)">
+                  <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.18em; text-transform:uppercase; color:#74836A">Six-digit email code</span>
+                  <input aria-label="Six-digit email code" value="{{ otpValue }}" onChange="{{ onOtpChange }}" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" style="border:0; background:transparent; outline:none; font:600 24px/1.3 Figtree, sans-serif; letter-spacing:.22em; color:#1D3730; width:100%; padding:0" />
+                </label>
+                <p style="{{ demoOtpStyle }}">Demo verification code: <strong>{{ demoOtp }}</strong></p>
+                <button type="button" onClick="{{ verifyOtp }}" disabled="{{ verifyDisabled }}" style="{{ verifyButtonStyle }}" style-hover="background:#96592A">{{ verifyLabel }}</button>
+                <button type="button" onClick="{{ changeDetails }}" style="border:1px solid rgba(29,55,48,.18); border-radius:14px; background:transparent; color:#1D3730; font:700 12px/1 Figtree,sans-serif; letter-spacing:.08em; text-transform:uppercase; padding:15px 18px; cursor:pointer">Use different details</button>
+              </div>
+            </sc-if>
             <p style="{{ errorStyle }}">{{ errorText }}</p>
             <p style="font:400 13.5px/1.7 Figtree, sans-serif; color:#8B877E; margin:20px 0 0">Booked through Booking.com, Airbnb or Expedia? The agent's terms apply — please contact them directly. Otherwise call reception on <a href="tel:0264562224" style="color:#1D3730; border-bottom:1px solid #96592A">02 6456 2224</a>.</p>
           </div>
@@ -58,7 +75,7 @@
           <div style="background:#FFFFFF; border:1px solid rgba(29,55,48,0.10); border-radius:16px; padding:clamp(20px,3vw,32px); box-shadow:0 22px 50px -34px rgba(18,39,32,0.45); animation:riseIn .2s ease both">
             <div style="display:flex; flex-wrap:wrap; gap:12px 20px; align-items:baseline; justify-content:space-between">
               <div>
-                <p style="font:700 10.5px/1 Figtree, sans-serif; letter-spacing:.18em; text-transform:uppercase; color:#74836A; margin:0">{{ booking.ref }}</p>
+                <p style="font:700 10.5px/1 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A; margin:0">Booking reference: {{ booking.ref }}</p>
                 <h2 style="font:400 clamp(20px,2.3vw,26px)/1.2 Petrona, Georgia, serif; color:#1D3730; margin:10px 0 0">{{ booking.room }}</h2>
               </div>
               <span style="{{ statusStyle }}">{{ booking.status }}</span>
@@ -77,42 +94,115 @@
 
             <sc-if value="{{ canAct }}" hint-placeholder-val="{{ true }}">
               <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:22px">
-                <button type="button" onClick="{{ openDates }}" style="{{ tabDates }}">Change dates</button>
-                <button type="button" onClick="{{ openGuests }}" style="{{ tabGuests }}">Guest numbers</button>
-                <button type="button" onClick="{{ openNote }}" style="{{ tabNote }}">Add a request</button>
-                <button type="button" onClick="{{ openCancel }}" style="{{ tabCancel }}">Cancel booking</button>
+                <sc-if value="{{ canAmend }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ openAmend }}" style="{{ tabAmend }}">Amend booking</button></sc-if>
+                <sc-if value="{{ canParty }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ openParty }}" style="{{ tabParty }}">Guest numbers</button></sc-if>
+                <sc-if value="{{ canGuests }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ openGuests }}" style="{{ tabGuests }}">Guest details</button></sc-if>
+                <button type="button" onClick="{{ openTravel }}" style="{{ tabTravel }}">Arrival & vehicles</button>
+                <button type="button" onClick="{{ openExtras }}" style="{{ tabExtras }}">View extras</button>
+                <sc-if value="{{ canNote }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ openNote }}" style="{{ tabNote }}">Special request</button></sc-if>
+                <sc-if value="{{ canPay }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ payBalance }}" style="{{ payButtonStyle }}">Pay {{ balanceLabel }}</button></sc-if>
+                <button type="button" onClick="{{ openAddStayWarning }}" style="border:1px solid rgba(29,55,48,0.16); border-radius:999px; background:transparent; color:#1D3730; font:600 12.5px/1 Figtree, sans-serif; letter-spacing:.06em; padding:14px 18px; cursor:pointer">Add another stay</button>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ modeAmend }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:20px; border-top:1px solid rgba(29,55,48,0.10); padding-top:22px">
+                <h3 style="font:400 19px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:0">Amend booking</h3>
+                <div style="background:#F3ECE0; border-radius:14px; padding:18px; margin-top:14px">
+                  <p style="font:500 15px/1.65 Figtree, sans-serif; color:#292724; margin:0">Choose what you want to change. We will check the booking rules, availability and price before asking you to accept anything.</p>
+                  <p style="font:400 14px/1.65 Figtree, sans-serif; color:#6C6862; margin:7px 0 0">Any reduction in dates or booking value is assessed under the original cancellation policy.</p>
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:14px">
+                  <sc-if value="{{ canDates }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ chooseDates }}" style="{{ amendChoiceStyle }}">Change dates</button></sc-if>
+                  <sc-if value="{{ canCancel }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ chooseCancel }}" style="{{ cancelChoiceStyle }}">Cancel booking</button></sc-if>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ modeTravel }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:20px; border-top:1px solid rgba(29,55,48,0.10); padding-top:22px">
+                <h3 style="font:400 19px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:0">Arrival and vehicle details</h3>
+                <p style="font:400 14px/1.7 Figtree, sans-serif; color:#6C6862; margin:8px 0 14px">Help reception prepare keys and identify vehicles after hours.</p>
+                <div style="display:grid; grid-template-columns:minmax(150px,.6fr) minmax(220px,1.4fr); gap:10px">
+                  <label style="display:flex; flex-direction:column; gap:7px; padding:13px 15px; border-radius:12px; background:#F3ECE0"><span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Estimated arrival</span><input type="time" value="{{ etaValue }}" onChange="{{ onEtaChange }}" style="border:0; background:transparent; outline:none; font:500 15px/1.35 Figtree, sans-serif; color:#1D3730; width:100%" /></label>
+                  <label style="display:flex; flex-direction:column; gap:7px; padding:13px 15px; border-radius:12px; background:#F3ECE0"><span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Vehicle registrations</span><input value="{{ vehiclesValue }}" onChange="{{ onVehiclesChange }}" placeholder="ABC123, XYZ789" style="border:0; background:transparent; outline:none; font:500 15px/1.35 Figtree, sans-serif; color:#1D3730; width:100%" /></label>
+                </div>
+                <button type="button" onClick="{{ saveTravel }}" disabled="{{ travelSaving }}" style="margin-top:16px; border:0; border-radius:14px; background:#1D3730; color:#FCFAF6; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; cursor:pointer; padding:17px 26px">{{ travelSaveLabel }}</button>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ modeExtras }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:20px; border-top:1px solid rgba(29,55,48,0.10); padding-top:22px">
+                <h3 style="font:400 19px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:0">Extras for this stay</h3>
+                <p style="font:400 14px/1.7 Figtree, sans-serif; color:#6C6862; margin:8px 0 14px">{{ extrasMessage }}</p>
+                <div style="display:grid; gap:8px">
+                  <sc-for list="{{ extrasList }}" as="extra" hint-placeholder-count="3">
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:18px; padding:14px 16px; border-radius:12px; background:#F3ECE0"><span><strong style="display:block; font:600 14px/1.4 Figtree, sans-serif; color:#292724">{{ extra.name }}</strong><span style="font:400 13px/1.5 Figtree, sans-serif; color:#6C6862">{{ extra.description }}</span><span style="display:block; margin-top:4px; font:600 13px/1.5 Figtree, sans-serif; color:#1D3730">{{ extra.price }}</span></span><button type="button" onClick="{{ extra.action }}" style="white-space:nowrap; border:1px solid rgba(29,55,48,.2); border-radius:999px; background:#FFFFFF; color:#1D3730; font:700 11px/1 Figtree,sans-serif; letter-spacing:.08em; text-transform:uppercase; padding:12px 15px; cursor:pointer">{{ extra.actionLabel }}</button></div>
+                  </sc-for>
+                </div>
+                <div style="{{ extrasReviewStyle }}">
+                  <strong style="font:600 15px/1.5 Figtree,sans-serif; color:#1D3730">Selected extras: {{ extrasTotalLabel }}</strong>
+                  <p style="font:400 13.5px/1.6 Figtree,sans-serif; color:#6C6862; margin:5px 0 0">You can review the exact quantities before payment. Nothing is added until the final confirmation step.</p>
+                  <button type="button" onClick="{{ reviewExtras }}" style="margin-top:12px; border:0; border-radius:12px; background:#1D3730; color:#FCFAF6; font:700 11.5px/1 Figtree,sans-serif; letter-spacing:.08em; text-transform:uppercase; padding:14px 18px; cursor:pointer">Review and continue</button>
+                </div>
               </div>
             </sc-if>
 
             <sc-if value="{{ modeDates }}" hint-placeholder-val="{{ false }}">
               <div style="margin-top:20px; border-top:1px solid rgba(29,55,48,0.10); padding-top:22px">
-                <h3 style="font:400 19px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:0">Request new dates</h3>
+                <h3 style="font:400 19px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:0">Check new dates</h3>
                 <p style="font:400 14px/1.7 Figtree, sans-serif; color:#6C6862; margin:8px 0 16px">{{ amendText }}</p>
-                <dc-import name="BookingBar" compact="{{ true }}" submit-label="Request date change" on-submit="{{ submitDates }}" hint-size="100%,240px"></dc-import>
+                <dc-import name="BookingBar" compact="{{ true }}" initial-arrival="{{ currentArrival }}" initial-departure="{{ currentDeparture }}" initial-adults="{{ currentAdults }}" initial-children="{{ currentChildren }}" initial-infants="{{ currentInfants }}" submit-label="Check live availability" on-submit="{{ submitDates }}" hint-size="100%,240px"></dc-import>
+                <div style="{{ dateQuoteStyle }}">
+                  <p style="font:600 15px/1.5 Figtree, sans-serif; color:#1D3730; margin:0">{{ dateQuoteTitle }}</p>
+                  <p style="font:400 14px/1.7 Figtree, sans-serif; color:#4C5C40; margin:7px 0 0">{{ dateQuoteBody }}</p>
+                  <sc-if value="{{ dateQuoteAvailable }}" hint-placeholder-val="{{ false }}">
+                    <dl style="display:grid; gap:8px; margin:14px 0 0; padding-top:13px; border-top:1px solid rgba(29,55,48,0.12)">
+                      <sc-for list="{{ dateQuoteRows }}" as="r" hint-placeholder-count="3">
+                        <div style="display:flex; justify-content:space-between; gap:18px"><dt style="font:500 13.5px/1.5 Figtree, sans-serif; color:#6C6862">{{ r.k }}</dt><dd style="margin:0; font:600 13.5px/1.5 Figtree, sans-serif; color:#292724">{{ r.v }}</dd></div>
+                      </sc-for>
+                    </dl>
+                    <label style="display:flex; align-items:flex-start; gap:10px; margin-top:15px; cursor:pointer"><input type="checkbox" checked="{{ policyAccepted }}" onChange="{{ onPolicyAccepted }}" style="width:19px; height:19px; margin-top:2px; accent-color:#1D3730" /><span style="font:500 14px/1.55 Figtree,sans-serif; color:#1D3730">I accept this new price and the cancellation and amendment conditions for this booking.</span></label>
+                    <button type="button" disabled="{{ finalActionLocked }}" onClick="{{ acceptDateChange }}" style="{{ finalActionStyle }}">Accept price and continue</button>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ modeParty }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:20px; border-top:1px solid rgba(29,55,48,0.10); padding-top:22px">
+                <h3 style="font:400 19px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:0">Change guest numbers</h3>
+                <p style="font:400 14px/1.7 Figtree,sans-serif; color:#6C6862; margin:8px 0 14px">All guests, including infants, count toward the accommodation limit. We will check GuestPoint before showing a new price.</p>
+                <div style="display:grid; grid-template-columns:repeat(3,minmax(90px,1fr)); gap:10px">
+                  <sc-for list="{{ partyFields }}" as="field" hint-placeholder-count="3">
+                    <label style="display:flex; flex-direction:column; gap:7px; padding:13px 15px; border-radius:12px; background:#F3ECE0"><span style="font:700 10px/1 Figtree,sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">{{ field.label }}</span><input type="number" min="{{ field.min }}" max="{{ field.max }}" value="{{ field.value }}" onChange="{{ field.change }}" style="border:0; background:transparent; outline:none; font:600 16px/1.35 Figtree,sans-serif; color:#1D3730; width:100%" /></label>
+                  </sc-for>
+                </div>
+                <button type="button" onClick="{{ quoteParty }}" disabled="{{ partyLoading }}" style="margin-top:14px; border:0; border-radius:14px; background:#1D3730; color:#FCFAF6; font:700 12px/1 Figtree,sans-serif; letter-spacing:.09em; text-transform:uppercase; padding:16px 22px; cursor:pointer">{{ partyQuoteLabel }}</button>
+                <div style="{{ partyQuoteStyle }}">
+                  <p style="font:600 15px/1.5 Figtree,sans-serif; color:#1D3730; margin:0">{{ partyQuoteTitle }}</p>
+                  <p style="font:400 14px/1.65 Figtree,sans-serif; color:#4C5C40; margin:7px 0 0">{{ partyQuoteBody }}</p>
+                  <sc-if value="{{ partyQuoteAvailable }}" hint-placeholder-val="{{ false }}">
+                    <label style="display:flex; align-items:flex-start; gap:10px; margin-top:15px; cursor:pointer"><input type="checkbox" checked="{{ policyAccepted }}" onChange="{{ onPolicyAccepted }}" style="width:19px; height:19px; margin-top:2px; accent-color:#1D3730" /><span style="font:500 14px/1.55 Figtree,sans-serif; color:#1D3730">I accept the revised guest numbers, price and applicable booking conditions.</span></label>
+                    <button type="button" disabled="{{ finalActionLocked }}" onClick="{{ acceptPartyChange }}" style="{{ finalActionStyle }}">Accept price and continue</button>
+                  </sc-if>
+                </div>
               </div>
             </sc-if>
 
             <sc-if value="{{ modeGuests }}" hint-placeholder-val="{{ false }}">
               <div style="margin-top:20px; border-top:1px solid rgba(29,55,48,0.10); padding-top:22px">
-                <h3 style="font:400 19px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:0">Change guest numbers</h3>
-                <p style="font:400 14px/1.7 Figtree, sans-serif; color:#6C6862; margin:8px 0 6px">Maximum occupancy includes adults, children (2–16) and infants under 2. Infants stay free but count toward the limit.</p>
-                <div style="display:grid; gap:1px; border-radius:14px; overflow:hidden; margin-top:14px">
-                  <sc-for list="{{ guestRows }}" as="row" hint-placeholder-count="3">
-                    <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; padding:14px 16px; background:#F3ECE0; box-shadow:0 0 0 1px rgba(29,55,48,0.08)">
-                      <span style="display:flex; flex-direction:column; gap:3px">
-                        <span style="font:600 15px/1 Figtree, sans-serif; color:#292724">{{ row.label }}</span>
-                        <span style="font:400 12.5px/1 Figtree, sans-serif; color:#8B877E">{{ row.hint }}</span>
-                      </span>
-                      <span style="display:flex; align-items:center; gap:4px">
-                        <button type="button" onClick="{{ row.dec }}" style="width:40px; height:40px; border-radius:999px; border:1px solid rgba(29,55,48,0.18); background:transparent; color:#1D3730; font:400 19px/1 Figtree, sans-serif; cursor:pointer">−</button>
-                        <span style="min-width:26px; text-align:center; font:600 15px/1 Figtree, sans-serif; color:#1D3730">{{ row.value }}</span>
-                        <button type="button" onClick="{{ row.inc }}" style="width:40px; height:40px; border-radius:999px; border:1px solid rgba(29,55,48,0.18); background:transparent; color:#1D3730; font:400 19px/1 Figtree, sans-serif; cursor:pointer">+</button>
-                      </span>
-                    </div>
+                <h3 style="font:400 19px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:0">Update lead guest details</h3>
+                <p style="font:400 14px/1.7 Figtree, sans-serif; color:#6C6862; margin:8px 0 6px">These details are saved directly to the GuestPoint reservation.</p>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:10px; margin-top:14px">
+                  <sc-for list="{{ guestFields }}" as="field" hint-placeholder-count="4">
+                    <label style="display:flex; flex-direction:column; gap:7px; padding:13px 15px; border-radius:12px; background:#F3ECE0; border:1px solid rgba(29,55,48,0.08)">
+                      <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">{{ field.label }}</span>
+                      <input value="{{ field.value }}" onChange="{{ field.change }}" type="{{ field.type }}" autocomplete="{{ field.autocomplete }}" style="border:0; background:transparent; outline:none; font:500 15px/1.35 Figtree, sans-serif; color:#1D3730; width:100%; padding:0" />
+                    </label>
                   </sc-for>
                 </div>
-                <p style="font:500 13.5px/1.6 Figtree, sans-serif; color:#4C5C40; margin:14px 0 0">{{ occupancyText }}</p>
-                <button type="button" onClick="{{ submitGuests }}" style="margin-top:16px; border:0; border-radius:14px; background:#1D3730; color:#FCFAF6; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; cursor:pointer; padding:17px 26px">Submit request</button>
+                <button type="button" onClick="{{ submitGuests }}" disabled="{{ guestSaving }}" style="margin-top:16px; border:0; border-radius:14px; background:#1D3730; color:#FCFAF6; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; cursor:pointer; padding:17px 26px">{{ guestSaveLabel }}</button>
               </div>
             </sc-if>
 
@@ -121,7 +211,7 @@
                 <h3 style="font:400 19px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:0">Add a request</h3>
                 <p style="font:400 14px/1.7 Figtree, sans-serif; color:#6C6862; margin:8px 0 14px">Late arrival, drying room access ($5 per person per night, for the full stay), extra vehicle ($20 per night), firewood or anything else we should know.</p>
                 <textarea value="{{ noteValue }}" onChange="{{ onNoteChange }}" rows="4" placeholder="Arriving around 8pm — please leave keys at reception." style="width:100%; border:1px solid rgba(29,55,48,0.12); border-radius:14px; background:#F3ECE0; padding:16px 18px; font:400 15px/1.6 Figtree, sans-serif; color:#292724; resize:vertical; outline:none"></textarea>
-                <button type="button" onClick="{{ submitNote }}" style="margin-top:14px; border:0; border-radius:14px; background:#1D3730; color:#FCFAF6; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; cursor:pointer; padding:17px 26px">Send request</button>
+                <button type="button" onClick="{{ submitNote }}" style="margin-top:14px; border:0; border-radius:14px; background:#1D3730; color:#FCFAF6; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; cursor:pointer; padding:17px 26px">Save request</button>
               </div>
             </sc-if>
 
@@ -131,9 +221,15 @@
                 <div style="background:#F3ECE0; border-radius:14px; padding:18px; margin-top:14px">
                   <p style="font:500 15px/1.7 Figtree, sans-serif; color:#292724; margin:0">{{ cancelHeadline }}</p>
                   <p style="font:400 14px/1.7 Figtree, sans-serif; color:#6C6862; margin:8px 0 0">{{ cancelDetail }}</p>
+                  <dl style="display:grid; gap:8px; margin:16px 0 0; padding-top:14px; border-top:1px solid rgba(29,55,48,0.12)">
+                    <sc-for list="{{ cancellationRows }}" as="r" hint-placeholder-count="3">
+                      <div style="display:flex; justify-content:space-between; gap:18px"><dt style="font:500 13.5px/1.5 Figtree, sans-serif; color:#6C6862">{{ r.k }}</dt><dd style="margin:0; font:600 13.5px/1.5 Figtree, sans-serif; color:#292724">{{ r.v }}</dd></div>
+                    </sc-for>
+                  </dl>
                 </div>
+                <label style="display:flex; align-items:flex-start; gap:10px; margin-top:15px; cursor:pointer"><input type="checkbox" checked="{{ policyAccepted }}" onChange="{{ onPolicyAccepted }}" style="width:19px; height:19px; margin-top:2px; accent-color:#1D3730" /><span style="font:500 14px/1.55 Figtree,sans-serif; color:#1D3730">I accept the cancellation fee shown above and understand that cancelling is final.</span></label>
                 <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:16px">
-                  <button type="button" onClick="{{ submitCancel }}" style="border:0; border-radius:14px; background:#8C3B2A; color:#FCFAF6; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; cursor:pointer; padding:17px 26px">Request cancellation</button>
+                  <button type="button" disabled="{{ finalActionLocked }}" onClick="{{ submitCancel }}" style="{{ finalCancelStyle }}">Confirm cancellation</button>
                   <button type="button" onClick="{{ closeMode }}" style="border:1px solid rgba(29,55,48,0.18); border-radius:14px; background:transparent; color:#1D3730; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; cursor:pointer; padding:17px 26px">Keep my booking</button>
                 </div>
               </div>
@@ -144,7 +240,8 @@
               <p style="font:400 14px/1.7 Figtree, sans-serif; color:#4C5C40; margin:8px 0 0">{{ confirmBody }}</p>
             </div>
 
-            <button type="button" onClick="{{ reset }}" style="margin-top:24px; border:0; background:transparent; font:600 12px/1 Figtree, sans-serif; letter-spacing:.12em; text-transform:uppercase; color:#74836A; cursor:pointer; padding:8px 0">Look up another booking</button>
+            <button type="button" onClick="{{ openLookupWarning }}" style="margin-top:24px; border:0; background:transparent; font:600 12px/1 Figtree, sans-serif; letter-spacing:.12em; text-transform:uppercase; color:#74836A; cursor:pointer; padding:8px 0">Look up another booking</button>
+
           </div>
         </sc-if>
       </div>
@@ -153,7 +250,7 @@
         <div style="background:#E9EEE3; border-radius:16px; padding:22px">
           <h2 style="font:700 10.5px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A; margin:0">How changes work</h2>
           <ul style="list-style:none; margin:14px 0 0; padding:0; display:grid; gap:11px">
-            <li style="font:400 14px/1.65 Figtree, sans-serif; color:#4C5C40">Submitting this form does not confirm a change. Your booking stays on its original terms until we send written confirmation.</li>
+            <li style="font:400 14px/1.65 Figtree, sans-serif; color:#4C5C40">Guest details, ETA, vehicle details and special requests are saved directly to GuestPoint.</li>
             <li style="font:400 14px/1.65 Figtree, sans-serif; color:#4C5C40">Any change that reduces the total value or length of the stay is treated as a cancellation.</li>
             <li style="font:400 14px/1.65 Figtree, sans-serif; color:#4C5C40">Promotional, discounted and Stay-and-Save rates are non-refundable and non-amendable.</li>
           </ul>
@@ -172,31 +269,81 @@
     </div>
   </section>
 
+  <sc-if value="{{ showLeaveWarning }}" hint-placeholder-val="{{ false }}">
+    <div role="alertdialog" aria-modal="true" aria-labelledby="leave-warning-title" style="position:fixed; inset:0; z-index:80; background:rgba(16,27,23,.58); display:grid; place-items:center; padding:20px">
+      <div style="width:min(100%,460px); background:#FCFAF6; border-radius:18px; padding:clamp(22px,4vw,30px); box-shadow:0 28px 70px rgba(16,27,23,.28)">
+        <h3 id="leave-warning-title" style="font:400 22px/1.25 Petrona,Georgia,serif; color:#1D3730; margin:0">{{ leaveWarningTitle }}</h3>
+        <p style="font:400 15px/1.7 Figtree,sans-serif; color:#56534C; margin:10px 0 0">{{ leaveWarningBody }}</p>
+        <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:20px">
+          <button type="button" onClick="{{ continueLeaving }}" style="border:0; border-radius:13px; background:#1D3730; color:#FCFAF6; font:700 12px/1 Figtree,sans-serif; letter-spacing:.09em; text-transform:uppercase; padding:16px 22px; cursor:pointer">Continue</button>
+          <button type="button" onClick="{{ closeLeaveWarning }}" style="border:1px solid rgba(29,55,48,.2); border-radius:13px; background:transparent; color:#1D3730; font:700 12px/1 Figtree,sans-serif; letter-spacing:.09em; text-transform:uppercase; padding:16px 22px; cursor:pointer">Exit</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
   <dc-import name="SiteFooter" hint-size="100%,420px"></dc-import>
 </div>
 
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{}">
-const BOOKINGS = [
-  { ref: "KTP-48213", surname: "Nguyen", room: "Two Bedroom Chalet", checkIn: "2026-10-16", checkOut: "2026-10-19", adults: 2, children: 2, infants: 0, total: 612, rate: "standard", nightly: 204 },
-  { ref: "KTP-51907", surname: "Doyle", room: "Caravan Site (powered)", checkIn: "2026-12-27", checkOut: "2027-01-02", adults: 4, children: 2, infants: 1, total: 438, rate: "standard", nightly: 73 },
-  { ref: "KTP-52440", surname: "Reid", room: "Cedar Cabin", checkIn: "2026-09-19", checkOut: "2026-09-21", adults: 2, children: 0, infants: 0, total: 396, rate: "promotional", nightly: 198 }
-];
-
 class Component extends DCLogic {
-  state = { refInput: "", nameInput: "", booking: null, error: "", mode: null, adults: 0, children: 0, infants: 0, note: "", confirm: null, cancelled: false };
+  state = { refInput: "", nameInput: "", mobileInput: "", otpChallenge: "", otpInput: "", otpMessage: "", demoOtp: "", booking: null, error: "", mode: null, adults: 0, children: 0, infants: 0, note: "", confirm: null, loading: false, verifying: false, saving: false, dateQuote: null, dateLoading: false, partyQuote: null, partyLoading: false, guestFirst: "", guestLast: "", guestEmail: "", guestMobile: "", guestSaving: false, eta: "", vehicles: "", travelSaving: false, extras: [], extrasLoading: false, selectedExtras: {}, vehicleField: null, policyAccepted: false, leaveAction: "" };
+
+  async componentDidMount() {
+    try { this.gp = await import("./guestpoint.js"); }
+    catch (e) { this.setState({ error: "Online booking access is unavailable right now. Please call reception on 02 6456 2224." }); }
+  }
 
   static parse(v) { const p = (v || "").split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
-  static fmt(v) { return Component.parse(v).toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "long", year: "numeric" }); }
-  static money(n) { return "$" + n.toFixed(2).replace(/\.00$/, ""); }
+  static fmt(v) { return v ? Component.parse(v).toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "long", year: "numeric" }) : "Not supplied"; }
+  static money(n) { return "$" + (Number(n) || 0).toFixed(2).replace(/\.00$/, ""); }
+  static vehicleLine(text) { const m = String(text || "").match(/(?:^|\n)Vehicle registrations:\s*([^\n]*)/i); return m ? m[1].trim() : ""; }
+  static withoutVehicleLine(text) { return String(text || "").replace(/(?:^|\n)Vehicle registrations:\s*[^\n]*/i, "").trim(); }
+  static withVehicleLine(text, vehicles) { return [Component.withoutVehicleLine(text), vehicles ? "Vehicle registrations: " + vehicles : ""].filter(Boolean).join("\n"); }
 
-  find() {
+  async find() {
     const r = this.state.refInput.trim().toUpperCase();
     const n = this.state.nameInput.trim().toLowerCase();
-    if (!r || !n) { this.setState({ error: "Enter both your booking reference and surname." }); return; }
-    const b = BOOKINGS.find(x => x.ref.toUpperCase() === r && x.surname.toLowerCase() === n);
-    if (!b) { this.setState({ error: "We couldn't match that reference and surname. Check your confirmation email, or call reception on 02 6456 2224." }); return; }
-    this.setState({ booking: b, error: "", mode: null, confirm: null, cancelled: false, adults: b.adults, children: b.children, infants: b.infants, note: "" });
+    const m = this.gp ? this.gp.normaliseMobile(this.state.mobileInput) : "";
+    const demoShortcut = r === "1" && n === "1" && m === "1" && this.gp && this.gp.isUnconfigured();
+    if (!r || !n || (m.length < 10 && !demoShortcut)) {
+      this.setState({ error: "Enter your booking reference, surname and the mobile number held on the booking." });
+      return;
+    }
+    this.setState({ loading: true, error: "", confirm: null });
+    try {
+      const result = await this.gp.requestPortalOtp({ confNum: r, surname: n, mobile: m });
+      if (!result || !result.ChallengeId) throw new Error("verification-unavailable");
+      this.setState({ loading: false, otpChallenge: result.ChallengeId, otpInput: "", otpMessage: result.Message || "Check the email held on your booking for the verification code.", demoOtp: result.DemoCode || "", error: "" });
+    } catch (e) {
+      this.setState({ loading: false, error: e && e.status === 429 ? "Please wait a minute before requesting another code." : "We couldn't start secure verification. Please try again, or call reception on 02 6456 2224." });
+    }
+  }
+
+  openBooking(found) {
+    const b = this.gp.normaliseManagedReservation(found);
+    if (!b.ref || !b.permissions.ViewReservation) throw new Error("not-viewable");
+    const lead = (b.guests || []).find(g => b.bookingContact && g.ID === b.bookingContact.ID) || (b.guests || [])[0] || b.bookingContact || {};
+    this.setState({ booking: b, error: "", mode: null, confirm: null, loading: false, verifying: false, otpChallenge: "", otpInput: "", otpMessage: "", demoOtp: "", selectedExtras: {}, partyQuote: null, policyAccepted: false,
+      adults: b.adults, children: b.children, infants: b.infants,
+      note: Component.withoutVehicleLine(b.specialRequest || ""), eta: b.estimatedArrival || "", vehicles: Component.vehicleLine(b.specialRequest || ""),
+      guestFirst: lead.FirstName || "", guestLast: lead.LastName || "", guestEmail: lead.Email || "", guestMobile: lead.Mobile || lead.Phone || "" });
+  }
+
+  async verifyOtp() {
+    const code = String(this.state.otpInput || "").replace(/\D/g, "");
+    if (code.length !== 6 || !this.state.otpChallenge || this.state.verifying) {
+      this.setState({ error: "Enter the six-digit code from your email." });
+      return;
+    }
+    this.setState({ verifying: true, error: "" });
+    try {
+      const found = await this.gp.verifyPortalOtp({ challengeId: this.state.otpChallenge, code });
+      this.openBooking(found);
+    } catch (e) {
+      this.setState({ verifying: false, error: "That code is incorrect or has expired. Check the code, or use different details to request a new one." });
+    }
   }
 
   daysUntil(b) {
@@ -211,7 +358,7 @@ class Component extends DCLogic {
   policy(b) {
     const d = this.daysUntil(b);
     const oneNight = b.nightly;
-    const promo = b.rate !== "standard";
+    const promo = /(promotional|non-refundable|advance|stay.and.save)/i.test(b.rate + " " + b.policyText);
     const snow = this.snowSeason(b);
     const transfer = Math.max(50, b.total * 0.1, oneNight);
     let cancelHeadline, cancelDetail, amendText, amendAllowed = true;
@@ -240,7 +387,13 @@ class Component extends DCLogic {
       amendText = "Changes are not permitted within 7 days of arrival.";
       amendAllowed = false;
     }
-    return { cancelHeadline, cancelDetail, amendText, amendAllowed, days: d, snow };
+    const fee = promo ? b.total
+      : d >= 15 ? Math.max(b.total * 0.1, oneNight)
+      : d >= 8 ? Math.max(b.total * 0.5, oneNight)
+      : b.total;
+    const refund = Math.max(0, b.paid - fee);
+    const amendFee = promo || !amendAllowed ? 0 : ((snow || (d >= 8 && d < 15)) ? transfer : 0);
+    return { cancelHeadline, cancelDetail, amendText, amendAllowed, days: d, snow, fee, refund, amendFee };
   }
 
   tab(active) {
@@ -249,114 +402,351 @@ class Component extends DCLogic {
       "; font:600 12.5px/1 Figtree, sans-serif; letter-spacing:.06em; border-radius:999px; padding:14px 18px; cursor:pointer";
   }
 
-  bump(key, delta, min) {
-    this.setState(s => ({ [key]: Math.max(min, Math.min(12, s[key] + delta)), confirm: null }));
+  async saveNote() {
+    const requestText = this.state.note.trim();
+    const note = this.state.vehicleField ? requestText : Component.withVehicleLine(requestText, this.state.vehicles);
+    if (!requestText) { this.setState({ confirm: { title: "Nothing to save", body: "Add your request first, then save it." } }); return; }
+    this.setState({ saving: true, confirm: null });
+    try {
+      const result = await this.gp.modifyReservation(this.state.booking.ref, { ExtraInfo: note }, this.state.booking.portalToken, true);
+      this.setState(s => ({ saving: false, mode: null, booking: { ...s.booking, specialRequest: note },
+        confirm: result && result.NotificationSent === false
+          ? { title: "Request saved", body: "The request is attached to the GuestPoint reservation, but the reception email could not be sent. It remains visible to staff in GuestPoint." }
+          : { title: "Request saved", body: "The request is attached to the GuestPoint reservation and a short notification has been sent to reception." } }));
+    } catch (e) {
+      this.setState({ saving: false, confirm: { title: "Request not saved", body: "Nothing was changed. Please try again, or call reception on 02 6456 2224." } });
+    }
+  }
+
+  async saveGuestDetails() {
+    const s = this.state;
+    const guests = (s.booking && s.booking.guests) || [];
+    if (!guests.length || !s.guestFirst.trim() || !s.guestLast.trim() || !/^\S+@\S+\.\S+$/.test(s.guestEmail.trim()) || (this.gp && this.gp.normaliseMobile(s.guestMobile).length < 10)) {
+      this.setState({ confirm: { title: "Check the guest details", body: "Enter the lead guest's name, a valid email address and mobile number." } });
+      return;
+    }
+    const contactId = s.booking.bookingContact && s.booking.bookingContact.ID;
+    const targetId = contactId || guests[0].ID;
+    const changed = { FirstName: s.guestFirst.trim(), LastName: s.guestLast.trim(), Email: s.guestEmail.trim(), Mobile: s.guestMobile.trim(), Phone: s.guestMobile.trim() };
+    const updatedGuests = guests.map((g, i) => (targetId ? g.ID === targetId : i === 0) ? { ...g, ...changed } : g);
+    const roomStays = ((s.booking.raw && s.booking.raw.RoomStays) || [])
+      .filter(st => st.GuestId === targetId)
+      .map(st => ({ GuestId: st.GuestId, GuestName: changed.FirstName + " " + changed.LastName }));
+    this.setState({ guestSaving: true, confirm: null });
+    try {
+      await this.gp.modifyReservation(s.booking.ref, { Guests: updatedGuests, ...(roomStays.length ? { RoomStays: roomStays } : {}) }, s.booking.portalToken);
+      this.setState(x => ({ guestSaving: false, mode: null,
+        booking: { ...x.booking, guests: updatedGuests },
+        confirm: { title: "Guest details saved", body: "The lead guest details have been updated directly in GuestPoint." } }));
+    } catch (e) {
+      this.setState({ guestSaving: false, confirm: { title: "Guest details not saved", body: "Nothing was changed. Please check the details and try again." } });
+    }
+  }
+
+  async loadTravelFields() {
+    if (this.state.vehicleField) return;
+    try {
+      const fields = await this.gp.getProfileFields({ includeInactive: false });
+      const vehicleField = (Array.isArray(fields) ? fields : []).find(f => /vehicle.*(registration|rego)|rego/i.test(String(f.Name || "")));
+      if (vehicleField) this.setState({ vehicleField });
+    } catch (e) { /* ExtraInfo remains the documented fallback. */ }
+  }
+
+  async saveTravelDetails() {
+    const s = this.state;
+    const eta = s.eta.trim();
+    const vehicles = s.vehicles.toUpperCase().replace(/[^A-Z0-9, .-]/g, "").replace(/\s+/g, " ").trim();
+    if (eta && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(eta)) {
+      this.setState({ confirm: { title: "Check the arrival time", body: "Enter a valid estimated arrival time." } });
+      return;
+    }
+    const changes = { EstimatedArrival: eta || "15:00" };
+    if (s.vehicleField) {
+      const id = s.vehicleField.Id || s.vehicleField.ExternalId;
+      const existing = Array.isArray(s.booking.raw.ProfileFields) ? s.booking.raw.ProfileFields : [];
+      changes.ProfileFields = existing.filter(f => String(f.Id || f.ExternalId) !== String(id)).concat([{ Id: id, Name: s.vehicleField.Name, Type: s.vehicleField.FieldType, Value: vehicles }]);
+    } else {
+      changes.ExtraInfo = Component.withVehicleLine(s.note, vehicles);
+    }
+    this.setState({ travelSaving: true, confirm: null });
+    try {
+      await this.gp.modifyReservation(s.booking.ref, changes, s.booking.portalToken);
+      this.setState(x => ({ travelSaving: false, mode: null, vehicles,
+        booking: { ...x.booking, estimatedArrival: changes.EstimatedArrival, specialRequest: changes.ExtraInfo || x.booking.specialRequest },
+        confirm: { title: "Arrival details saved", body: "The ETA and vehicle registrations have been updated directly in GuestPoint." } }));
+    } catch (e) {
+      this.setState({ travelSaving: false, confirm: { title: "Arrival details not saved", body: "Nothing was changed. Please try again." } });
+    }
+  }
+
+  async loadExtras() {
+    const b = this.state.booking;
+    this.setState({ extrasLoading: true, extras: [], confirm: null });
+    try {
+      const stays = ((b.raw && b.raw.RoomStays) || []).map(st => ({
+        Arrival: st.Arrival, Departure: st.Departure, RoomTypeId: st.RoomTypeId,
+        RatePlanId: ((st.RateDetails || [])[0] || {}).RatePlanId
+      }));
+      const raw = await this.gp.getExtras(stays);
+      const extras = this.gp.normaliseExtras(raw, { nights: this.nights(b), adults: b.adults, children: b.children, ratePlanId: b.ratePlanId });
+      this.setState({ extrasLoading: false, extras });
+    } catch (e) {
+      this.setState({ extrasLoading: false, extras: [] });
+    }
   }
 
   renderVals() {
     const s = this.state;
     const b = s.booking;
     const p = b ? this.policy(b) : null;
-    const status = b ? (s.cancelled ? "Cancellation requested" : (p.days < 0 ? "Completed" : "Confirmed")) : "";
-    const people = s.adults + s.children;
+    const status = b ? (p.days < 0 ? "Completed" : b.status) : "";
+    const permissions = b ? (b.permissions || {}) : {};
+    const activeStatus = b && /^(booked|modified|confirmed|reserved)$/i.test(b.status);
+    const canAct = !!b && activeStatus && p && p.days >= 0;
+    const addStayUrl = b ? "/book?arrival=" + encodeURIComponent(b.checkIn) + "&departure=" + encodeURIComponent(b.checkOut) + "&adults=" + b.adults + "&children=" + b.children + "&infants=" + b.infants : "/book";
 
     return {
       showFind: !b,
       showBooking: !!b,
+      showCredentials: !s.otpChallenge,
+      showOtp: !!s.otpChallenge,
+      accessTitle: s.otpChallenge ? "Check your email" : "Find your booking",
+      accessIntro: s.otpChallenge ? (s.otpMessage || "Enter the verification code sent to the email held on your booking.") : "Use the booking reference, surname and mobile number held on the reservation.",
       refValue: s.refInput,
       nameValue: s.nameInput,
+      mobileValue: s.mobileInput,
       onRefChange: e => this.setState({ refInput: e.target.value, error: "" }),
       onNameChange: e => this.setState({ nameInput: e.target.value, error: "" }),
+      onMobileChange: e => this.setState({ mobileInput: e.target.value, error: "" }),
       find: () => this.find(),
+      findDisabled: s.loading,
+      findLabel: s.loading ? "Sending secure code…" : "Email me a secure code",
+      findButtonStyle: "min-height:62px; border:0; border-radius:14px; background:#1D3730; color:#FCFAF6; font:700 13.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; cursor:" + (s.loading ? "wait" : "pointer") + "; opacity:" + (s.loading ? ".65" : "1"),
+      otpValue: s.otpInput,
+      onOtpChange: e => this.setState({ otpInput: String(e.target.value || "").replace(/\D/g, "").slice(0, 6), error: "" }),
+      verifyOtp: () => this.verifyOtp(),
+      verifyDisabled: s.verifying,
+      verifyLabel: s.verifying ? "Verifying…" : "Verify and view booking",
+      verifyButtonStyle: "min-height:58px; border:0; border-radius:14px; background:#1D3730; color:#FCFAF6; font:700 13px/1 Figtree,sans-serif; letter-spacing:.09em; text-transform:uppercase; cursor:" + (s.verifying ? "wait" : "pointer") + "; opacity:" + (s.verifying ? ".65" : "1"),
+      changeDetails: () => this.setState({ otpChallenge: "", otpInput: "", otpMessage: "", demoOtp: "", error: "" }),
+      demoOtp: s.demoOtp,
+      demoOtpStyle: s.demoOtp ? "margin:0; padding:12px 14px; border-radius:12px; background:#E9EEE3; color:#1D3730; font:500 14px/1.5 Figtree,sans-serif" : "display:none",
       errorText: s.error,
       errorStyle: s.error
         ? "margin:16px 0 0; font:500 13.5px/1.6 Figtree, sans-serif; color:#8C3B2A; animation:riseIn .18s ease both"
         : "display:none",
 
       booking: b ? {
-        ref: "Reference " + b.ref,
+        ref: b.ref,
         room: b.room,
         status,
         rows: [
           { k: "Dates", v: Component.fmt(b.checkIn) + " → " + Component.fmt(b.checkOut) },
           { k: "Nights", v: this.nights(b) + (this.nights(b) === 1 ? " night" : " nights") + (p.snow ? " · snow season" : "") },
           { k: "Guests", v: b.adults + " adults, " + b.children + " children" + (b.infants ? ", " + b.infants + " infant" : "") },
-          { k: "Rate type", v: b.rate === "standard" ? "Standard rate" : "Promotional rate (non-refundable)" },
-          { k: "Total", v: Component.money(b.total) + " · " + Component.money(b.nightly) + " per night" },
+          { k: "Rate", v: b.rate },
+          { k: "Booking total", v: Component.money(b.total) },
+          { k: "Payments", v: Component.money(b.paid) + " paid · " + Component.money(b.balance) + " remaining" },
+          { k: "Estimated arrival", v: b.estimatedArrival || "Not supplied" },
           { k: "Arrival", v: p.days > 0 ? "In " + p.days + " days · check-in from 3pm" : "Stay has begun or passed" }
         ]
       } : { ref: "", room: "", status: "", rows: [] },
       statusStyle: "font:600 11px/1 Figtree, sans-serif; letter-spacing:.12em; text-transform:uppercase; padding:11px 15px; border-radius:999px; " +
-        (s.cancelled ? "background:#F3E3DE; color:#8C3B2A" : "background:#E9EEE3; color:#4C5C40"),
+        (/cancel/i.test(status) ? "background:#F3E3DE; color:#8C3B2A" : "background:#E9EEE3; color:#4C5C40"),
 
-      canAct: !!b && !s.cancelled && (p ? p.days >= 0 : false),
-      noticeText: b && p && p.days < 0 ? "This stay has already taken place, so it can no longer be changed online." : "",
-      noticeStyle: b && p && p.days < 0
+      canAct,
+      canDates: canAct && !!permissions.UpdateStayDates && !!p.amendAllowed,
+      canAmend: canAct && ((!!permissions.UpdateStayDates && !!p.amendAllowed) || !!permissions.Cancel),
+      canParty: canAct && !!permissions.UpdateGuestDetails && !!p.amendAllowed,
+      canGuests: canAct && !!permissions.UpdateGuestDetails && Array.isArray(b.guests) && b.guests.length > 0,
+      canNote: canAct && !!permissions.SpecialRequests,
+      canCancel: canAct && !!permissions.Cancel,
+      canPay: canAct && !!permissions.PayNow && b.balance > 0 && !!b.paymentUrl,
+      noticeText: b && p && p.days < 0 ? "This stay has already taken place, so it can no longer be changed online."
+        : b && !canAct ? "GuestPoint has marked this booking as view-only. Reception can help with anything that still needs attention."
+        : "",
+      noticeStyle: b && (!canAct || (p && p.days < 0))
         ? "margin:18px 0 0; font:500 14px/1.7 Figtree, sans-serif; color:#8B877E"
         : "display:none",
 
+      tabAmend: this.tab(s.mode === "amend" || s.mode === "dates" || s.mode === "cancel"),
+      tabParty: this.tab(s.mode === "party"),
       tabDates: this.tab(s.mode === "dates"),
       tabGuests: this.tab(s.mode === "guests"),
+      tabTravel: this.tab(s.mode === "travel"),
+      tabExtras: this.tab(s.mode === "extras"),
       tabNote: this.tab(s.mode === "note"),
       tabCancel: this.tab(s.mode === "cancel"),
-      openDates: () => this.setState(x => ({ mode: x.mode === "dates" ? null : "dates", confirm: null })),
+      openAmend: () => this.setState(x => ({ mode: x.mode === "amend" ? null : "amend", confirm: null, dateQuote: null, partyQuote: null, policyAccepted: false })),
+      openParty: () => this.setState(x => ({ mode: x.mode === "party" ? null : "party", confirm: null, partyQuote: null, policyAccepted: false })),
+      openDates: () => this.setState(x => ({ mode: x.mode === "dates" ? null : "dates", confirm: null, dateQuote: null })),
       openGuests: () => this.setState(x => ({ mode: x.mode === "guests" ? null : "guests", confirm: null })),
+      openTravel: () => { this.setState(x => ({ mode: x.mode === "travel" ? null : "travel", confirm: null })); this.loadTravelFields(); },
+      openExtras: () => { const opening = s.mode !== "extras"; this.setState({ mode: opening ? "extras" : null, confirm: null }); if (opening) this.loadExtras(); },
       openNote: () => this.setState(x => ({ mode: x.mode === "note" ? null : "note", confirm: null })),
       openCancel: () => this.setState(x => ({ mode: x.mode === "cancel" ? null : "cancel", confirm: null })),
-      closeMode: () => this.setState({ mode: null }),
+      closeMode: () => this.setState({ mode: null, dateQuote: null, partyQuote: null, policyAccepted: false }),
 
       modeDates: s.mode === "dates",
+      modeParty: s.mode === "party",
+      modeAmend: s.mode === "amend",
       modeGuests: s.mode === "guests",
+      modeTravel: s.mode === "travel",
+      modeExtras: s.mode === "extras",
       modeNote: s.mode === "note",
       modeCancel: s.mode === "cancel",
+      policyAccepted: s.policyAccepted,
+      onPolicyAccepted: e => this.setState({ policyAccepted: !!e.target.checked, confirm: null }),
+      finalActionLocked: !s.policyAccepted,
+      finalActionStyle: "margin-top:14px; border:0; border-radius:12px; background:#1D3730; color:#FCFAF6; font:700 11.5px/1 Figtree,sans-serif; letter-spacing:.08em; text-transform:uppercase; padding:15px 19px; cursor:" + (s.policyAccepted ? "pointer" : "not-allowed") + "; opacity:" + (s.policyAccepted ? "1" : ".45"),
+      finalCancelStyle: "border:0; border-radius:14px; background:#8C3B2A; color:#FCFAF6; font:700 12.5px/1 Figtree,sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:17px 26px; cursor:" + (s.policyAccepted ? "pointer" : "not-allowed") + "; opacity:" + (s.policyAccepted ? "1" : ".45"),
+      amendChoiceStyle: "border:0; border-radius:14px; background:#1D3730; color:#FCFAF6; font:700 12.5px/1 Figtree,sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:17px 24px; cursor:pointer",
+      cancelChoiceStyle: "border:0; border-radius:14px; background:#8C3B2A; color:#FCFAF6; font:700 12.5px/1 Figtree,sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:17px 24px; cursor:pointer",
+      chooseDates: () => this.setState({ mode: "dates", dateQuote: null, policyAccepted: false }),
+      chooseCancel: () => this.setState({ mode: "cancel", policyAccepted: false }),
 
       amendText: p ? p.amendText : "",
-      submitDates: payload => {
-        if (!payload.checkIn || !payload.checkOut) return;
-        this.setState({
-          mode: null,
-          confirm: {
-            title: "Date change requested",
-            body: "We have your request to move to " + Component.fmt(payload.checkIn) + " → " + Component.fmt(payload.checkOut) + ". " +
-              (p && p.amendAllowed ? "Reception will confirm availability and any transfer fee in writing." : "This booking sits outside the amendment window, so reception will reply about your options.") +
-              " Your booking remains on its original terms until then."
-          }
-        });
+      currentArrival: b ? b.checkIn : "",
+      currentDeparture: b ? b.checkOut : "",
+      currentAdults: b ? b.adults : 2,
+      currentChildren: b ? b.children : 0,
+      currentInfants: b ? b.infants : 0,
+      submitDates: async payload => {
+        if (!payload.checkIn || !payload.checkOut || s.dateLoading) return;
+        this.setState({ dateLoading: true, dateQuote: { loading: true }, policyAccepted: false });
+        try {
+          const quote = await this.gp.quoteManagedStayChange(b, payload);
+          this.setState({ dateLoading: false, dateQuote: { ...quote, proposal: payload }, policyAccepted: false });
+        } catch (err) {
+          this.setState({ dateLoading: false, dateQuote: { available: false, message: "Live availability could not be checked. Nothing has been changed. Please try again." } });
+        }
+      },
+      dateQuoteStyle: s.dateQuote
+        ? "margin-top:14px; background:#E9EEE3; border-radius:14px; padding:18px; animation:riseIn .2s ease both"
+        : "display:none",
+      dateQuoteTitle: s.dateQuote && s.dateQuote.loading ? "Checking GuestPoint…"
+        : s.dateQuote && s.dateQuote.available ? "Available on your original rate"
+        : "These dates cannot be changed online",
+      dateQuoteBody: s.dateQuote && s.dateQuote.loading ? "Confirming accommodation, restrictions and the live price."
+        : s.dateQuote ? s.dateQuote.message : "",
+      dateQuoteAvailable: !!(s.dateQuote && s.dateQuote.available),
+      dateQuoteRows: s.dateQuote && s.dateQuote.available ? [
+        { k: "New accommodation total", v: Component.money(s.dateQuote.newTotal) },
+        { k: "Difference", v: (s.dateQuote.difference > 0 ? "+" : "") + Component.money(s.dateQuote.difference) },
+        { k: "Policy fee", v: Component.money((s.dateQuote.difference < 0 || (s.dateQuote.proposal && this.nights({ checkIn: s.dateQuote.proposal.checkIn, checkOut: s.dateQuote.proposal.checkOut }) < this.nights(b))) ? p.fee : p.amendFee) },
+        { k: "Availability", v: typeof s.dateQuote.roomsLeft === "number" ? s.dateQuote.roomsLeft + " remaining" : "Confirmed live" }
+      ] : [],
+      acceptDateChange: () => {
+        if (!s.policyAccepted || !s.dateQuote || !s.dateQuote.available) return;
+        this.setState({ confirm: { title: b.sample ? "Demo amendment ready" : "Amendment ready for GuestPoint", body: b.sample ? "The new dates, live price and policy charge have been accepted. A live booking would now update GuestPoint and collect any extra amount through GuestPoint Pay." : "Your acceptance is recorded on this screen, but GuestPoint's uploaded management API does not provide a date-change operation. Nothing has been changed or charged." } });
       },
 
-      guestRows: [
-        { label: "Adults", hint: "17 and over", value: s.adults, inc: () => this.bump("adults", 1, 1), dec: () => this.bump("adults", -1, 1) },
-        { label: "Children", hint: "2 to 16 years", value: s.children, inc: () => this.bump("children", 1, 0), dec: () => this.bump("children", -1, 0) },
-        { label: "Infants", hint: "Under 2 — free, but counted", value: s.infants, inc: () => this.bump("infants", 1, 0), dec: () => this.bump("infants", -1, 0) }
+      partyFields: [
+        { label: "Adults", min: 1, max: 12, value: s.adults, change: e => this.setState({ adults: Math.max(1, Number(e.target.value) || 1), partyQuote: null, policyAccepted: false }) },
+        { label: "Children", min: 0, max: 12, value: s.children, change: e => this.setState({ children: Math.max(0, Number(e.target.value) || 0), partyQuote: null, policyAccepted: false }) },
+        { label: "Infants", min: 0, max: 12, value: s.infants, change: e => this.setState({ infants: Math.max(0, Number(e.target.value) || 0), partyQuote: null, policyAccepted: false }) }
       ],
-      occupancyText: b ? "Requesting " + (people + s.infants) + " guests in total, previously " + (b.adults + b.children + b.infants) + ". Occupancy limits apply per cabin and site." : "",
-      submitGuests: () => this.setState({
-        mode: null,
-        confirm: {
-          title: "Guest change requested",
-          body: "We have your request for " + s.adults + " adults, " + s.children + " children and " + s.infants + " infants. Reception will confirm whether it fits the occupancy limit for your " + (b ? b.room.toLowerCase() : "booking") + "."
+      partyLoading: s.partyLoading,
+      partyQuoteLabel: s.partyLoading ? "Checking GuestPoint…" : "Check capacity and price",
+      quoteParty: async () => {
+        if (s.partyLoading || s.adults + s.children + s.infants < 1) return;
+        this.setState({ partyLoading: true, partyQuote: { loading: true }, policyAccepted: false });
+        try {
+          const quote = await this.gp.quoteManagedStayChange(b, { checkIn: b.checkIn, checkOut: b.checkOut, adults: s.adults, children: s.children, infants: s.infants });
+          this.setState({ partyLoading: false, partyQuote: { ...quote, proposal: { adults: s.adults, children: s.children, infants: s.infants } }, policyAccepted: false });
+        } catch (e) { this.setState({ partyLoading: false, partyQuote: { available: false, message: "GuestPoint could not confirm capacity and pricing. Nothing has changed." } }); }
+      },
+      partyQuoteStyle: s.partyQuote ? "margin-top:14px; background:#E9EEE3; border-radius:14px; padding:18px" : "display:none",
+      partyQuoteTitle: s.partyQuote && s.partyQuote.loading ? "Checking GuestPoint…" : s.partyQuote && s.partyQuote.available ? "Guest numbers fit this accommodation" : "These guest numbers cannot be accepted online",
+      partyQuoteBody: s.partyQuote && s.partyQuote.loading ? "Checking maximum occupancy, availability and the original rate." : s.partyQuote ? ((s.adults + s.children + s.infants) + " guests · revised accommodation total " + Component.money(s.partyQuote.newTotal) + ". " + ((s.adults + s.children + s.infants) < (b.adults + b.children + b.infants) ? "Because this reduces the booking, the cancellation-policy fee is " + Component.money(p.fee) + ". " : "") + s.partyQuote.message) : "",
+      partyQuoteAvailable: !!(s.partyQuote && s.partyQuote.available),
+      acceptPartyChange: () => {
+        if (!s.policyAccepted || !s.partyQuote || !s.partyQuote.available) return;
+        this.setState({ confirm: { title: b.sample ? "Demo guest change ready" : "Guest change ready for GuestPoint", body: b.sample ? "The new guest numbers, capacity check and revised price have been accepted. A live booking would now update GuestPoint and collect any extra balance." : "GuestPoint has confirmed availability and price, but the uploaded management API does not provide a guest-count and repricing operation. Nothing has been changed or charged." } });
+      },
+
+      guestFields: [
+        { label: "First name", value: s.guestFirst, type: "text", autocomplete: "given-name", change: e => this.setState({ guestFirst: e.target.value, confirm: null }) },
+        { label: "Surname", value: s.guestLast, type: "text", autocomplete: "family-name", change: e => this.setState({ guestLast: e.target.value, confirm: null }) },
+        { label: "Email", value: s.guestEmail, type: "email", autocomplete: "email", change: e => this.setState({ guestEmail: e.target.value, confirm: null }) },
+        { label: "Mobile", value: s.guestMobile, type: "tel", autocomplete: "tel", change: e => this.setState({ guestMobile: e.target.value, confirm: null }) }
+      ],
+      submitGuests: () => this.saveGuestDetails(),
+      guestSaving: s.guestSaving,
+      guestSaveLabel: s.guestSaving ? "Saving…" : "Save guest details",
+
+      etaValue: s.eta,
+      vehiclesValue: s.vehicles,
+      onEtaChange: e => this.setState({ eta: e.target.value, confirm: null }),
+      onVehiclesChange: e => this.setState({ vehicles: e.target.value, confirm: null }),
+      saveTravel: () => this.saveTravelDetails(),
+      travelSaving: s.travelSaving,
+      travelSaveLabel: s.travelSaving ? "Saving…" : "Save arrival details",
+
+      extrasMessage: s.extrasLoading ? "Checking GuestPoint for eligible extras…"
+        : s.extras.length ? "Select an extra to review its GuestPoint price. The final live add step will switch on when GuestPoint supplies its existing-booking extras operation."
+        : "GuestPoint has not returned any eligible extras for this stay.",
+      extrasList: s.extras.map(x => {
+        const selected = !!s.selectedExtras[x.id];
+        return {
+        name: x.name,
+        description: x.description || x.unitLabel,
+        price: x.single ? Component.money(x.unitPrice) + " " + x.unitLabel
+          : x.prices.map(pr => (pr.name ? pr.name + " " : "") + Component.money(pr.price)).join(" · "),
+        actionLabel: selected ? "Remove" : "Add",
+        action: () => this.setState(old => {
+          const chosen = { ...old.selectedExtras };
+          if (chosen[x.id]) delete chosen[x.id];
+          else chosen[x.id] = Object.fromEntries(x.prices.map(pr => [pr.id, Math.max(1, pr.suggested || 1)]));
+          return { selectedExtras: chosen, confirm: null };
+        })
+      }}),
+      extrasTotalLabel: Component.money(this.gp ? this.gp.extrasTotal(s.extras, s.selectedExtras, b ? this.nights(b) : 1) : 0),
+      extrasReviewStyle: Object.keys(s.selectedExtras).length ? "margin-top:14px; background:#E9EEE3; border-radius:14px; padding:18px" : "display:none",
+      reviewExtras: () => this.setState({ confirm: { title: b.sample ? "Demo extras selected" : "Extras selected", body: b.sample ? "Your selected extras are ready for the final quantity review and payment step. No real booking has been changed in demo mode." : "Your selection is ready, but GuestPoint's uploaded API only lists eligible extras and does not provide an operation to attach them to an existing booking. Nothing has been added or charged." } }),
+      addStayUrl,
+      openAddStayWarning: () => this.setState({ leaveAction: "add-stay" }),
+      openLookupWarning: () => this.setState({ leaveAction: "lookup" }),
+      showLeaveWarning: !!s.leaveAction,
+      leaveWarningTitle: s.leaveAction === "add-stay" ? "Go to the booking page?" : "Look up another booking?",
+      leaveWarningBody: s.leaveAction === "add-stay"
+        ? "You will leave this portal and be directed to the booking page. Your current reservation will stay unchanged."
+        : "You will close this booking and return to the lookup form. Any unsaved selections on this page will be cleared.",
+      closeLeaveWarning: () => this.setState({ leaveAction: "" }),
+      continueLeaving: () => {
+        if (s.leaveAction === "add-stay") window.location.href = addStayUrl;
+        else if (s.leaveAction === "lookup") this.setState({ booking: null, refInput: "", nameInput: "", mobileInput: "", otpChallenge: "", otpInput: "", otpMessage: "", demoOtp: "", mode: null, confirm: null, error: "", dateQuote: null, partyQuote: null, selectedExtras: {}, policyAccepted: false, leaveAction: "" });
+      },
+      balanceLabel: Component.money(b ? b.balance : 0),
+      payButtonStyle: "border:0; border-radius:999px; background:#96592A; color:#FCFAF6; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.06em; padding:14px 18px; cursor:pointer",
+      payBalance: () => {
+        if (!b || !b.paymentUrl) return;
+        if (b.sample) {
+          this.setState({ confirm: { title: "Demo payment", body: "A live booking opens the secure GuestPoint Pay page for the exact outstanding balance." } });
+          return;
         }
-      }),
+        if (/^https:\/\//i.test(b.paymentUrl)) window.location.href = b.paymentUrl;
+        else this.setState({ confirm: { title: "Payment unavailable", body: "GuestPoint did not return a valid secure payment link. Nothing has been charged." } });
+      },
 
       noteValue: s.note,
       onNoteChange: e => this.setState({ note: e.target.value, confirm: null }),
-      submitNote: () => this.setState({
-        mode: null,
-        confirm: s.note.trim()
-          ? { title: "Request sent", body: "Reception has your note and will reply by email. Extras such as drying room access and additional vehicles are confirmed in writing before they are charged." }
-          : { title: "Nothing to send", body: "Add a note first, then send it through." }
-      }),
+      submitNote: () => this.saveNote(),
 
       cancelHeadline: p ? p.cancelHeadline : "",
       cancelDetail: p ? p.cancelDetail : "",
-      submitCancel: () => this.setState({
-        mode: null,
-        cancelled: true,
-        confirm: {
-          title: "Cancellation requested",
-          body: "Reception will process this and email written confirmation, including any refund amount. Cancellation fees are based on the full night's tariff regardless of the deposit paid."
-        }
-      }),
+      cancellationRows: p ? [
+        { k: "Paid so far", v: Component.money(b.paid) },
+        { k: "Policy amount retained", v: Component.money(p.fee) },
+        { k: "Estimated refund", v: Component.money(p.refund) }
+      ] : [],
+      submitCancel: () => {
+        if (!s.policyAccepted) return;
+        this.setState({ mode: null, confirm: {
+          title: "Cancellation not yet submitted",
+          body: "Before a live cancellation is processed, a fresh verification code will be sent to the email held on the booking. Your reservation remains confirmed."
+        } });
+      },
 
       confirmTitle: s.confirm ? s.confirm.title : "",
       confirmBody: s.confirm ? s.confirm.body : "",
@@ -364,7 +754,7 @@ class Component extends DCLogic {
         ? "margin-top:22px; background:#E9EEE3; border-radius:16px; padding:20px; animation:riseIn .2s ease both"
         : "display:none",
 
-      reset: () => this.setState({ booking: null, refInput: "", nameInput: "", mode: null, confirm: null, cancelled: false, error: "" })
+      reset: () => this.setState({ booking: null, refInput: "", nameInput: "", mobileInput: "", otpChallenge: "", otpInput: "", otpMessage: "", demoOtp: "", mode: null, confirm: null, error: "", dateQuote: null, partyQuote: null, selectedExtras: {}, policyAccepted: false, leaveAction: "" })
     };
   }
 }

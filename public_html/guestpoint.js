@@ -419,19 +419,149 @@ export function createReservation(reservation) {
 
 /* ---------- Self-service management ----------
  * The Booking Engine API does have guest self-service, on its own endpoints.
- * Three calls, all authenticated by what the guest knows rather than a login:
- * confirmation number + the lead guest's email + surname, all three matching.
+ * GuestPoint's native manage call expects confirmation number + email +
+ * surname. Kosipark deliberately asks for confirmation number + mobile +
+ * surname instead. Our proxy verifies those three values against the Core API,
+ * then supplies the stored email to the Booking Engine manage endpoint. The
+ * browser never receives or invents the email used for that upstream login.
  *
  * The response carries a `Login` object saying which actions this property
  * actually permits (Cancel, PayNow, UpdateCreditCard, ...). Read it and hide
  * what is not allowed — do not assume.
  */
 
-/** 8. POST /reservations/manage — look a booking up. The three fields must all match. */
-export function lookupReservation({ confNum, email, surname }) {
-  return request("POST", "/reservations/manage", {
-    body: { ConfNum: confNum, EmailAddress: email, Surname: surname }
+/** Australian-friendly canonical form used for comparison, never display. */
+export function normaliseMobile(value) {
+  let digits = String(value || "").replace(/\D/g, "");
+  if (digits.indexOf("0011") === 0) digits = digits.slice(4);
+  if (digits.indexOf("04") === 0) digits = "61" + digits.slice(1);
+  if (digits.indexOf("4") === 0 && digits.length === 9) digits = "61" + digits;
+  return digits;
+}
+
+/** Start the email verification step without returning any booking data. */
+export function requestPortalOtp({ confNum, mobile, surname }) {
+  return request("POST", "/portal/otp/request", {
+    body: { ConfNum: confNum, Mobile: normaliseMobile(mobile), Surname: surname }
   });
+}
+
+/** Complete email verification; only this response may contain the booking. */
+export function verifyPortalOtp({ challengeId, code }) {
+  return request("POST", "/portal/otp/verify", {
+    body: { ChallengeId: challengeId, Code: String(code || "").replace(/\D/g, "").slice(0, 6) }
+  });
+}
+
+/** Turn ReservationManageOutput into the one shape every portal screen uses. */
+export function normaliseManagedReservation(payload) {
+  const root = payload && payload.Reservation ? payload : { Reservation: payload || {}, Login: {} };
+  const r = root.Reservation || {};
+  const allStays = Array.isArray(r.RoomStays) ? r.RoomStays : [];
+  const activeStays = allStays.filter(x => !x.IsCancelled);
+  // Keep the accommodation and dates visible when the whole reservation is
+  // cancelled; on mixed bookings, continue to show only the active stays.
+  const stays = activeStays.length ? activeStays : allStays;
+  const arrivals = stays.map(x => x.Arrival).filter(Boolean).sort();
+  const departures = stays.map(x => x.Departure).filter(Boolean).sort();
+  const total = Number(r.ReservationTotalAfterTax || r.ReservationTotal || 0);
+  const balance = Number(r.PaymentRequired || r.PayLater || 0);
+  const rooms = [...new Set(stays.map(x => x.RoomTypeName).filter(Boolean))];
+  const rateNames = [...new Set(stays.flatMap(x => (x.RateDetails || []).map(y => y.RatePlanName)).filter(Boolean))];
+  const firstStay = stays[0] || {};
+  const firstRate = (firstStay.RateDetails || [])[0] || {};
+  return {
+    id: r.ID,
+    ref: r.ConfNum || "",
+    status: r.Status || "Booked",
+    room: rooms.join(" + ") || "Accommodation booking",
+    checkIn: arrivals[0] || "",
+    checkOut: departures[departures.length - 1] || "",
+    adults: Number(r.Adults || stays.reduce((n, x) => n + Number(x.Adults || 0), 0)),
+    children: Number(r.Children || stays.reduce((n, x) => n + Number(x.Children || 0), 0)),
+    infants: Number(r.Infants || stays.reduce((n, x) => n + Number(x.Infants || 0), 0)),
+    total,
+    balance,
+    paid: Math.max(0, total - balance),
+    nightly: stays.length ? Number(stays[0].RoomTotal || 0) / Math.max(1, nightsBetween(stays[0].Arrival, stays[0].Departure)) : 0,
+    roomTypeId: firstStay.RoomTypeId || "",
+    ratePlanId: firstRate.RatePlanId || "",
+    stayCount: stays.length,
+    rate: rateNames.join(" + ") || "Booked rate",
+    policyText: stays.map(x => x.PolicyText).filter(Boolean).join(" "),
+    specialRequest: r.ExtraInfo || "",
+    estimatedArrival: r.EstimatedArrival || "",
+    channel: r.ChannelCode || r.SalesChannelCode || "",
+    guests: Array.isArray(r.Guests) ? r.Guests : [],
+    bookingContact: r.BookingContact || null,
+    permissions: { ViewReservation: true, ...(root.Login || {}) },
+    paymentDetails: root.PaymentDetails || null,
+    paymentUrl: root.PaymentDetails && root.PaymentDetails.Session ? (root.PaymentDetails.Session.PayUrl || "") : "",
+    sample: isUnconfigured(),
+    portalToken: root.PortalToken || "",
+    raw: r
+  };
+}
+
+/**
+ * Check a proposed date change against live GuestPoint inventory while keeping
+ * the booking on its original room type and rate plan. This deliberately only
+ * quotes the change: PartialUpdateInput does not accept Arrival/Departure, so
+ * sending dates to the manage PATCH would be ignored by GuestPoint.
+ */
+export async function quoteManagedStayChange(booking, proposal) {
+  if (!booking || !proposal || !proposal.checkIn || !proposal.checkOut) {
+    throw new Error("Choose new check-in and check-out dates.");
+  }
+  if (Number(booking.stayCount || 0) !== 1) {
+    return { available: false, code: "MULTI_STAY", message: "Bookings with more than one accommodation must be changed by reception." };
+  }
+
+  const data = await searchAvailability({
+    arrivalDate: proposal.checkIn,
+    departureDate: proposal.checkOut,
+    numAdults: proposal.adults || booking.adults || 1,
+    numChildren: proposal.children || booking.children || 0,
+    roomTypes: booking.roomTypeId || undefined
+  });
+  const rows = flattenAvailability(data);
+  const wantedId = String(booking.roomTypeId || "");
+  const wantedName = String(booking.room || "").trim().toLowerCase();
+  const room = rows.find(x => String(x.gpRoomTypeId || "") === wantedId)
+    || rows.find(x => String(x.name || "").trim().toLowerCase() === wantedName);
+
+  if (!room || !room.available) {
+    return { available: false, code: "UNAVAILABLE", message: (room && room.restriction && room.restriction.message) || "Your current accommodation is not available for those dates." };
+  }
+  const proposedGuests = Number(proposal.adults || 0) + Number(proposal.children || 0) + Number(proposal.infants || 0);
+  if (Number(room.maxOccupancy || 0) > 0 && proposedGuests > Number(room.maxOccupancy)) {
+    return { available: false, code: "MAX_OCCUPANCY", maxOccupancy: Number(room.maxOccupancy), message: "This accommodation allows a maximum of " + room.maxOccupancy + " guests, including infants." };
+  }
+
+  const wantedPlan = String(booking.ratePlanId || "");
+  const wantedRate = String(booking.rate || "").trim().toLowerCase();
+  const plan = (room.plans || []).find(x => wantedPlan && String(x.ratePlanId || "") === wantedPlan)
+    || (room.plans || []).find(x => String(x.name || "").trim().toLowerCase() === wantedRate);
+  if (!plan || plan.closed) {
+    return { available: false, code: "RATE_UNAVAILABLE", message: "The accommodation is available, but your original rate plan is not available for those dates." };
+  }
+
+  const newTotal = Number(plan.total || 0);
+  const difference = newTotal - Number(booking.total || 0);
+  return {
+    available: true,
+    room: room.name,
+    rate: plan.name,
+    newTotal,
+    difference,
+    maxOccupancy: room.maxOccupancy,
+    roomsLeft: room.roomsLeft,
+    message: "Live availability is confirmed, but the booking has not been changed because GuestPoint's documented management API does not accept new stay dates. " + (difference < 0
+      ? "The original cancellation terms still apply to the reduction."
+      : difference > 0
+        ? "The additional amount would need to be paid before the change is completed."
+        : "There would be no change to the accommodation total.")
+  };
 }
 
 /**
@@ -441,9 +571,9 @@ export function lookupReservation({ confNum, email, surname }) {
  * every guest and not just the changed one; and a reservation cannot be
  * modified once any room stay's arrival date is in the past.
  */
-export function modifyReservation(confNum, changes) {
-  return request("PATCH", "/reservations/manage/" + encodeURIComponent(confNum), {
-    body: changes
+export function modifyReservation(confNum, changes, portalToken, notify = false) {
+  return request("POST", "/portal/update", {
+    body: { ConfNum: confNum, Changes: changes, PortalToken: portalToken, Notify: !!notify }
   });
 }
 
@@ -1181,8 +1311,100 @@ function mockRateFor(slug, dateStr) {
   return Math.round(rate);
 }
 
+const mockOtpChallenges = new Map();
+
 async function mockResponse(method, path, params, body) {
   await new Promise(r => setTimeout(r, 220));
+
+  if (path === "/portal/otp/request") {
+    const challengeId = "mock-" + Math.random().toString(36).slice(2);
+    mockOtpChallenges.set(challengeId, { ...(body || {}) });
+    return {
+      ChallengeId: challengeId,
+      ExpiresIn: 600,
+      DemoCode: "123456",
+      Message: "If those details match a booking, a verification code has been sent to the email held on it."
+    };
+  }
+
+  if (path === "/portal/otp/verify") {
+    const challengeId = String(body && body.ChallengeId || "");
+    const details = mockOtpChallenges.get(challengeId);
+    if (!details || String(body && body.Code || "") !== "123456") {
+      const err = new Error("That code is invalid or has expired.");
+      err.status = 403;
+      throw err;
+    }
+    mockOtpChallenges.delete(challengeId);
+    return mockResponse("POST", "/portal/lookup", null, details);
+  }
+
+  if (path === "/portal/lookup") {
+    const samples = [
+      { ref: "1", surname: "1", mobile: "1", id: 1, roomType: "cedar-cabin",
+        room: "Cedar Cabin", arrival: "2026-11-10", departure: "2026-11-13",
+        adults: 2, children: 0, infants: 0, total: 525, paid: 262.5,
+        rate: "Standard rate", policy: "Standard cancellation and amendment conditions apply." },
+      { ref: "KTP-48213", surname: "Nguyen", mobile: "61412482130", id: 48213, roomType: "two-bedroom-chalet",
+        room: "Two Bedroom Chalet", arrival: "2026-10-16", departure: "2026-10-19",
+        adults: 2, children: 2, infants: 0, total: 612, paid: 306,
+        rate: "Standard rate", policy: "Standard cancellation and amendment conditions apply." },
+      { ref: "KTP-51907", surname: "Doyle", mobile: "61412519070", id: 51907, roomType: "caravan-site",
+        room: "Caravan Site (powered)", arrival: "2026-12-27", departure: "2027-01-02",
+        adults: 4, children: 2, infants: 1, total: 438, paid: 219,
+        rate: "Standard rate", policy: "Standard cancellation and amendment conditions apply." },
+      { ref: "KTP-52440", surname: "Reid", mobile: "61412524400", id: 52440, roomType: "cedar-cabin",
+        room: "Cedar Cabin", arrival: "2026-09-19", departure: "2026-09-21",
+        adults: 2, children: 0, infants: 0, total: 396, paid: 396,
+        rate: "Promotional rate", policy: "This promotional rate is non-refundable and non-amendable." }
+    ];
+    const ref = String(body && body.ConfNum || "").trim().toUpperCase();
+    const surname = String(body && body.Surname || "").trim().toLowerCase();
+    const mobile = normaliseMobile(body && body.Mobile);
+    const b = samples.find(x => x.ref === ref && x.surname.toLowerCase() === surname && x.mobile === mobile);
+    if (!b) {
+      const err = new Error("We couldn't match those booking details.");
+      err.status = 404;
+      throw err;
+    }
+    return {
+      Reservation: {
+        ID: b.id, ConfNum: b.ref, Status: "Booked", CurrencyCode: "AUD",
+        ChannelCode: "KOSIPARK-DIRECT", Adults: b.adults, Children: b.children, Infants: b.infants,
+        ReservationTotalAfterTax: String(b.total), PaymentRequired: String(b.total - b.paid),
+        EstimatedArrival: "15:00", ExtraInfo: "",
+        Guests: [{
+          ID: "guest-" + b.id, FirstName: "Alex", LastName: b.surname,
+          Email: "alex." + b.surname.toLowerCase() + "@example.com", Mobile: "+" + b.mobile,
+          Phone: "+" + b.mobile, City: "", State: "NSW", PostalCode: "", Country: "AU", ProfileFields: []
+        }],
+        BookingContact: {
+          ID: "guest-" + b.id, FirstName: "Alex", LastName: b.surname,
+          Email: "alex." + b.surname.toLowerCase() + "@example.com", Mobile: "+" + b.mobile,
+          Phone: "+" + b.mobile, City: "", State: "NSW", PostalCode: "", Country: "AU", ProfileFields: []
+        },
+        RoomStays: [{
+          Arrival: b.arrival, Departure: b.departure, RoomTotal: String(b.total),
+          RoomTypeId: b.roomType, RoomTypeName: b.room, Adults: b.adults, Children: b.children, Infants: b.infants,
+          GuestId: "guest-" + b.id, GuestName: "Alex " + b.surname,
+          IsCancelled: false, PolicyText: b.policy,
+          RateDetails: [{ RatePlanId: b.rate === "Standard rate" ? "standard" : "advance", RatePlanName: b.rate, RoomRate: String(b.total) }], Extras: []
+        }]
+      },
+      Login: {
+        ViewReservation: true, UpdateGuestDetails: true, UpdateCreditCard: false,
+        SpecialRequests: true, PayNow: b.total > b.paid, Cancel: true,
+        UpdateStayDates: b.rate === "Standard rate", RequirePhone: true, RequireAddress: false
+      },
+      PortalToken: "mock-portal-token",
+      PaymentDetails: b.total > b.paid ? { Gateway: "GuestPoint Pay", Session: { PayUrl: "https://payments.example.invalid/pay/" + b.ref } } : null,
+      Message: ""
+    };
+  }
+
+  if (path === "/portal/update") {
+    return { Updated: true, NotificationSent: body && body.Notify ? true : null, GuestPoint: { Success: true } };
+  }
 
   if (path === "/availabilities") {
     const nights = nightsBetween(params.arrivalDate, params.departureDate) || 1;

@@ -4,6 +4,6 @@
   "type": "module",
   "scripts": {
     "dev": "python3 dev-server.py",
-    "test": "node test/mapping.test.mjs && node test/cart.test.mjs && node test/extras.test.mjs && node test/calendar-counts.mjs && node test/smoke.mjs && node test/flow.test.mjs"
+    "test": "node test/mapping.test.mjs && node test/cart.test.mjs && node test/extras.test.mjs && node test/calendar-counts.mjs && node test/portal.test.mjs && node test/manage.test.mjs && node test/ops.test.mjs && node test/smoke.mjs && node test/flow.test.mjs && node test/recovery.test.mjs"
   }
 }

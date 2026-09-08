@@ -128,19 +128,28 @@
                 <p style="font:400 14.5px/1.7 Figtree, sans-serif; color:#6C6862; margin:10px 0 20px">The lead guest must be 18 or older and present at check-in with photo ID.</p>
                 <div style="display:grid; gap:16px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 260px), 1fr))">
                   <sc-for list="{{ fields }}" as="f" hint-placeholder-count="6">
-                    <label style="{{ f.wrapStyle }}">
-                      <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A">{{ f.label }}</span>
+                    <div style="{{ f.wrapStyle }}">
+                      <label for="{{ f.id }}" style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A">{{ f.label }}</label>
                       <sc-if value="{{ f.isSelect }}" hint-placeholder-val="{{ false }}">
-                        <select value="{{ f.value }}" onChange="{{ f.onChange }}" style="border:0; background:transparent; outline:none; font:500 16px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0">
+                        <select id="{{ f.id }}" name="{{ f.name }}" autocomplete="{{ f.autocomplete }}" value="{{ f.value }}" onChange="{{ f.onChange }}" style="border:0; background:transparent; outline:none; font:500 16px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0">
                           <sc-for list="{{ f.options }}" as="o" hint-placeholder-count="3">
                             <option value="{{ o.value }}">{{ o.label }}</option>
                           </sc-for>
                         </select>
                       </sc-if>
                       <sc-if value="{{ f.isText }}" hint-placeholder-val="{{ true }}">
-                        <input value="{{ f.value }}" onChange="{{ f.onChange }}" placeholder="{{ f.placeholder }}" style="border:0; background:transparent; outline:none; font:500 16px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0" />
+                        <input id="{{ f.id }}" name="{{ f.name }}" type="{{ f.type }}" autocomplete="{{ f.autocomplete }}" value="{{ f.value }}" onChange="{{ f.onChange }}" placeholder="{{ f.placeholder }}" style="border:0; background:transparent; outline:none; font:500 16px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0" />
                       </sc-if>
-                    </label>
+                      <sc-if value="{{ f.isAddress }}" hint-placeholder-val="{{ false }}">
+                        <input id="{{ f.id }}" name="address-line1" type="text" autocomplete="street-address" role="combobox" aria-autocomplete="list" aria-controls="address-suggestions" aria-expanded="{{ f.expanded }}" value="{{ f.value }}" onChange="{{ f.onChange }}" onFocus="{{ f.onFocus }}" onBlur="{{ f.onBlur }}" onKeyDown="{{ f.onKeyDown }}" placeholder="{{ f.placeholder }}" style="border:0; background:transparent; outline:none; font:500 16px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0" />
+                        <div id="address-suggestions" role="listbox" aria-label="Address suggestions" style="{{ f.resultsStyle }}">
+                          <sc-for list="{{ f.suggestions }}" as="a" hint-placeholder-count="3">
+                            <button type="button" role="option" aria-selected="{{ a.selected }}" onClick="{{ a.pick }}" style="{{ a.style }}">{{ a.label }}</button>
+                          </sc-for>
+                        </div>
+                        <span aria-live="polite" style="{{ f.statusStyle }}">{{ f.status }}</span>
+                      </sc-if>
+                    </div>
                   </sc-for>
                 </div>
 
@@ -374,6 +383,7 @@ class Component extends DCLogic {
     step: "details", unit: "m", payMode: "deposit", guideOpen: false, eqType: "", eqLength: "", eqWidth: "", sitePref: "",
     addBefore: false, addAfter: false, quotes: null, ackSurcharge: false, extras: [], counts: {}, profileFields: [], answers: {}, notice: "",
     firstName: "", lastName: "", email: "", mobile: "", address: "", city: "", postcode: "",
+    addressSuggestions: [], addressStatus: "", addressOpen: false, addressActive: -1,
     cardName: "", cardNumber: "", cardExpiry: "", cardCvv: "",
     marketing: false, consent: false, error: "", busy: false, validated: null, booked: null, cart: [], loaded: false, holdUntil: 0
   };
@@ -685,7 +695,137 @@ class Component extends DCLogic {
     this.setState({ step: "options", error: "" });
   }
 
-  componentWillUnmount() { clearInterval(this._tick); }
+  componentWillUnmount() {
+    clearInterval(this._tick);
+    clearTimeout(this._addressDebounce);
+    clearTimeout(this._addressBlur);
+  }
+
+  placesLibrary() {
+    if (this._placesLibrary) return this._placesLibrary;
+    this._placesLibrary = new Promise((resolve, reject) => {
+      const ready = (attempt) => {
+        if (window.google && window.google.maps && window.google.maps.importLibrary) {
+          window.google.maps.importLibrary("places").then(resolve).catch(reject);
+          return;
+        }
+        if ((attempt || 0) < 100) {
+          setTimeout(() => ready((attempt || 0) + 1), 50);
+          return;
+        }
+        reject(new Error("Google Maps did not load."));
+      };
+      if (window.google && window.google.maps && window.google.maps.importLibrary) {
+        ready();
+        return;
+      }
+      const existing = document.querySelector('script[data-kosipark-google-places]');
+      if (existing) {
+        ready();
+        existing.addEventListener("error", reject, { once: true });
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyCXGyX9JcR9xwK287_SMDY_sPU3un8xYGo&loading=async&libraries=places&v=weekly&callback=__kosiparkGooglePlacesReady";
+      script.async = true;
+      script.dataset.kosiparkGooglePlaces = "true";
+      window.__kosiparkGooglePlacesReady = () => {
+        delete window.__kosiparkGooglePlacesReady;
+        ready();
+      };
+      script.addEventListener("load", () => ready(), { once: true });
+      script.addEventListener("error", () => reject(new Error("Google address search is unavailable.")), { once: true });
+      document.head.appendChild(script);
+    });
+    return this._placesLibrary;
+  }
+
+  updateAddress(value) {
+    clearTimeout(this._addressDebounce);
+    const clean = String(value || "");
+    this.setState({ address: clean, addressStatus: "", addressActive: -1 });
+    if (clean.trim().length < 3) {
+      this.setState({ addressSuggestions: [], addressOpen: false });
+      return;
+    }
+    this._addressDebounce = setTimeout(() => this.searchAddresses(clean), 250);
+  }
+
+  async searchAddresses(input) {
+    const requestNumber = (this._addressRequest || 0) + 1;
+    this._addressRequest = requestNumber;
+    this.setState({ addressStatus: "Searching addresses…" });
+    try {
+      const places = await this.placesLibrary();
+      if (!this._addressSession) this._addressSession = new places.AutocompleteSessionToken();
+      const response = await places.AutocompleteSuggestion.fetchAutocompleteSuggestions({
+        input,
+        includedRegionCodes: ["au"],
+        sessionToken: this._addressSession
+      });
+      if (requestNumber !== this._addressRequest || this.state.address !== input) return;
+      const rows = (response.suggestions || []).map(s => s.placePrediction).filter(Boolean).slice(0, 6);
+      this.setState({
+        addressSuggestions: rows,
+        addressOpen: rows.length > 0,
+        addressActive: -1,
+        addressStatus: rows.length ? "" : "No matching Australian addresses found. You can still enter it manually."
+      });
+    } catch (e) {
+      if (requestNumber !== this._addressRequest) return;
+      this._placesLibrary = null;
+      this.setState({
+        addressSuggestions: [],
+        addressOpen: false,
+        addressStatus: "Address suggestions are unavailable. Please enter your address manually."
+      });
+    }
+  }
+
+  async chooseAddress(prediction) {
+    this.setState({ addressOpen: false, addressStatus: "Adding address…" });
+    try {
+      const place = prediction.toPlace();
+      await place.fetchFields({ fields: ["addressComponents", "formattedAddress"] });
+      const components = place.addressComponents || [];
+      const part = type => {
+        const c = components.find(x => (x.types || []).indexOf(type) > -1);
+        return c ? (c.longText || c.shortText || "") : "";
+      };
+      const unit = part("subpremise");
+      const street = [part("street_number"), part("route")].filter(Boolean).join(" ");
+      const address = [unit ? "Unit " + unit : "", street].filter(Boolean).join(", ") ||
+        String(place.formattedAddress || "").split(",")[0];
+      const city = part("locality") || part("postal_town") || part("sublocality_level_1") || part("administrative_area_level_2");
+      this._addressSession = null;
+      this.setState({
+        address,
+        city: city || this.state.city,
+        postcode: part("postal_code") || this.state.postcode,
+        addressSuggestions: [],
+        addressActive: -1,
+        addressStatus: "Address selected."
+      });
+    } catch (e) {
+      this.setState({ addressStatus: "We couldn't fill that address. Please enter it manually." });
+    }
+  }
+
+  addressKeyDown(e) {
+    const rows = this.state.addressSuggestions || [];
+    if (!rows.length) return;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const direction = e.key === "ArrowDown" ? 1 : -1;
+      const next = (this.state.addressActive + direction + rows.length) % rows.length;
+      this.setState({ addressActive: next, addressOpen: true });
+    } else if (e.key === "Enter" && this.state.addressActive >= 0) {
+      e.preventDefault();
+      this.chooseAddress(rows[this.state.addressActive]);
+    } else if (e.key === "Escape") {
+      this.setState({ addressOpen: false, addressActive: -1 });
+    }
+  }
 
   async goReview() {
     const problem = this.detailsError();
@@ -741,9 +881,10 @@ class Component extends DCLogic {
     return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" });
   }
 
-  field(key, label, placeholder, wide) {
+  field(key, label, placeholder, wide, autocomplete, type) {
     return {
-      label, placeholder, isText: true, isSelect: false, options: [],
+      id: "guest-" + key, name: key, label, placeholder, type: type || "text", autocomplete: autocomplete || "",
+      isText: true, isSelect: false, isAddress: false, options: [],
       value: this.state[key],
       onChange: e => this.setState({ [key]: e.target.value, error: "" }),
       wrapStyle: (wide ? "grid-column:1/-1; " : "") + "display:flex; flex-direction:column; gap:7px; padding:14px 18px; border-radius:14px; background:#F3ECE0; border:1px solid rgba(29,55,48,0.08)"
@@ -783,21 +924,46 @@ class Component extends DCLogic {
       { key: "review",  label: "Payment",         short: "Payment" }
     ];
 
+    const addressSuggestions = (s.addressSuggestions || []).map((prediction, i) => ({
+      label: prediction.text ? prediction.text.toString() : "Address suggestion",
+      selected: i === s.addressActive,
+      pick: () => this.chooseAddress(prediction),
+      style: "display:block; width:100%; border:0; border-bottom:1px solid rgba(29,55,48,0.09); padding:13px 15px; text-align:left; cursor:pointer; font:500 14px/1.35 Figtree, sans-serif; " +
+        (i === s.addressActive ? "background:#E9EEE3; color:#1D3730" : "background:#FFFFFF; color:#292724")
+    }));
+    const addressField = {
+      id: "guest-address", name: "address", label: "Street address", placeholder: "Start typing your Australian address",
+      isText: false, isSelect: false, isAddress: true, options: [], value: s.address,
+      expanded: s.addressOpen && addressSuggestions.length > 0,
+      suggestions: addressSuggestions,
+      onChange: e => this.updateAddress(e.target.value),
+      onFocus: () => { clearTimeout(this._addressBlur); if (addressSuggestions.length) this.setState({ addressOpen: true }); },
+      onBlur: () => { this._addressBlur = setTimeout(() => this.setState({ addressOpen: false, addressActive: -1 }), 180); },
+      onKeyDown: e => this.addressKeyDown(e),
+      resultsStyle: s.addressOpen && addressSuggestions.length
+        ? "position:absolute; z-index:50; left:0; right:0; top:100%; margin-top:7px; background:#FFFFFF; border:1px solid rgba(29,55,48,0.14); border-radius:12px; overflow:hidden; box-shadow:0 18px 34px rgba(29,55,48,0.14)"
+        : "display:none",
+      status: s.addressStatus,
+      statusStyle: s.addressStatus ? "font:400 12px/1.45 Figtree, sans-serif; color:#6C6862" : "display:none",
+      wrapStyle: "position:relative; display:flex; flex-direction:column; gap:7px; padding:14px 18px; border-radius:14px; background:#F3ECE0; border:1px solid rgba(29,55,48,0.08)"
+    };
     const fields = [
-      this.field("firstName", "First name", "Anh"),
-      this.field("lastName", "Surname", "Nguyen"),
-      this.field("email", "Email", "you@example.com", true),
-      this.field("mobile", "Mobile", "0400 000 000"),
-      this.field("address", "Street address", "12 Gippsland St"),
-      this.field("city", "Suburb / town", "Jindabyne"),
-      this.field("postcode", "Postcode", "2627")
+      this.field("firstName", "First name", "Anh", false, "given-name"),
+      this.field("lastName", "Surname", "Nguyen", false, "family-name"),
+      this.field("email", "Email", "you@example.com", true, "email", "email"),
+      this.field("mobile", "Mobile", "0400 000 000", false, "tel", "tel"),
+      addressField,
+      this.field("city", "Suburb / town", "Jindabyne", false, "address-level2"),
+      this.field("postcode", "Postcode", "2627", false, "postal-code")
     ].concat((s.profileFields || []).map(f => {
       const isLookup = f.FieldType === "lookup";
       return {
+        id: "profile-" + f.ExternalId, name: "profile-" + f.ExternalId, autocomplete: "", type: "text",
         label: f.Name + (f.Required ? " *" : ""),
         placeholder: isLookup ? "" : "",
         isText: !isLookup,
         isSelect: isLookup,
+        isAddress: false,
         options: isLookup ? [{ value: "", label: "Please choose" }].concat((f.ProfileFieldValues || []).map(v => ({ value: v.ExternalId, label: v.Value }))) : [],
         value: s.answers[f.ExternalId] || "",
         onChange: e => this.setState(x => ({ answers: { ...x.answers, [f.ExternalId]: e.target.value }, error: "" })),

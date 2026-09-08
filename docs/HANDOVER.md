@@ -92,8 +92,9 @@ says so. That is why prices, availability and photos are invented right now.
 - **Card tokenisation is stubbed.** `"tok_" + last4` is a placeholder. A real
   payment gateway has to go in before the site can charge anyone. This is a hard
   blocker, not a polish item.
-- `/manage` still runs on sample bookings, though the API supports guest
-  self-service via `POST /reservations/manage`.
+- `/manage` is built on the self-service API and uses booking reference,
+  surname and mobile. Live access still needs `GP_CORE_UPSTREAM` and, if the
+  Booking Engine key is not accepted by Core, `GP_CORE_API_KEY`.
 - `MaxStay` does not exist in the Booking Engine API. The sample data emits it
   and `Availability.dc.html` reads it, so that message will never fire live —
   either remove it or derive it in the proxy.

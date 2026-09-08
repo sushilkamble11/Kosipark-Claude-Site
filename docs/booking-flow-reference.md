@@ -3,6 +3,33 @@
 Base URL: `https://beapi.guestpoint.dev/api/v1` (dev)
 Auth: `X-API-KEY` header. Backend only — never in browser code.
 
+## Website booking journey
+
+This is one booking flow, implemented in `public_html/Availability.dc.html`,
+`public_html/Calendar.dc.html`, `public_html/Checkout.dc.html` and the shared
+`public_html/guestpoint.js` API layer. Do not create a second booking engine or
+a separate sold-out page.
+
+When an exact-date search has no sellable accommodation, the availability
+results area becomes the recovery experience. It retains the requested stay
+length and party, checks nearby arrivals in the order `-1, +1, -2, +2, -3,
++3`, and displays up to three genuinely bookable alternatives. A single
+“Check alternate dates” disclosure shows all checked arrivals inline, using
+green for normal availability, amber for one or two units left and grey for an
+unavailable complete stay. Text labels accompany every colour.
+
+Every alternative is a definitive `/availabilities` quote for the complete
+stay. Its total is the sum of returned nightly rates and its scarcity is the
+tightest nightly `ForSale` count. Selecting it reruns the normal search with
+the same adults, children, infants and number of nights; it does not hold
+inventory. Closed nights, arrival/departure restrictions and minimum stays
+must never be presented as available.
+
+The same flow continues to provide rate plans and genuine room upgrades on the
+availability screen, followed by the existing adjacent-night quote and extras
+in checkout. GuestPoint remains the sole source of rates, restrictions and
+inventory. Never invent viewer counts, countdown urgency or scarcity.
+
 ## 1. Search availability
 
 `GET /properties/{propertyId}/availabilities`

@@ -1,5 +1,6 @@
 # Secrets — never commit
 public_html/api/gp/config.php
+public_html/api/ops/config.php
 .env
 
 # OS / editor
