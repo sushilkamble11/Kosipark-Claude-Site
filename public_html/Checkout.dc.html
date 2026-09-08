@@ -704,12 +704,16 @@ class Component extends DCLogic {
   placesLibrary() {
     if (this._placesLibrary) return this._placesLibrary;
     this._placesLibrary = new Promise((resolve, reject) => {
-      const ready = () => {
-        if (!window.google || !window.google.maps || !window.google.maps.importLibrary) {
-          reject(new Error("Google Maps did not load."));
+      const ready = (attempt) => {
+        if (window.google && window.google.maps && window.google.maps.importLibrary) {
+          window.google.maps.importLibrary("places").then(resolve).catch(reject);
           return;
         }
-        window.google.maps.importLibrary("places").then(resolve).catch(reject);
+        if ((attempt || 0) < 100) {
+          setTimeout(() => ready((attempt || 0) + 1), 50);
+          return;
+        }
+        reject(new Error("Google Maps did not load."));
       };
       if (window.google && window.google.maps && window.google.maps.importLibrary) {
         ready();
@@ -717,15 +721,19 @@ class Component extends DCLogic {
       }
       const existing = document.querySelector('script[data-kosipark-google-places]');
       if (existing) {
-        existing.addEventListener("load", ready, { once: true });
+        ready();
         existing.addEventListener("error", reject, { once: true });
         return;
       }
       const script = document.createElement("script");
-      script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyCXGyX9JcR9xwK287_SMDY_sPU3un8xYGo&loading=async&libraries=places&v=weekly";
+      script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyCXGyX9JcR9xwK287_SMDY_sPU3un8xYGo&loading=async&libraries=places&v=weekly&callback=__kosiparkGooglePlacesReady";
       script.async = true;
       script.dataset.kosiparkGooglePlaces = "true";
-      script.addEventListener("load", ready, { once: true });
+      window.__kosiparkGooglePlacesReady = () => {
+        delete window.__kosiparkGooglePlacesReady;
+        ready();
+      };
+      script.addEventListener("load", () => ready(), { once: true });
       script.addEventListener("error", () => reject(new Error("Google address search is unavailable.")), { once: true });
       document.head.appendChild(script);
     });
