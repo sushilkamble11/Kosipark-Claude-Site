@@ -31,8 +31,8 @@
     <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
       <div style="max-width:56ch">
         <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#74836A; margin:0">Checkout</p>
-        <h1 style="font:300 clamp(24px,3.1vw,36px)/1.06 Petrona, Georgia, serif; letter-spacing:-0.02em; color:#1D3730; margin:12px 0 0">Nothing in your booking yet</h1>
-        <p style="font:400 14.5px/1.7 Figtree, sans-serif; color:#56534C; margin:14px 0 0">Pick your nights on any cabin, chalet or site and they'll appear here. You can add more than one — a cabin and a van site travel together on the same booking.</p>
+        <h1 style="font:300 clamp(24px,3.1vw,36px)/1.06 Petrona, Georgia, serif; letter-spacing:-0.02em; color:#1D3730; margin:12px 0 0">{{ emptyHeadline }}</h1>
+        <p style="font:400 14.5px/1.7 Figtree, sans-serif; color:#56534C; margin:14px 0 0">{{ emptyText }}</p>
         <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:24px">
           <a href="/#book" style="background:#1D3730; color:#FCFAF6; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:18px 26px; border-radius:999px">Search dates</a>
           <a href="tel:0264562224" style="border:1px solid rgba(29,55,48,0.2); color:#1D3730; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:18px 26px; border-radius:999px">02 6456 2224</a>
@@ -489,17 +489,23 @@ class Component extends DCLogic {
   }
 
   checkoutDeadline(items) {
-    const key = "kosipark-checkout-timer";
-    const fingerprint = (items || []).map(i => i.id).filter(Boolean).sort().join("|");
-    try {
-      const saved = JSON.parse(sessionStorage.getItem(key) || "null");
-      if (saved && saved.fingerprint === fingerprint && Number(saved.deadline) > 0) return Number(saved.deadline);
-      const deadline = Date.now() + 15 * 60 * 1000;
-      sessionStorage.setItem(key, JSON.stringify({ fingerprint, deadline }));
-      return deadline;
-    } catch (e) {
-      return Date.now() + 15 * 60 * 1000;
-    }
+    const timestamps = (items || []).map(i => Number(i.pricedAt || i.addedAt || 0)).filter(Boolean);
+    return timestamps.length ? Math.min.apply(null, timestamps) + 15 * 60 * 1000 : 0;
+  }
+
+  startCartTimer() {
+    if (this._tick) return;
+    this._tick = setInterval(() => {
+      const s = this.state;
+      if (s.step !== "done" && s.holdUntil && Date.now() >= s.holdUntil && (s.cart || []).length) {
+        const cart = this.gp ? this.gp.clearCart() : [];
+        clearInterval(this._tick);
+        this._tick = null;
+        this.setState({ cart, holdUntil: 0, expired: true, validated: null });
+        return;
+      }
+      this.forceUpdate();
+    }, 1000);
   }
 
   ratePolicy(it) {
@@ -552,7 +558,7 @@ class Component extends DCLogic {
       }
       const holdUntil = this.checkoutDeadline(cart);
       this.setState({ cart, loaded: true, notice, holdUntil });
-      if (!this._tick) this._tick = setInterval(() => this.forceUpdate(), 1000);
+      this.startCartTimer();
       const [rawExtras, profileFields] = await Promise.all([
         gp.getExtras([this.roomStay()]),
         gp.getProfileFields()
@@ -841,6 +847,10 @@ class Component extends DCLogic {
 
     return {
       isEmpty: s.loaded && items.length === 0 && s.step !== "done",
+      emptyHeadline: s.expired ? "Your booking time has expired" : "Nothing in your booking yet",
+      emptyText: s.expired
+        ? "We cleared the stays after 15 minutes because prices and availability can change. Search again to see what is available now."
+        : "Pick your nights on any cabin, chalet or site and they'll appear here. You can add more than one — a cabin and a van site travel together on the same booking.",
       notDone: s.step !== "done" && items.length > 0,
       isDone: s.step === "done",
       roomName: this.roomName(p.room),
@@ -865,12 +875,14 @@ class Component extends DCLogic {
         policyBadgeStyle: "display:inline-flex; align-items:center; border-radius:999px; padding:6px 8px; white-space:nowrap; " +
           "font:700 9.5px/1 Figtree, sans-serif; letter-spacing:.08em; text-transform:uppercase; " +
           (policy.nonRefundable ? "background:#F7E7E1; color:#8C3B2A" : policy.known ? "background:#E3EDDD; color:#40563B" : "background:#EFEDE7; color:#6C6862"),
-        removeStyle: items.length > 1
-          ? "border:0; background:transparent; font:600 11px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; color:#8C3B2A; cursor:pointer; padding:10px 0 0"
-          : "display:none",
+        removeStyle: "border:0; background:transparent; font:600 11px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; color:#8C3B2A; cursor:pointer; padding:10px 0 0",
         remove: () => {
           const next = this.gp.removeFromCart(it.id);
-          this.setState({ cart: next, validated: null });
+          if (!next.length) {
+            clearInterval(this._tick);
+            this._tick = null;
+          }
+          this.setState({ cart: next, holdUntil: next.length ? this.checkoutDeadline(next) : 0, validated: null, expired: false });
         }
         };
       }),
