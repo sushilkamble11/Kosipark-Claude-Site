@@ -67,10 +67,12 @@
         <div style="border-radius:16px; overflow:hidden; aspect-ratio:16/10; position:relative"><image-slot id="{{ room.img3 }}" data-room-photo="2" shape="rect" placeholder="{{ room.ph3 }}"></image-slot></div>
       </div>
     </div>
-    <div class="room-photo-more" style="display:grid; gap:12px; grid-template-columns:repeat(3, minmax(0, 1fr)); margin-top:12px">
+    <div class="room-photo-more" style="display:grid; gap:12px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 220px), 1fr)); margin-top:12px">
       <div data-room-photo-wrap="3" style="display:none; border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative; min-width:0"><image-slot id="room-photo-4" data-room-photo="3" shape="rect" placeholder="Additional accommodation photo"></image-slot></div>
       <div data-room-photo-wrap="4" style="display:none; border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative; min-width:0"><image-slot id="room-photo-5" data-room-photo="4" shape="rect" placeholder="Additional accommodation photo"></image-slot></div>
       <div data-room-photo-wrap="5" style="display:none; border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative; min-width:0"><image-slot id="room-photo-6" data-room-photo="5" shape="rect" placeholder="Additional accommodation photo"></image-slot></div>
+      <div data-room-photo-wrap="6" style="display:none; border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative; min-width:0"><image-slot id="room-photo-7" data-room-photo="6" shape="rect" placeholder="Additional accommodation photo"></image-slot></div>
+      <div data-room-photo-wrap="7" style="display:none; border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative; min-width:0"><image-slot id="room-photo-8" data-room-photo="7" shape="rect" placeholder="Additional accommodation photo"></image-slot></div>
     </div>
   </section>
 
@@ -174,9 +176,9 @@ const ROOMS = [
       { k: "Outdoors", v: "Private deck with outdoor furniture" },
       { k: "Linen", v: "All linen supplied · 2-night minimum stay" }
     ],
-    ph: ["Three bedroom chalet living room", "Queen bedroom", "Spa bath"],
-    images: ["/assets/accommodation/three-bedroom-chalet/living-room.jpg", "/assets/accommodation/three-bedroom-chalet/queen-bedroom.jpg", "/assets/accommodation/three-bedroom-chalet/spa-bath.jpg"],
-    alts: ["Living room in the Three Bedroom Chalet", "Queen bedroom in the Three Bedroom Chalet", "Spa bath in the Three Bedroom Chalet"]
+    ph: ["Three Bedroom Heritage Chalet living room", "Lounge and dining area", "First queen bedroom", "Second queen bedroom", "Bunk bedroom", "Spa bathroom", "Chalet exterior", "Outdoor fire pit"],
+    images: ["/assets/accommodation/three-bedroom-chalet/living-room.jpg", "/assets/accommodation/three-bedroom-chalet/lounge-dining.jpg", "/assets/accommodation/three-bedroom-chalet/queen-bedroom.jpg", "/assets/accommodation/three-bedroom-chalet/second-bedroom.jpg", "/assets/accommodation/three-bedroom-chalet/bunk-room.jpg", "/assets/accommodation/three-bedroom-chalet/spa-bath.jpg", "/assets/accommodation/three-bedroom-chalet/exterior.jpg", "/assets/accommodation/three-bedroom-chalet/fire-pit.jpg"],
+    alts: ["Living room and kitchen in the Three Bedroom Heritage Chalet", "Lounge and dining area in the Three Bedroom Heritage Chalet", "First queen bedroom in the Three Bedroom Heritage Chalet", "Second queen bedroom in the Three Bedroom Heritage Chalet", "Bedroom with two sets of bunks in the Three Bedroom Heritage Chalet", "Bathroom with spa bath in the Three Bedroom Heritage Chalet", "Three Bedroom Heritage Chalet among the snowgums", "Outdoor fire pit and seating near the Three Bedroom Heritage Chalet"]
   },
   {
     slug: "two-bedroom-chalet-upgraded", name: "Two Bedroom Chalet — Upgraded", category: "Heritage Chalets", noun: "chalet",
