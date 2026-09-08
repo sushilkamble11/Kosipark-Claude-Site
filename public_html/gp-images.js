@@ -145,6 +145,16 @@
       // sweep claims every slot with a panel and the real photos, arriving a
       // moment later, find nothing left to fill.
       if (!resolved) return;
+      // Curated photos from Kosipark's existing website are the production
+      // fallback. Keep them visible when GuestPoint has no image for a slot;
+      // a later API image still wins through the normal branch below.
+      if (el.getAttribute("src")) {
+        filled.add(el);
+        if (!el.getAttribute("alt")) {
+          el.setAttribute("alt", el.getAttribute("placeholder") || "Kosciuszko Tourist Park");
+        }
+        return;
+      }
       // GuestPoint has nothing for this slot. Draw the designed panel from the
       // slot's own caption rather than leaving a grey hole.
       var cap = el.getAttribute("placeholder") || "";
@@ -155,6 +165,17 @@
       // brief inside that full-bleed panel competes with the real headline.
       el.setAttribute("src", placeholderFor(cap, el.id || cap, widthOf(el), el.id === "h-hero"));
       el.setAttribute("data-kosipark-placeholder", "");
+      return;
+    }
+    // Local development uses inline SVG scenery to prove the GuestPoint
+    // image pipeline. When the page already has an authentic Kosipark photo,
+    // keep that photo instead of letting the development fixture cover it.
+    // Real GuestPoint CDN images still take priority in production.
+    if (el.getAttribute("src") && /^data:image\/svg\+xml/i.test(img.url)) {
+      filled.add(el);
+      if (!el.getAttribute("alt")) {
+        el.setAttribute("alt", el.getAttribute("placeholder") || "Kosciuszko Tourist Park");
+      }
       return;
     }
     filled.add(el);

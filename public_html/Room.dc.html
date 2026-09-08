@@ -50,10 +50,10 @@
     </div>
 
     <div style="display:grid; gap:12px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 240px), 1fr)); margin-top:clamp(20px,3vw,32px)">
-      <div style="border-radius:16px; overflow:hidden; aspect-ratio:16/11; position:relative; grid-column:span 2; min-width:0"><image-slot id="{{ room.img1 }}" shape="rect" placeholder="{{ room.ph1 }}"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:16/11; position:relative; grid-column:span 2; min-width:0"><image-slot id="{{ room.img1 }}" data-room-photo="0" shape="rect" placeholder="{{ room.ph1 }}"></image-slot></div>
       <div style="display:grid; gap:12px; min-width:0">
-        <div style="border-radius:16px; overflow:hidden; aspect-ratio:16/10; position:relative"><image-slot id="{{ room.img2 }}" shape="rect" placeholder="{{ room.ph2 }}"></image-slot></div>
-        <div style="border-radius:16px; overflow:hidden; aspect-ratio:16/10; position:relative"><image-slot id="{{ room.img3 }}" shape="rect" placeholder="{{ room.ph3 }}"></image-slot></div>
+        <div style="border-radius:16px; overflow:hidden; aspect-ratio:16/10; position:relative"><image-slot id="{{ room.img2 }}" data-room-photo="1" shape="rect" placeholder="{{ room.ph2 }}"></image-slot></div>
+        <div style="border-radius:16px; overflow:hidden; aspect-ratio:16/10; position:relative"><image-slot id="{{ room.img3 }}" data-room-photo="2" shape="rect" placeholder="{{ room.ph3 }}"></image-slot></div>
       </div>
     </div>
   </section>
@@ -84,6 +84,7 @@
           <span style="font:400 14.5px/1.6 Figtree, sans-serif; color:#56534C">Two amenity blocks, hot showers</span>
           <span style="font:400 14.5px/1.6 Figtree, sans-serif; color:#56534C">Coin laundry &amp; undercover wash-up</span>
           <span style="font:400 14.5px/1.6 Figtree, sans-serif; color:#56534C">Kiosk, playground, walking trails</span>
+          <span style="font:400 14.5px/1.6 Figtree, sans-serif; color:#56534C">Paid Wi-Fi available</span>
         </div>
       </div>
 
@@ -157,7 +158,9 @@ const ROOMS = [
       { k: "Outdoors", v: "Private deck with outdoor furniture" },
       { k: "Linen", v: "All linen supplied · 2-night minimum stay" }
     ],
-    ph: ["Three bedroom chalet exterior or deck", "Chalet living area", "Chalet bedroom or bathroom"]
+    ph: ["Three bedroom chalet living room", "Queen bedroom", "Spa bath"],
+    images: ["/assets/accommodation/three-bedroom-chalet/living-room.jpg", "/assets/accommodation/three-bedroom-chalet/queen-bedroom.jpg", "/assets/accommodation/three-bedroom-chalet/spa-bath.jpg"],
+    alts: ["Living room in the Three Bedroom Chalet", "Queen bedroom in the Three Bedroom Chalet", "Spa bath in the Three Bedroom Chalet"]
   },
   {
     slug: "two-bedroom-chalet-upgraded", name: "Two Bedroom Chalet — Upgraded", category: "Heritage Chalets", noun: "chalet",
@@ -176,7 +179,9 @@ const ROOMS = [
       { k: "Extras", v: "15 amp power point for EV charging" },
       { k: "Linen", v: "All linen provided; queen and bottom bunks made up, with top bunk linen supplied but not made up" }
     ],
-    ph: ["Upgraded chalet living room", "Kitchen detail", "Bedroom or shower"]
+    ph: ["Upgraded chalet living room", "Walk-in shower", "Kitchen detail"],
+    images: ["/assets/accommodation/two-bedroom-chalet-upgraded/living-room.jpg", "/assets/accommodation/two-bedroom-chalet-upgraded/bathroom.jpg", "/assets/accommodation/two-bedroom-chalet-upgraded/kitchen.jpg"],
+    alts: ["Living room in the upgraded Two Bedroom Chalet", "Walk-in shower in the upgraded Two Bedroom Chalet", "Kitchen in the upgraded Two Bedroom Chalet"]
   },
   {
     slug: "two-bedroom-chalet", name: "Two Bedroom Chalet", category: "Heritage Chalets", noun: "chalet",
@@ -195,7 +200,9 @@ const ROOMS = [
       { k: "Parking", v: "Carport parking" },
       { k: "Linen", v: "All linen provided; queen and bottom bunks made up, with top bunk linen supplied but not made up" }
     ],
-    ph: ["Two bedroom heritage chalet exterior", "Living and dining area", "Bedroom"]
+    ph: ["Two Bedroom Chalet living room", "Kitchen and dining area", "Bunk room"],
+    images: ["/assets/accommodation/two-bedroom-chalet/living-room.jpg", "/assets/accommodation/two-bedroom-chalet/kitchen.jpg", "/assets/accommodation/two-bedroom-chalet/bunk-room-one.jpg"],
+    alts: ["Living room in the Two Bedroom Chalet", "Kitchen in the Two Bedroom Chalet", "Bunk room in the Two Bedroom Chalet"]
   },
   {
     slug: "cedar-cabin", name: "Cedar Cabin", category: "Cabins", noun: "cabin",
@@ -214,7 +221,9 @@ const ROOMS = [
       { k: "Outdoors", v: "Outdoor fire pit, when restrictions allow" },
       { k: "Linen", v: "All bed linen provided; guests bring their own towels" }
     ],
-    ph: ["Cedar cabin exterior", "Cabin interior", "Fire pit outside"]
+    ph: ["Cedar cabin exterior", "Cedar cabin kitchen", "Cedar cabin bunks"],
+    images: ["/assets/accommodation/cedar-cabin/exterior.jpg", "/assets/accommodation/cedar-cabin/kitchen.jpg", "/assets/accommodation/cedar-cabin/bunks.jpg"],
+    alts: ["Cedar Cabin exterior", "Kitchen inside a Cedar Cabin", "Bunk beds inside a Cedar Cabin"]
   },
   {
     slug: "caravan-site", name: "Caravan Site", category: "Powered Sites", noun: "site",
@@ -232,7 +241,9 @@ const ROOMS = [
       { k: "Privacy", v: "Sites spaced apart and nestled among snowgums" },
       { k: "Nearby", v: "Kiosk, two amenity blocks, hot showers, laundry, playground" }
     ],
-    ph: ["Caravan on a powered site", "Campfire in the evening", "Snowgums around the site"]
+    ph: ["Caravan on a powered site", "Guest lounge", "Shared amenities"],
+    images: ["/assets/accommodation/sites/caravan-site.jpg", "/assets/property/guest-lounge.jpg", "/assets/property/amenities-bathroom.jpg"],
+    alts: ["Powered caravan site among the snowgums", "Guest lounge and shared kitchen", "Renovated shared bathroom amenities"]
   },
   {
     slug: "camper-trailer-site", name: "Camper Trailer Site", category: "Powered Sites", noun: "site",
@@ -250,7 +261,9 @@ const ROOMS = [
       { k: "Water", v: "Taps located throughout the park" },
       { k: "Extras", v: "Personal campfire when restrictions allow, snowgum shelter and shade" }
     ],
-    ph: ["Camper trailer set up on site", "Fire pit and chairs", "Guest kitchen nearby"]
+    ph: ["Camper trailer set up on site", "Camp kitchen", "Shared kitchen amenities"],
+    images: ["/assets/accommodation/sites/camper-trailer-site.jpg", "/assets/property/camp-kitchen.jpg", "/assets/property/amenities-kitchen.jpg"],
+    alts: ["Camper trailer set up at Kosciuszko Tourist Park", "Shared camp kitchen", "Shared wash-up and kitchen amenities"]
   },
   {
     slug: "motorhome-site", name: "Motorhome Site", category: "Powered Sites", noun: "site",
@@ -268,7 +281,9 @@ const ROOMS = [
       { k: "Setting", v: "Natural environment with thoughtful spacing and placement" },
       { k: "Nearby", v: "Guest kitchen and lounge, hot showers, laundry, wash-up area" }
     ],
-    ph: ["Camper van on a powered site", "Van and snowgums", "Amenities block"]
+    ph: ["Camper van on a powered site", "Guest lounge", "Amenities block"],
+    images: ["/assets/accommodation/sites/motorhome-site.jpg", "/assets/property/guest-lounge.jpg", "/assets/property/amenities-bathroom.jpg"],
+    alts: ["Motorhome site at Kosciuszko Tourist Park", "Guest lounge and shared kitchen", "Renovated shared bathroom amenities"]
   },
   {
     slug: "unpowered-site", name: "Unpowered Tent Site", category: "Camping", noun: "site",
@@ -286,7 +301,9 @@ const ROOMS = [
       { k: "Shared", v: "Guest kitchen and lounge with wood fire, hot showers, laundry, playground" },
       { k: "Nearby", v: "Kiosk, picnic area, walking trails, public telephone" }
     ],
-    ph: ["Tent pitched among snowgums", "Camp kitchen interior", "Morning light in the campground"]
+    ph: ["Tent pitched among snowgums", "Camp kitchen interior", "Shared kitchen amenities"],
+    images: ["/assets/accommodation/sites/unpowered-site.jpg", "/assets/property/camp-kitchen.jpg", "/assets/property/amenities-kitchen.jpg"],
+    alts: ["Unpowered tent site among the snowgums", "Shared camp kitchen", "Shared wash-up and kitchen amenities"]
   }
 ];
 
@@ -309,13 +326,29 @@ class Component extends DCLogic {
   }
 
   componentDidMount() {
-    this._onNav = () => this.forceUpdate();
+    this._onNav = () => {
+      this.forceUpdate();
+      requestAnimationFrame(() => this.applyRoomImages());
+    };
     window.addEventListener("hashchange", this._onNav);
     window.addEventListener("popstate", this._onNav);
+    requestAnimationFrame(() => this.applyRoomImages());
+  }
+  componentDidUpdate() {
+    requestAnimationFrame(() => this.applyRoomImages());
   }
   componentWillUnmount() {
     window.removeEventListener("hashchange", this._onNav);
     window.removeEventListener("popstate", this._onNav);
+  }
+
+  applyRoomImages() {
+    const r = ROOMS.find(x => x.slug === this.currentSlug()) || ROOMS[2];
+    document.querySelectorAll("image-slot[data-room-photo]").forEach(slot => {
+      const index = Number(slot.getAttribute("data-room-photo"));
+      if (r.images[index]) slot.setAttribute("src", r.images[index]);
+      if (r.alts[index]) slot.setAttribute("alt", r.alts[index]);
+    });
   }
 
   renderVals() {
