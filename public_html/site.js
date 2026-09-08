@@ -73,7 +73,7 @@
     var narrow = window.matchMedia && window.matchMedia("(max-width: 560px)").matches;
     bar.textContent = narrow
       ? "Preview — sample data, not live. Call 02 6456 2224."
-      : "Preview — rates, availability and photos on this page are sample data, " +
+      : "Preview — rates and availability on this page are sample data, " +
         "not live. Call 02 6456 2224 to book.";
 
     var close = document.createElement("button");
