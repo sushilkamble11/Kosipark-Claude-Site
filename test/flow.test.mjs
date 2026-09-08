@@ -142,7 +142,8 @@ await page.evaluate(() => {
   localStorage.setItem("kosipark-cart", JSON.stringify(items));
 });
 await page.reload({ waitUntil: READY });
-await sleep(1500);
+await page.waitForFunction(() => JSON.parse(localStorage.getItem("kosipark-cart") || "[]").length === 0, null, { timeout: 8000 }).catch(() => {});
+await sleep(250);
 const expiredText = await page.evaluate(() => document.body.innerText);
 ok((await cart()).length === 0, "the cart is empty after 15 minutes");
 ok(expiredText.includes("Your booking time has expired"), "checkout explains why the cart was cleared");
