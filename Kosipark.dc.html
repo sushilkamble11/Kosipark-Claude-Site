@@ -84,6 +84,45 @@
     margin: -52px auto 0;
     padding: 0 clamp(14px, 4vw, 44px);
   }
+  .home-hero-photo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .home-highlight-grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: clamp(22px, 3vw, 36px);
+  }
+  .home-highlight {
+    position: relative;
+    margin: 0;
+    overflow: hidden;
+    border-radius: 14px;
+    background: #1D3730;
+  }
+  .home-highlight--wide { grid-column: span 8; aspect-ratio: 16/9; }
+  .home-highlight--tall { grid-column: span 4; aspect-ratio: 8/9; }
+  .home-highlight--third { grid-column: span 4; aspect-ratio: 8/9; }
+  .home-highlight img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform .5s ease;
+  }
+  .home-highlight:hover img { transform: scale(1.025); }
+  .home-highlight figcaption {
+    position: absolute;
+    inset: auto 0 0;
+    padding: 54px 18px 17px;
+    color: #FCFAF6;
+    font: 600 13px/1.25 Figtree, sans-serif;
+    letter-spacing: .03em;
+    background: linear-gradient(180deg, transparent, rgba(18,39,32,.82));
+  }
 
   @media (max-width: 1100px) {
     .home-hero { min-height: clamp(540px, 64vh, 620px); }
@@ -98,6 +137,17 @@
     .home-hero-title { font-size: clamp(35px, 10.5vw, 46px); line-height: 1.04; max-width: 13ch; }
     .home-hero-lede { font-size: 15px; line-height: 1.58; margin-top: 18px; max-width: 38ch; }
     .home-booking { margin-top: -24px; padding: 0 12px; }
+    .home-highlight-grid { grid-template-columns: 1fr; }
+    .home-highlight--wide,
+    .home-highlight--tall,
+    .home-highlight--third { grid-column: auto; aspect-ratio: 4/3; }
+  }
+
+  @media (min-width: 700px) and (max-width: 980px) {
+    .home-highlight-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .home-highlight--wide,
+    .home-highlight--tall,
+    .home-highlight--third { grid-column: auto; aspect-ratio: 4/3; }
   }
 
   @media (max-width: 360px) {
@@ -120,7 +170,7 @@
 
   <section id="top" class="home-hero" data-screen-label="Hero">
     <div class="home-hero-media">
-      <image-slot id="h-hero" gp-property gp-index="0" shape="rect" fit="cover" src="/assets/property/park-panorama.jpg" alt="Kosciuszko Tourist Park among the snowgums" placeholder="Hero photo — the park under snow gums, or the Snowy Mountains"></image-slot>
+      <img src="/assets/attractions/snowboarder-winter-v1.jpg" alt="A snowboarder in the Snowy Mountains" fetchpriority="high" class="home-hero-photo" style="object-position:center 48%" />
     </div>
     <div class="home-hero-shade"></div>
 
@@ -241,18 +291,22 @@
     </div>
   </section>
 
-  <section data-screen-label="Gallery teaser" style="max-width:1320px; margin:0 auto; padding:clamp(38px,5.2vw,72px) clamp(20px,5vw,56px) 0">
+  <section data-screen-label="Mountain highlights" style="max-width:1320px; margin:0 auto; padding:clamp(38px,5.2vw,72px) clamp(20px,5vw,56px) 0">
     <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end; justify-content:space-between">
-      <h2 style="font:300 clamp(24px,3vw,35px)/1.06 Petrona, Georgia, serif; letter-spacing:-0.015em; color:#1D3730; margin:0">The park, through the year</h2>
+      <div>
+        <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#74836A; margin:0">Mountain Highlights</p>
+        <h2 style="font:300 clamp(24px,3vw,35px)/1.06 Petrona, Georgia, serif; letter-spacing:-0.015em; color:#1D3730; margin:12px 0 0">Mountain days, fireside nights</h2>
+      </div>
       <a href="/gallery" style="font:700 12px/1 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#1D3730; border-bottom:1px solid #96592A; padding-bottom:8px">Full gallery</a>
     </div>
-    <div style="display:grid; gap:10px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 200px), 1fr)); margin-top:clamp(22px,3vw,36px)">
-      <div style="border-radius:14px; overflow:hidden; aspect-ratio:1/1; position:relative"><image-slot id="h-gal-1" gp-property gp-index="2" shape="rect" src="/assets/property/cabins-panorama.jpg" alt="Cabins among the snowgums" placeholder="Cabins in snow"></image-slot></div>
-      <div style="border-radius:14px; overflow:hidden; aspect-ratio:1/1; position:relative"><image-slot id="h-gal-2" gp-property gp-index="3" shape="rect" src="/assets/accommodation/cedar-cabin/exterior-v2.jpg" alt="Cedar Cabin at dusk" placeholder="Campfire at dusk"></image-slot></div>
-      <div style="border-radius:14px; overflow:hidden; aspect-ratio:1/1; position:relative"><image-slot id="h-gal-3" gp-property gp-index="4" shape="rect" src="/assets/accommodation/sites/caravan-site-v2.jpg" alt="Caravan site in summer" placeholder="Snowgums at dawn"></image-slot></div>
-      <div style="border-radius:14px; overflow:hidden; aspect-ratio:1/1; position:relative"><image-slot id="h-gal-4" gp-property gp-index="5" shape="rect" src="/assets/accommodation/sites/unpowered-site.jpg" alt="Tent site in the bush" placeholder="Kangaroos on the lawn"></image-slot></div>
-      <div style="border-radius:14px; overflow:hidden; aspect-ratio:1/1; position:relative"><image-slot id="h-gal-5" gp-property gp-index="6" shape="rect" src="/assets/accommodation/three-bedroom-chalet/lounge-dining.jpg" alt="Three Bedroom Chalet lounge and dining area" placeholder="Chalet interior"></image-slot></div>
-      <div style="border-radius:14px; overflow:hidden; aspect-ratio:1/1; position:relative"><image-slot id="h-gal-6" gp-property gp-index="7" shape="rect" src="/assets/accommodation/sites/camper-trailer-site.jpg" alt="Camper trailer site among the snowgums" placeholder="Van site in summer"></image-slot></div>
+    <div class="home-highlight-grid">
+      <figure class="home-highlight home-highlight--wide"><img src="/assets/attractions/mountain-bike-sunrise-v1.jpg" alt="A mountain biker descending at sunrise in the Snowy Mountains" loading="lazy" /><figcaption>Alpine riding at sunrise</figcaption></figure>
+      <figure class="home-highlight home-highlight--tall"><img src="/assets/attractions/bike-chairlift-v1.jpg" alt="Mountain bikers and their bikes riding the chairlift" loading="lazy" /><figcaption>Mountain biking above the ranges</figcaption></figure>
+      <figure class="home-highlight home-highlight--third"><img src="/assets/property/campfire-evening-v1.jpg" alt="A couple relaxing together beside a campfire" loading="lazy" /><figcaption>Campfire evenings</figcaption></figure>
+      <figure class="home-highlight home-highlight--third"><img src="/assets/accommodation/two-bedroom-chalet/exterior-snow.jpg" alt="A Heritage Chalet surrounded by fresh snow" loading="lazy" /><figcaption>Chalets in the snow</figcaption></figure>
+      <figure class="home-highlight home-highlight--third"><img src="/assets/property/family-snow-v1.jpg" alt="A family making a snowman beside a chalet" loading="lazy" /><figcaption>Snow play at the park</figcaption></figure>
+      <figure class="home-highlight home-highlight--wide"><img src="/assets/attractions/cyclists-suspension-bridge-v1.jpg" alt="Cyclists crossing a suspension bridge in the mountains" loading="lazy" /><figcaption>Summer adventures nearby</figcaption></figure>
+      <figure class="home-highlight home-highlight--tall"><img src="/assets/attractions/family-cycling-lake-v1.jpg" alt="A family resting with mountain bikes beside an alpine lake" loading="lazy" /><figcaption>Family trails and alpine lakes</figcaption></figure>
     </div>
   </section>
 
