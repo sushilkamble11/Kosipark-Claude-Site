@@ -24,6 +24,14 @@
   a { color: #1D3730; text-decoration: none; }
   a:hover { color: #96592A; }
   @keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  @media (max-width: 900px) {
+    .room-photo-grid { grid-template-columns: minmax(0, 1fr) !important; }
+    .room-photo-main { grid-column: auto !important; }
+    .room-photo-secondary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 520px) {
+    .room-photo-secondary { grid-template-columns: minmax(0, 1fr); }
+  }
 </style>
 </helmet>
 
@@ -51,9 +59,9 @@
       </div>
     </div>
 
-    <div style="display:grid; gap:12px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 240px), 1fr)); margin-top:clamp(20px,3vw,32px)">
-      <div style="border-radius:16px; overflow:hidden; aspect-ratio:16/11; position:relative; grid-column:span 2; min-width:0"><image-slot id="{{ room.img1 }}" data-room-photo="0" shape="rect" placeholder="{{ room.ph1 }}"></image-slot></div>
-      <div style="display:grid; gap:12px; min-width:0">
+    <div class="room-photo-grid" style="display:grid; gap:12px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 240px), 1fr)); margin-top:clamp(20px,3vw,32px)">
+      <div class="room-photo-main" style="border-radius:16px; overflow:hidden; aspect-ratio:16/11; position:relative; grid-column:span 2; min-width:0"><image-slot id="{{ room.img1 }}" data-room-photo="0" shape="rect" placeholder="{{ room.ph1 }}"></image-slot></div>
+      <div class="room-photo-secondary" style="display:grid; gap:12px; min-width:0">
         <div style="border-radius:16px; overflow:hidden; aspect-ratio:16/10; position:relative"><image-slot id="{{ room.img2 }}" data-room-photo="1" shape="rect" placeholder="{{ room.ph2 }}"></image-slot></div>
         <div style="border-radius:16px; overflow:hidden; aspect-ratio:16/10; position:relative"><image-slot id="{{ room.img3 }}" data-room-photo="2" shape="rect" placeholder="{{ room.ph3 }}"></image-slot></div>
       </div>
@@ -181,9 +189,9 @@ const ROOMS = [
       { k: "Extras", v: "15 amp power point for EV charging" },
       { k: "Linen", v: "All linen provided; queen and bottom bunks made up, with top bunk linen supplied but not made up" }
     ],
-    ph: ["Upgraded chalet living room", "Walk-in shower", "Kitchen detail"],
-    images: ["/assets/accommodation/two-bedroom-chalet-upgraded/living-room.jpg", "/assets/accommodation/two-bedroom-chalet-upgraded/bathroom.jpg", "/assets/accommodation/two-bedroom-chalet-upgraded/kitchen.jpg"],
-    alts: ["Living room in the upgraded Two Bedroom Chalet", "Walk-in shower in the upgraded Two Bedroom Chalet", "Kitchen in the upgraded Two Bedroom Chalet"]
+    ph: ["Upgraded chalet living and queen sleeping area", "Kitchen and electric fireplace", "Walk-in shower and bathroom"],
+    images: ["/assets/accommodation/two-bedroom-chalet-upgraded/living-room.jpg", "/assets/accommodation/two-bedroom-chalet-upgraded/kitchen.jpg", "/assets/accommodation/two-bedroom-chalet-upgraded/bathroom.jpg"],
+    alts: ["Bright living area and queen bed in the upgraded Two Bedroom Chalet", "Kitchen, dining bench and electric fireplace in the upgraded Two Bedroom Chalet", "Modern bathroom with walk-in shower in the upgraded Two Bedroom Chalet"]
   },
   {
     slug: "two-bedroom-chalet", name: "Two Bedroom Chalet", category: "Heritage Chalets", noun: "chalet",
