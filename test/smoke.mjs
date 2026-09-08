@@ -223,6 +223,7 @@ for (const viewport of VIEWPORTS) {
     const title = document.querySelector(".home-hero-title").getBoundingClientRect();
     const lede = document.querySelector(".home-hero-lede").getBoundingClientRect();
     const book = document.querySelector(".home-booking").getBoundingClientRect();
+    const heroPhoto = document.querySelector(".home-hero-photo");
     const weather = document.querySelector('[data-weather="sawpit-creek"]');
     return {
       overflow: document.documentElement.scrollWidth - window.innerWidth,
@@ -230,6 +231,7 @@ for (const viewport of VIEWPORTS) {
       copyGap: Math.round(book.top - lede.bottom),
       titleLeft: Math.round(title.left),
       titleRight: Math.round(title.right),
+      heroPhotoPosition: getComputedStyle(heroPhoto).objectPosition,
       weatherVisible: getComputedStyle(weather).display !== "none",
     };
   });
@@ -238,6 +240,9 @@ for (const viewport of VIEWPORTS) {
   line(layout.titleLeft >= 12 && layout.titleRight <= viewport.width - 12,
        `home ${viewport.name}: headline stays inside viewport`, `${layout.titleLeft}–${layout.titleRight}px`);
   line(layout.heroHeight <= 660, `home ${viewport.name}: hero remains bounded`, `${layout.heroHeight}px`);
+  const expectedHeroPosition = viewport.width < 700 ? "78% 50%" : "50% 18%";
+  line(layout.heroPhotoPosition === expectedHeroPosition,
+       `home ${viewport.name}: hero keeps its proportionate focal crop`, layout.heroPhotoPosition);
   line(layout.weatherVisible === (viewport.width >= 360),
        `home ${viewport.name}: weather visibility fits the header`, String(layout.weatherVisible));
   if (SHOTS) {

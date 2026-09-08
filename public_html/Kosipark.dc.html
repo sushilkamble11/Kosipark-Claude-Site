@@ -89,6 +89,7 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+    object-position: center 18%;
     display: block;
   }
   .home-highlight-grid {
@@ -133,6 +134,7 @@
 
   @media (max-width: 699px) {
     .home-hero { min-height: clamp(520px, 72svh, 620px); }
+    .home-hero-photo { object-position: 78% center; }
     .home-hero-copy { padding: 76px 20px 76px; }
     .home-hero-eyebrow { font-size: 9.5px; line-height: 1.45; letter-spacing: .2em; margin-bottom: 14px; }
     .home-hero-title { font-size: clamp(35px, 10.5vw, 46px); line-height: 1.04; max-width: 13ch; }
@@ -171,7 +173,7 @@
 
   <section id="top" class="home-hero" data-screen-label="Hero">
     <div class="home-hero-media">
-      <img src="/assets/attractions/snowboarder-winter-v1.jpg" alt="A snowboarder in the Snowy Mountains" fetchpriority="high" class="home-hero-photo" style="object-position:center 48%" />
+      <img src="/assets/attractions/snowboarder-winter-v1.jpg" alt="A snowboarder in the Snowy Mountains" fetchpriority="high" class="home-hero-photo" />
     </div>
     <div class="home-hero-shade"></div>
 
