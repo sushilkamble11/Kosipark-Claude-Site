@@ -187,9 +187,64 @@
         </sc-if>
 
         <sc-if value="{{ noneAvailable }}" hint-placeholder-val="{{ false }}">
-          <div style="background:#F3ECE0; border-radius:14px; padding:28px">
-            <h2 style="font:400 20px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:0">Nothing free for those dates</h2>
-            <p style="font:400 15px/1.7 Figtree, sans-serif; color:#56534C; margin:10px 0 0; max-width:52ch">Try shifting your dates by a night or two — midweek stays open up first. Reception often knows of cancellations, so it's worth a call on <a href="tel:0264562224">02 6456 2224</a>.</p>
+          <div style="background:#F3ECE0; border-radius:16px; padding:clamp(22px,3vw,32px)">
+            <p style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#8C3B2A; margin:0">Let's find another way</p>
+            <h2 style="font:400 clamp(21px,2.4vw,27px)/1.2 Petrona, Georgia, serif; color:#1D3730; margin:10px 0 0">Those exact dates are unavailable</h2>
+            <p style="font:400 15px/1.7 Figtree, sans-serif; color:#56534C; margin:10px 0 0; max-width:62ch">We've kept your {{ recoveryNights }}-night stay and {{ recoveryGuests }}. Here are the closest dates GuestPoint can actually book.</p>
+
+            <sc-if value="{{ recoveryLoading }}" hint-placeholder-val="{{ false }}">
+              <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr)); gap:10px; margin-top:20px">
+                <sc-for list="{{ recoverySkeletons }}" as="sk" hint-placeholder-count="3">
+                  <div style="height:126px; border-radius:13px; background:rgba(255,255,255,.65); animation:pulseFade 1.4s ease-in-out infinite"></div>
+                </sc-for>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ hasNearbyChoices }}" hint-placeholder-val="{{ false }}">
+              <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr)); gap:10px; margin-top:20px">
+                <sc-for list="{{ nearbyChoices }}" as="alt" hint-placeholder-count="3">
+                  <button type="button" onClick="{{ alt.choose }}" style="text-align:left; border:1px solid rgba(29,55,48,.13); border-radius:13px; background:#FFFFFF; padding:17px; cursor:pointer; box-shadow:0 12px 24px -22px rgba(18,39,32,.5)">
+                    <span style="display:block; font:700 9.5px/1 Figtree, sans-serif; letter-spacing:.13em; text-transform:uppercase; color:#74836A">{{ alt.distance }}</span>
+                    <span style="display:block; font:400 17px/1.3 Petrona,Georgia,serif; color:#1D3730; margin-top:8px">{{ alt.dates }}</span>
+                    <span style="display:block; font:500 12.5px/1.5 Figtree,sans-serif; color:#56534C; margin-top:7px">{{ alt.room }}</span>
+                    <span style="display:flex; justify-content:space-between; gap:10px; align-items:baseline; margin-top:10px">
+                      <span style="font:600 12px/1 Figtree,sans-serif; color:#8C3B2A">{{ alt.stock }}</span>
+                      <span style="font:500 15px/1 Petrona,Georgia,serif; color:#1D3730">{{ alt.total }}</span>
+                    </span>
+                  </button>
+                </sc-for>
+              </div>
+            </sc-if>
+
+            <div style="display:flex; flex-wrap:wrap; gap:9px; align-items:center; margin-top:20px">
+              <button type="button" onClick="{{ toggleRecovery }}" style="border:0; border-radius:999px; background:#1D3730; color:#FCFAF6; font:700 11.5px/1 Figtree,sans-serif; letter-spacing:.09em; text-transform:uppercase; padding:15px 19px; cursor:pointer">{{ recoveryToggleLabel }}</button>
+              <button type="button" onClick="{{ toggleEdit }}" style="border:1px solid rgba(29,55,48,.2); border-radius:999px; background:transparent; color:#1D3730; font:600 11.5px/1 Figtree,sans-serif; letter-spacing:.08em; text-transform:uppercase; padding:14px 18px; cursor:pointer">Change search</button>
+            </div>
+
+            <div style="{{ recoveryCalendarStyle }}">
+              <div style="display:flex; flex-wrap:wrap; gap:9px 18px; align-items:center; justify-content:space-between; margin-bottom:13px">
+                <p style="font:500 14px/1.5 Figtree,sans-serif; color:#292724; margin:0">Nearby arrival dates for the same length of stay</p>
+                <span style="display:flex; flex-wrap:wrap; gap:12px; font:500 11px/1 Figtree,sans-serif; color:#6C6862">
+                  <span>● <span style="color:#4C5C40">Available</span></span>
+                  <span>● <span style="color:#9B5C28">1–2 left</span></span>
+                  <span>● <span style="color:#8B877E">Unavailable</span></span>
+                </span>
+              </div>
+              <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(132px,1fr)); gap:8px">
+                <sc-for list="{{ recoveryDates }}" as="day" hint-placeholder-count="6">
+                  <button type="button" disabled="{{ day.disabled }}" onClick="{{ day.choose }}" style="{{ day.style }}">
+                    <span style="display:block; font:600 12.5px/1.25 Figtree,sans-serif">{{ day.date }}</span>
+                    <span style="display:block; font:500 10.5px/1.25 Figtree,sans-serif; margin-top:6px">{{ day.status }}</span>
+                    <span style="display:block; font:400 11px/1.25 Figtree,sans-serif; margin-top:4px">{{ day.price }}</span>
+                  </button>
+                </sc-for>
+              </div>
+              <p style="font:400 12px/1.6 Figtree,sans-serif; color:#6C6862; margin:12px 0 0">Availability and prices are checked live. Choosing a date runs the normal search again; it does not hold accommodation.</p>
+            </div>
+
+            <sc-if value="{{ noNearbyChoices }}" hint-placeholder-val="{{ false }}">
+              <p style="font:400 14px/1.7 Figtree,sans-serif; color:#56534C; margin:18px 0 0">We couldn't find a nearby stay online. Reception may know about cancellations — call <a href="tel:0264562224">02 6456 2224</a>.</p>
+            </sc-if>
           </div>
         </sc-if>
       </div>
@@ -241,7 +296,7 @@ const BLURBS = {
 };
 
 class Component extends DCLogic {
-  state = { loading: true, error: "", rooms: [], edit: false, openRates: {}, imgIdx: {}, whyOpen: {}, filter: "all", promo: "", promoNote: "", currency: "AUD", wide: typeof window !== "undefined" ? window.innerWidth >= 1100 : true, cardWide: typeof window !== "undefined" ? window.innerWidth >= 820 : true };
+  state = { loading: true, error: "", rooms: [], edit: false, openRates: {}, imgIdx: {}, whyOpen: {}, filter: "all", promo: "", promoNote: "", currency: "AUD", recoveryLoading: false, recoveryOpen: false, recovery: [], wide: typeof window !== "undefined" ? window.innerWidth >= 1100 : true, cardWide: typeof window !== "undefined" ? window.innerWidth >= 820 : true };
 
   componentWillUnmount() { window.removeEventListener("resize", this._onResize); }
 
@@ -271,14 +326,57 @@ class Component extends DCLogic {
         numAdults: p.adults, numChildren: p.children
       });
       const prop = data && data.Properties && data.Properties[0];
+      const rooms = gp.flattenAvailability(data);
       this.setState({
         loading: false,
         currency: (prop && prop.CurrencyCode) || "AUD",
-        rooms: gp.flattenAvailability(data)
+        rooms
+      }, () => {
+        if (!rooms.some(r => r.available)) this.loadRecovery(p);
       });
     } catch (e) {
       this.setState({ loading: false, error: e.message || "We couldn't reach the booking system." });
     }
+  }
+
+  shiftIso(v, days) {
+    const d = new Date(v + "T00:00:00Z");
+    d.setUTCDate(d.getUTCDate() + days);
+    return d.toISOString().slice(0, 10);
+  }
+
+  async loadRecovery(p) {
+    if (!this.gp || this.state.recoveryLoading || this.state.recovery.length) return;
+    this.setState({ recoveryLoading: true });
+    const nights = Math.max(1, Math.round((new Date(p.departure) - new Date(p.arrival)) / 86400000));
+    const offsets = [-1, 1, -2, 2, -3, 3];
+    const attempts = [];
+    // Keep these deliberately sequential. GuestPoint is the authority for
+    // each complete stay, but six simultaneous quote requests add avoidable
+    // pressure and can make a sold-out result slower rather than faster.
+    for (const offset of offsets) {
+      const arrival = this.shiftIso(p.arrival, offset);
+      const departure = this.shiftIso(arrival, nights);
+      try {
+        const data = await this.gp.searchAvailability({
+          arrivalDate: arrival, departureDate: departure,
+          numAdults: p.adults, numChildren: p.children
+        });
+        const rows = this.gp.flattenAvailability(data);
+        const available = rows.filter(r => r.available && r.total > 0);
+        available.sort((a, b) => {
+          if (p.room) {
+            if (a.slug === p.room && b.slug !== p.room) return -1;
+            if (b.slug === p.room && a.slug !== p.room) return 1;
+          }
+          return a.total - b.total;
+        });
+        attempts.push({ offset, arrival, departure, room: available[0] || null });
+      } catch (e) {
+        attempts.push({ offset, arrival, departure, room: null });
+      }
+    }
+    this.setState({ recoveryLoading: false, recovery: attempts });
   }
 
   async applyPromo() {
@@ -532,6 +630,45 @@ class Component extends DCLogic {
     else if (snow) nudge = "These are snow season dates, when weekends fill earliest — a deposit holds it.";
     else if (nights === 1) nudge = "Winter weekends and the Christmas period need a minimum of two nights.";
 
+    const chooseRecovery = alt => {
+      if (!alt || !alt.room) return;
+      const q = new URLSearchParams({
+        arrival: alt.arrival, departure: alt.departure,
+        adults: String(p.adults), children: String(p.children), infants: String(p.infants),
+        room: alt.room.slug
+      });
+      window.location.href = "/book?" + q.toString();
+    };
+    const distance = offset => Math.abs(offset) + (Math.abs(offset) === 1 ? " day " : " days ") + (offset < 0 ? "earlier" : "later");
+    const stock = room => {
+      if (!room || room.roomsLeft === null || room.roomsLeft > 2) return "Available";
+      return room.roomsLeft === 1 ? "Only 1 left" : "Only 2 left";
+    };
+    const nearby = s.recovery.filter(x => x.room).slice(0, 3);
+    const nearbyChoices = nearby.map(alt => ({
+      distance: distance(alt.offset),
+      dates: this.fmtDate(alt.arrival) + " → " + this.fmtDate(alt.departure),
+      room: alt.room.name,
+      stock: stock(alt.room),
+      total: money(alt.room.total) + " total",
+      choose: () => chooseRecovery(alt)
+    }));
+    const recoveryDates = s.recovery.map(alt => {
+      const scarce = alt.room && alt.room.roomsLeft !== null && alt.room.roomsLeft > 0 && alt.room.roomsLeft <= 2;
+      const availableAlt = !!alt.room;
+      return {
+        date: this.fmtDate(alt.arrival),
+        status: availableAlt ? stock(alt.room) : "Unavailable",
+        price: availableAlt ? "from " + money(alt.room.total) + " total" : "",
+        disabled: !availableAlt,
+        choose: () => chooseRecovery(alt),
+        style: "min-height:92px; text-align:left; border-radius:11px; padding:13px; " +
+          (availableAlt
+            ? "cursor:pointer; border:1px solid " + (scarce ? "rgba(155,92,40,.38)" : "rgba(76,92,64,.28)") + "; background:" + (scarce ? "#F4E4D2" : "#E9EEE3") + "; color:" + (scarce ? "#7C481F" : "#31452F")
+            : "cursor:not-allowed; border:1px solid rgba(29,55,48,.1); background:#EFEDE7; color:#8B877E")
+      };
+    });
+
     return {
       arrival: p.arrival, departure: p.departure,
       adults: p.adults, children: p.children, infants: p.infants,
@@ -541,7 +678,7 @@ class Component extends DCLogic {
       skeletons: [1, 2, 3],
       hasError: !!s.error,
       errorText: s.error,
-      hasResults: !s.loading && !s.error && rooms.length > 0,
+      hasResults: !s.loading && !s.error && rooms.length > 0 && available > 0,
       noneAvailable: !s.loading && !s.error && rooms.length > 0 && available === 0,
       resultCount: available + (available === 1 ? " option available" : " options available") + (rooms.length > available ? " · " + (rooms.length - available) + " unavailable" : ""),
       rooms,
@@ -581,7 +718,20 @@ class Component extends DCLogic {
       edit: s.edit,
       toggleEdit: () => this.setState(x => ({ edit: !x.edit })),
       editLabel: s.edit ? "Close" : "Change dates",
-      editStyle: s.edit ? "margin-top:22px; animation:riseIn .2s ease both" : "display:none"
+      editStyle: s.edit ? "margin-top:22px; animation:riseIn .2s ease both" : "display:none",
+      recoveryNights: nights,
+      recoveryGuests: guests + (guests === 1 ? " guest" : " guests") + (p.infants ? " and " + p.infants + (p.infants === 1 ? " infant" : " infants") : ""),
+      recoveryLoading: s.recoveryLoading,
+      recoverySkeletons: [1, 2, 3],
+      hasNearbyChoices: !s.recoveryLoading && nearbyChoices.length > 0,
+      noNearbyChoices: !s.recoveryLoading && s.recovery.length > 0 && nearbyChoices.length === 0,
+      nearbyChoices,
+      recoveryDates,
+      toggleRecovery: () => this.setState(x => ({ recoveryOpen: !x.recoveryOpen })),
+      recoveryToggleLabel: s.recoveryOpen ? "Hide alternate dates" : "Check alternate dates",
+      recoveryCalendarStyle: s.recoveryOpen
+        ? "margin-top:18px; padding:18px; border-radius:14px; background:rgba(255,255,255,.68); border:1px solid rgba(29,55,48,.1); animation:riseIn .2s ease both"
+        : "display:none"
     };
   }
 }
