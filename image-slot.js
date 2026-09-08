@@ -297,7 +297,9 @@
     // same left/top/width/height in frame-%, computed by _applyView(), so the
     // inside-mask crop and the outside-mask spill stay pixel-aligned.
     '.frame img{position:absolute;max-width:none;transform:translate(-50%,-50%);' +
-    '  -webkit-user-drag:none;user-select:none;touch-action:none}' +
+    // Public photos must preserve normal phone scrolling. Editor reframing is
+    // handled by the separate .spill layer, which still disables touch gestures.
+    '  -webkit-user-drag:none;user-select:none;touch-action:auto}' +
     // Reframe mode (double-click): the full image spills past the mask. The
     // spill layer is sized to the IMAGE bounds so its corners are where the
     // resize handles belong. The ghost <img> inside is translucent; the real
