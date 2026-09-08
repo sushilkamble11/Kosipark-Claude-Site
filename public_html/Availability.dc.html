@@ -356,7 +356,8 @@ class Component extends DCLogic {
               (bits.length ? ", " + bits.join(", ") : ""),
         slug: pick.slug,
         total: pick.total,
-        planId: (pick.plans && pick.plans[0] && pick.plans[0].ratePlanId) || ""
+        planId: (pick.plans && pick.plans[0] && pick.plans[0].ratePlanId) || "",
+        plan: (pick.plans && pick.plans[0]) || null
       };
     };
 
@@ -406,12 +407,16 @@ class Component extends DCLogic {
       if (rest) fixes.push({ label: "Find dates", apply: () => { window.location.href = "/book/calendar?room=" + r.slug; } });
 
       const goTo = planId => {
+        const selectedPlan = (r.plans || []).find(x => x.ratePlanId === planId) || {};
         const q = new URLSearchParams({
           selection: this.gp.newCartItemId(),
           room: r.slug, plan: planId,
           arrival: p.arrival, departure: p.departure,
           adults: String(p.adults), children: String(p.children), infants: String(p.infants),
-          total: String((r.plans.find(x => x.ratePlanId === planId) || {}).total || r.total || 0)
+          total: String(selectedPlan.total || r.total || 0),
+          rateName: selectedPlan.name || r.ratePlanName || "",
+          cancellation: selectedPlan.cancellation || "",
+          policy: selectedPlan.policyText || ""
         });
         window.location.href = "/book/checkout?" + q.toString();
       };
@@ -428,7 +433,10 @@ class Component extends DCLogic {
             room: up.slug, plan: up.planId,
             arrival: p.arrival, departure: p.departure,
             adults: String(p.adults), children: String(p.children), infants: String(p.infants),
-            total: String(up.total)
+            total: String(up.total),
+            rateName: (up.plan && up.plan.name) || "",
+            cancellation: (up.plan && up.plan.cancellation) || "",
+            policy: (up.plan && up.plan.policyText) || ""
           });
           window.location.href = "/book/checkout?" + q.toString();
         }) : () => {},
