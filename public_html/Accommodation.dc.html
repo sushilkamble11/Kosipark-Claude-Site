@@ -25,10 +25,42 @@
   a { color: #1D3730; text-decoration: none; }
   a:hover { color: #96592A; }
   @keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  @keyframes markBreathe { 0%,100% { transform:scale(.92); opacity:.62 } 50% { transform:scale(1); opacity:1 } }
+  @keyframes loaderLeave { to { opacity:0; visibility:hidden; pointer-events:none } }
+  .site-arrival { position:fixed; inset:0; z-index:9999; display:grid; place-items:center; background:#FCFAF6; animation:loaderLeave .42s ease 1.05s forwards; }
+  .site-arrival::after { content:""; position:absolute; width:88px; height:1px; background:#96592A; transform-origin:left; animation:riseIn .7s ease both; }
+  .site-arrival img { width:74px; height:74px; object-fit:contain; animation:markBreathe 1s ease-in-out infinite; }
+  .featured-stay { display:grid; grid-template-columns:minmax(0,1.12fr) minmax(410px,.88fr); gap:clamp(28px,4vw,58px); align-items:start; padding-bottom:clamp(44px,6vw,78px); }
+  .featured-stay__media { border-radius:16px; overflow:hidden; aspect-ratio:16/10; position:relative; }
+  .featured-stay__title { font:400 clamp(27px,3vw,38px)/1.1 Petrona,Georgia,serif; color:#1D3730; margin:24px 0 0; }
+  .featured-stay__copy { font:400 15px/1.72 Figtree,sans-serif; color:#56534C; margin:13px 0 0; max-width:68ch; }
+  .featured-stay__facts { margin:22px 0 0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); border-top:1px solid rgba(29,55,48,.12); border-bottom:1px solid rgba(29,55,48,.12); }
+  .featured-stay__fact { padding:17px 18px 17px 0; min-width:0; }
+  .featured-stay__fact:nth-child(odd) { border-right:1px solid rgba(29,55,48,.12); }
+  .featured-stay__fact:nth-child(even) { padding-left:18px; }
+  .featured-stay__fact:nth-child(-n+2) { border-bottom:1px solid rgba(29,55,48,.12); }
+  .featured-stay__fact dt { font:700 10px/1.4 Figtree,sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A; }
+  .featured-stay__fact dd { margin:7px 0 0; font:400 14px/1.55 Figtree,sans-serif; color:#292724; }
+  .featured-stay__calendar { position:sticky; top:102px; }
+  .featured-stay__book { display:inline-block; margin-top:18px; background:#1D3730; color:#FCFAF6; font:700 12.5px/1 Figtree,sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:16px 24px; border-radius:999px; }
+  @media (max-width:900px) {
+    .featured-stay { grid-template-columns:1fr; gap:24px; }
+    .featured-stay__calendar { position:static; }
+  }
+  @media (max-width:600px) {
+    .featured-stay__media { aspect-ratio:4/3; border-radius:12px; }
+    .featured-stay__title { margin-top:20px; font-size:31px; }
+    .featured-stay__facts { grid-template-columns:1fr 1fr; }
+    .featured-stay__fact { padding:15px 12px 15px 0; }
+    .featured-stay__fact:nth-child(even) { padding-left:12px; }
+    .featured-stay__book { display:block; text-align:center; }
+  }
+  @media (prefers-reduced-motion:reduce) { .site-arrival { display:none; } }
 </style>
 </helmet>
 
 <div style="background:#FCFAF6; color:#292724; font-family:Figtree, system-ui, sans-serif">
+  <div class="site-arrival" aria-hidden="true"><img src="/assets/favicon-192.png?v=20260909" alt="" /></div>
   <dc-import name="SiteNav" active="stay" book-href="#chalets" hint-size="100%,84px"></dc-import>
 
   <section data-screen-label="Page head" style="position:relative; z-index:30; background:#1D3730">
@@ -52,19 +84,21 @@
     <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#74836A; margin:0">Heritage Chalets</p>
     <h2 style="font:300 clamp(24px,3vw,35px)/1.08 Petrona, Georgia, serif; letter-spacing:-0.015em; color:#1D3730; margin:12px 0 clamp(20px,2.8vw,32px); max-width:24ch">Fully self-contained, linen provided</h2>
 
-    <article style="display:grid; gap:clamp(20px,3vw,44px); grid-template-columns:repeat(auto-fit, minmax(min(100%, 320px), 1fr)); align-items:start; padding-bottom:clamp(36px,5vw,64px)">
-      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="a-3bed" gp-room="three-bedroom-chalet" gp-index="0" shape="rect" src="/assets/accommodation/three-bedroom-chalet/living-room.jpg" alt="Living room in the Three Bedroom Chalet" placeholder="Three bedroom chalet — living area or deck"></image-slot></div>
+    <article class="featured-stay">
       <div>
-        <h3 style="font:400 clamp(21px,2.4vw,27px)/1.15 Petrona, Georgia, serif; color:#1D3730; margin:0">Three Bedroom Chalet</h3>
-        <p style="font:400 14.5px/1.7 Figtree, sans-serif; color:#56534C; margin:14px 0 0">A sophisticated and spacious retreat for up to eight guests. Fully self-contained, with a lounge, kitchen and dining area, private deck, spa bath and all linen provided.</p>
-        <dl style="margin:22px 0 0; display:grid; gap:1px; border-radius:14px; overflow:hidden">
-          <div style="display:flex; flex-wrap:wrap; gap:4px 18px; padding:14px 16px; background:#F3ECE0; box-shadow:0 0 0 1px rgba(29,55,48,0.08)"><dt style="flex:0 0 130px; font:700 10.5px/1.6 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Sleeping</dt><dd style="margin:0; flex:1 1 180px; font:400 14.5px/1.6 Figtree, sans-serif; color:#292724">Three bedrooms, sleeps up to 8</dd></div>
-          <div style="display:flex; flex-wrap:wrap; gap:4px 18px; padding:14px 16px; background:#F3ECE0; box-shadow:0 0 0 1px rgba(29,55,48,0.08)"><dt style="flex:0 0 130px; font:700 10.5px/1.6 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Bathrooms</dt><dd style="margin:0; flex:1 1 180px; font:400 14.5px/1.6 Figtree, sans-serif; color:#292724">Two bathrooms, including a spa bath</dd></div>
-          <div style="display:flex; flex-wrap:wrap; gap:4px 18px; padding:14px 16px; background:#F3ECE0; box-shadow:0 0 0 1px rgba(29,55,48,0.08)"><dt style="flex:0 0 130px; font:700 10.5px/1.6 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Comfort</dt><dd style="margin:0; flex:1 1 180px; font:400 14.5px/1.6 Figtree, sans-serif; color:#292724">Reverse cycle heating and cooling, colour TV, personal drying cupboard</dd></div>
-          <div style="display:flex; flex-wrap:wrap; gap:4px 18px; padding:14px 16px; background:#F3ECE0; box-shadow:0 0 0 1px rgba(29,55,48,0.08)"><dt style="flex:0 0 130px; font:700 10.5px/1.6 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Linen</dt><dd style="margin:0; flex:1 1 180px; font:400 14.5px/1.6 Figtree, sans-serif; color:#292724">All linen supplied · 2-night minimum stay</dd></div>
+        <div class="featured-stay__media"><image-slot id="a-3bed" gp-room="three-bedroom-chalet" gp-index="0" shape="rect" src="/assets/accommodation/three-bedroom-chalet/living-room.jpg" alt="Living room in the Three Bedroom Chalet" placeholder="Three bedroom chalet — living area or deck"></image-slot></div>
+        <h3 class="featured-stay__title">Three Bedroom Chalet</h3>
+        <p class="featured-stay__copy">A sophisticated and spacious retreat for up to eight guests. Fully self-contained, with a lounge, kitchen and dining area, private deck, spa bath and all linen provided.</p>
+        <dl class="featured-stay__facts">
+          <div class="featured-stay__fact"><dt>Sleeping</dt><dd>Three bedrooms, sleeps up to 8</dd></div>
+          <div class="featured-stay__fact"><dt>Bathrooms</dt><dd>Two bathrooms, including a spa bath</dd></div>
+          <div class="featured-stay__fact"><dt>Comfort</dt><dd>Reverse cycle heating and cooling, colour TV, personal drying cupboard</dd></div>
+          <div class="featured-stay__fact"><dt>Linen</dt><dd>All linen supplied · 2-night minimum stay</dd></div>
         </dl>
-        <div style="margin-top:22px"><dc-import name="TypeCalendar" room="three-bedroom-chalet" label="Three Bedroom Chalet — availability" months="{{ 1 }}" hint-size="100%,420px"></dc-import></div>
-        <a href="/accommodation/three-bedroom-chalet" style="display:inline-block; margin-top:22px; background:#1D3730; color:#FCFAF6; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:16px 24px; border-radius:999px">View details &amp; book</a>
+      </div>
+      <div class="featured-stay__calendar">
+        <dc-import name="TypeCalendar" room="three-bedroom-chalet" label="Three Bedroom Chalet — availability" months="{{ 1 }}" hint-size="100%,420px"></dc-import>
+        <a href="/accommodation/three-bedroom-chalet" class="featured-stay__book">View details &amp; book</a>
       </div>
     </article>
 

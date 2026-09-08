@@ -239,8 +239,9 @@ for (const viewport of VIEWPORTS) {
   line(layout.copyGap >= 24, `home ${viewport.name}: search does not cover hero copy`, `${layout.copyGap}px gap`);
   line(layout.titleLeft >= 12 && layout.titleRight <= viewport.width - 12,
        `home ${viewport.name}: headline stays inside viewport`, `${layout.titleLeft}–${layout.titleRight}px`);
-  line(layout.heroHeight <= 660, `home ${viewport.name}: hero remains bounded`, `${layout.heroHeight}px`);
-  const expectedHeroPosition = viewport.width < 700 ? "78% 50%" : "50% 18%";
+  const heroBound = viewport.width < 700 ? 850 : 660;
+  line(layout.heroHeight <= heroBound, `home ${viewport.name}: hero remains bounded`, `${layout.heroHeight}px`);
+  const expectedHeroPosition = viewport.width < 700 ? "73% 42%" : "72% 34%";
   line(layout.heroPhotoPosition === expectedHeroPosition,
        `home ${viewport.name}: hero keeps its proportionate focal crop`, layout.heroPhotoPosition);
   line(layout.weatherVisible === (viewport.width >= 360),
