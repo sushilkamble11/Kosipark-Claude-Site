@@ -137,6 +137,11 @@
 
   function apply(el) {
     if (filled.has(el)) return;
+    // Room detail slots receive their curated fallback src immediately after
+    // the component renders. Do not let a faster GuestPoint/mock response
+    // claim the empty slot first; the src mutation triggers another sweep,
+    // where real GuestPoint photos can still replace the local fallback.
+    if (el.hasAttribute("data-room-photo") && !el.getAttribute("src")) return;
     var req = wanted(el);
     if (!req) return;
     var img = pick(req);
