@@ -63,7 +63,7 @@
       </sc-if>
     </div>
 
-    <div style="flex:1 1 150px; min-width:0; max-width:230px; position:relative; display:flex; flex-direction:column">
+    <div style="{{ guests.wrapStyle }}">
       <button type="button" onClick="{{ guests.toggle }}" style="{{ guests.fieldStyle }}">
         <span style="font:700 9.5px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#8B877E">Guests</span>
         <span style="font:400 18px/1.2 Petrona, Georgia, serif; color:#1D3730; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%">{{ guests.label }}</span>
@@ -256,6 +256,8 @@ class Component extends DCLogic {
       uid: this.uid,
       guests: {
         label, open: s.guestsOpen, rows,
+        wrapStyle: "position:relative; display:flex; flex-direction:column; min-width:0; " +
+          (box < 560 ? "flex:1 1 100%; max-width:none" : "flex:1 1 180px; max-width:240px"),
         fieldStyle: fieldBase + (s.guestsOpen ? on : off) + rule,
         toggle: () => this.setState(p => ({ guestsOpen: !p.guestsOpen, openField: null }))
       },
@@ -280,7 +282,7 @@ class Component extends DCLogic {
       submitStyle: "border:0; border-radius:12px; min-height:66px; cursor:pointer; " +
         "background:#96592A; color:#FCFAF6; font:700 12.5px/1.3 Figtree, sans-serif; " +
         "letter-spacing:.12em; text-transform:uppercase; padding:16px 30px; white-space:nowrap; " +
-        (s.w < 720 ? "flex:1 1 100%; min-width:0" : "flex:0 0 auto"),
+        (box < 560 ? "flex:1 1 100%; min-width:0" : box < 760 ? "flex:1 1 205px; min-width:0" : "flex:0 0 auto"),
       resultText,
       resultStyle: (s.searched && !this.props.onSubmit)
         ? "margin:12px 8px 4px; font:500 13.5px/1.5 Figtree, sans-serif; color:#4C5C40; animation:riseIn .2s ease both"
