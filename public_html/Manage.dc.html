@@ -306,7 +306,14 @@ class Component extends DCLogic {
     const r = this.state.refInput.trim().toUpperCase();
     const n = this.state.nameInput.trim().toLowerCase();
     const m = this.gp ? this.gp.normaliseMobile(this.state.mobileInput) : "";
-    const demoShortcut = r === "1" && n === "1" && m === "1" && this.gp && this.gp.isUnconfigured();
+    const demoRequested = r === "1" && n === "1" && m === "1";
+    // Localhost knows its sample state immediately. On Hostinger, safely probe
+    // a read-only GuestPoint endpoint first; the 1 / 1 / 1 shortcut is accepted
+    // only when the proxy explicitly reports that live credentials are absent.
+    if (demoRequested && this.gp && !this.gp.isUnconfigured()) {
+      try { await this.gp.getProfileFields(); } catch (e) {}
+    }
+    const demoShortcut = demoRequested && this.gp && this.gp.isUnconfigured();
     if (!r || !n || (m.length < 10 && !demoShortcut)) {
       this.setState({ error: "Enter your booking reference, surname and the mobile number held on the booking." });
       return;
