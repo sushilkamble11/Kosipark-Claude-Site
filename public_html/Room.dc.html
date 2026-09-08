@@ -142,16 +142,16 @@
 const ROOMS = [
   {
     slug: "three-bedroom-chalet", name: "Three Bedroom Chalet", category: "Heritage Chalets", noun: "chalet",
-    sleeps: "Sleeps up to 8", tags: ["Sleeps 8", "Two bathrooms", "Linen provided"],
+    sleeps: "Sleeps up to 8", tags: ["Sleeps 8", "Spa bath", "Linen provided"],
     stayNote: "Two-night minimum stay. All linen supplied.",
     intro: "Our Three Bedroom Spa Chalet provides a sophisticated and spacious retreat, accommodating up to eight guests with ease.",
     paras: [
       "Perfect for families or groups seeking both comfort and style, these fully self-contained chalets offer a lounge area for relaxing and socialising and a kitchen and dining area equipped with modern amenities.",
-      "A private deck with outdoor furniture faces the bush, and a personal drying cupboard takes care of wet gear at the end of the day."
+      "A spa bath adds a little luxury, while a private deck with outdoor furniture faces the bush and a personal drying cupboard takes care of wet gear at the end of the day."
     ],
     specs: [
       { k: "Sleeping", v: "Three bedrooms, sleeping up to 8 people" },
-      { k: "Bathrooms", v: "Two bathrooms" },
+      { k: "Bathrooms", v: "Two bathrooms, including a spa bath" },
       { k: "Living", v: "Lounge area plus kitchen and dining area" },
       { k: "Comfort", v: "Reverse cycle heating and cooling, colour television, personal drying cupboard" },
       { k: "Outdoors", v: "Private deck with outdoor furniture" },
@@ -162,7 +162,7 @@ const ROOMS = [
   {
     slug: "two-bedroom-chalet-upgraded", name: "Two Bedroom Chalet — Upgraded", category: "Heritage Chalets", noun: "chalet",
     sleeps: "Sleeps up to 6", tags: ["Sleeps 6", "Electric fireplace", "EV charging"],
-    stayNote: "Two-night minimum stay in peak periods. All linen provided.",
+    stayNote: "Two-night minimum stay in peak periods. All linen is provided; top bunks are not made up.",
     intro: "Our recently upgraded 2-bedroom Heritage Chalet offers a contemporary retreat with enhanced features designed for a comfortable and cosy stay.",
     paras: [
       "Perfect for families or small groups, this fully self-contained chalet blends modern amenities with homey warmth — a walk-in shower with underfloor heating, an electric fireplace in the living room and improved thermal insulation in the walls.",
@@ -174,14 +174,14 @@ const ROOMS = [
       { k: "Bathroom", v: "Walk-in shower with underfloor heating" },
       { k: "Comfort", v: "Reverse cycle air-conditioning, electric fireplace, enhanced wall insulation" },
       { k: "Extras", v: "15 amp power point for EV charging" },
-      { k: "Linen", v: "Queen and bottom bunks made up on arrival; top bunk linen in the cupboard" }
+      { k: "Linen", v: "All linen provided; queen and bottom bunks made up, with top bunk linen supplied but not made up" }
     ],
     ph: ["Upgraded chalet living room", "Kitchen detail", "Bedroom or shower"]
   },
   {
     slug: "two-bedroom-chalet", name: "Two Bedroom Chalet", category: "Heritage Chalets", noun: "chalet",
     sleeps: "Sleeps up to 6", tags: ["Sleeps 6", "Silent heating", "Carport"],
-    stayNote: "Two-night minimum stay in peak periods. All linen provided.",
+    stayNote: "Two-night minimum stay in peak periods. All linen is provided; top bunks are not made up.",
     intro: "Experience exceptional comfort with our Heritage Bedroom Chalets, designed to accommodate up to six guests with ease.",
     paras: [
       "Ideal for families or groups, these fully self-contained chalets offer a blend of modern convenience and cosy charm, with 24-hour silent heating, carpet and insulation for cold alpine nights.",
@@ -193,42 +193,42 @@ const ROOMS = [
       { k: "Bathroom", v: "One well-appointed bathroom" },
       { k: "Comfort", v: "Reverse cycle heating and cooling, 24-hour silent heating, carpet and insulation, colour television" },
       { k: "Parking", v: "Carport parking" },
-      { k: "Linen", v: "Queen and bottom bunks made up on arrival; top bunk linen in the cupboard" }
+      { k: "Linen", v: "All linen provided; queen and bottom bunks made up, with top bunk linen supplied but not made up" }
     ],
     ph: ["Two bedroom heritage chalet exterior", "Living and dining area", "Bedroom"]
   },
   {
     slug: "cedar-cabin", name: "Cedar Cabin", category: "Cabins", noun: "cabin",
     sleeps: "Sleeps up to 6", tags: ["Sleeps 6", "Amenities adjacent", "Fire pit"],
-    stayNote: "Bring your own linen for bunk and single beds, or hire on arrival.",
+    stayNote: "All bed linen is provided. Guests should bring their own towels.",
     intro: "Our Modern Cedar Cabins offer a budget-friendly option without compromising on comfort, ideal for families or groups of up to six.",
     paras: [
-      "The cabins sit adjacent to the newly renovated amenities block and laundry, so everything is a few steps away. Outside, an outdoor fire pit is perfect for socialising and enjoying the evening.",
-      "Inside, reverse cycle heating and cooling keeps the cabin comfortable year-round, with an inner spring mattress, mattress protector, pillows, blankets, doonas and a bedspread on the double bed."
+      "The cabins sit adjacent to the newly renovated amenities block and laundry, so everything is a few steps away. Outside, the fire pit is a welcoming place to gather when park and fire restrictions allow.",
+      "Inside, reverse cycle heating and cooling keeps the cabin comfortable year-round. Bed linen is supplied; please bring your own towels."
     ],
     specs: [
       { k: "Sleeping", v: "1 double bed with electric blanket, 2 single beds, 1 double bunk" },
       { k: "Bathroom", v: "No private bathroom — adjacent to the renovated amenities block and laundry" },
       { k: "Kitchen", v: "Gas cooktop, microwave, under-bench fridge, toaster, kettle, cutlery, crockery and utensils" },
       { k: "Comfort", v: "Reverse cycle heating and cooling, colour television" },
-      { k: "Outdoors", v: "Outdoor fire pit" },
-      { k: "What to bring", v: "Sheets, pillow slips and towels for the bunk and single beds — linen hire available at extra cost" }
+      { k: "Outdoors", v: "Outdoor fire pit, when restrictions allow" },
+      { k: "Linen", v: "All bed linen provided; guests bring their own towels" }
     ],
     ph: ["Cedar cabin exterior", "Cabin interior", "Fire pit outside"]
   },
   {
     slug: "caravan-site", name: "Caravan Site", category: "Powered Sites", noun: "site",
-    sleeps: "Up to 6 people", tags: ["Powered", "Drive-through", "Personal campfire"],
-    stayNote: "Fifteen generously sized sites, spaced for privacy.",
+    sleeps: "Up to 6 people", tags: ["Powered", "Drive-through", "Campfire when permitted"],
+    stayNote: "Generously sized sites, spaced for privacy. Live availability is shown by GuestPoint.",
     intro: "Immerse yourself in the natural beauty of the Snowy Mountains with our spacious powered caravan sites, designed for a memorable bush camping experience.",
     paras: [
-      "We offer 15 generously sized sites, each carefully positioned to ensure privacy and comfort, nestled among snowgums for natural shelter and shade.",
-      "Every site is designed for easy access and manoeuvring, with safe drinking water, sullage sinks and a personal campfire for the quintessential Snowy Mountains evening."
+      "Each site is carefully positioned for privacy and comfort, nestled among snowgums for natural shelter and shade.",
+      "Every site is designed for easy access and manoeuvring, with safe drinking water, sullage sinks and a personal campfire when park and fire restrictions allow."
     ],
     specs: [
       { k: "Site type", v: "Drive-through powered site for caravans" },
       { k: "Capacity", v: "Up to 6 people per site" },
-      { k: "Amenities", v: "Safe drinking water, sullage sinks, personal campfire" },
+      { k: "Amenities", v: "Safe drinking water, sullage sinks, personal campfire when restrictions allow" },
       { k: "Privacy", v: "Sites spaced apart and nestled among snowgums" },
       { k: "Nearby", v: "Kiosk, two amenity blocks, hot showers, laundry, playground" }
     ],
@@ -236,11 +236,11 @@ const ROOMS = [
   },
   {
     slug: "camper-trailer-site", name: "Camper Trailer Site", category: "Powered Sites", noun: "site",
-    sleeps: "Up to 6 people", tags: ["Powered", "Easy reversing", "Personal campfire"],
+    sleeps: "Up to 6 people", tags: ["Powered", "Easy reversing", "Campfire when permitted"],
     stayNote: "Suits caravans, camper trailers, motorhomes and tents.",
     intro: "Our powered camper trailer sites offer the ideal setting for caravans, camper trailers, motorhomes and tents — a serene bush camping experience with friendly wildlife nearby.",
     paras: [
-      "With 15 generously sized sites available, each designed for easy reversing and featuring a personal campfire, you'll find the perfect spot to relax and unwind.",
+      "Generously sized sites are designed for easy reversing and feature a personal campfire when park and fire restrictions allow.",
       "Sites do not have individual water taps; taps are conveniently located throughout the park."
     ],
     specs: [
@@ -248,7 +248,7 @@ const ROOMS = [
       { k: "Capacity", v: "Up to 6 people per site" },
       { k: "Access", v: "Designed for easy reversing" },
       { k: "Water", v: "Taps located throughout the park" },
-      { k: "Extras", v: "Personal campfire, snowgum shelter and shade" }
+      { k: "Extras", v: "Personal campfire when restrictions allow, snowgum shelter and shade" }
     ],
     ph: ["Camper trailer set up on site", "Fire pit and chairs", "Guest kitchen nearby"]
   },
