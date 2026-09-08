@@ -130,6 +130,23 @@ ok(timers.length === 1, "one countdown is shown on the checkout screen", timers.
 ok(/(?:Refundable|Non-refundable|Cancellation terms)/.test(finalText),
    "each stay shows its cancellation status", (finalText.match(/(?:Refundable|Non-refundable|Cancellation terms)/g) || []).join(", "));
 
+const removeButtons = page.locator('aside button:has-text("Remove")');
+ok(await removeButtons.count() === afterReload.length,
+   "every stay, including the first, has a remove button", String(await removeButtons.count()));
+
+// The timer is an expiry, not decoration. Age the cart past 15 minutes and
+// reload as if the guest came back to an old checkout tab.
+await page.evaluate(() => {
+  const items = JSON.parse(localStorage.getItem("kosipark-cart") || "[]");
+  items.forEach(i => { i.pricedAt = Date.now() - 15 * 60 * 1000 - 2000; });
+  localStorage.setItem("kosipark-cart", JSON.stringify(items));
+});
+await page.reload({ waitUntil: READY });
+await sleep(1500);
+const expiredText = await page.evaluate(() => document.body.innerText);
+ok((await cart()).length === 0, "the cart is empty after 15 minutes");
+ok(expiredText.includes("Your booking time has expired"), "checkout explains why the cart was cleared");
+
 await browser.close();
 if (server) server.kill();
 console.log(failures === 0 ? "\nAll flow checks passed." : `\n${failures} flow check(s) failed.`);
