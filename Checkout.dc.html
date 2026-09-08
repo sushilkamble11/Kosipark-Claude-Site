@@ -57,10 +57,11 @@
           </sc-for>
         </div>
 
+        <p role="timer" aria-live="off" style="{{ holdStyle }}">{{ holdText }}</p>
+
         <div style="display:grid; gap:clamp(20px,3vw,40px); grid-template-columns:repeat(auto-fit, minmax(min(100%, 300px), 1fr)); margin-top:clamp(22px,3vw,34px); align-items:start">
           <div style="min-width:0; grid-column:span 2">
             <p style="{{ noticeStyle }}" onClick="{{ dismissNotice }}">{{ notice }}</p>
-            <p style="{{ holdStyle }}">{{ holdText }}</p>
 
             <sc-if value="{{ onExtras }}" hint-placeholder-val="{{ false }}">
               <div style="background:#FFFFFF; border:1px solid rgba(29,55,48,0.10); border-radius:16px; padding:clamp(20px,3vw,30px)">
@@ -308,6 +309,10 @@
                     <span style="font:500 14px/1.3 Figtree, sans-serif; color:#292724; white-space:nowrap">{{ st.total }}</span>
                   </div>
                   <p style="font:400 12.5px/1.6 Figtree, sans-serif; color:#6C6862; margin:6px 0 0">{{ st.detail }}</p>
+                  <div style="display:flex; flex-wrap:wrap; gap:7px 9px; align-items:center; margin-top:10px">
+                    <span style="{{ st.policyBadgeStyle }}">{{ st.policyLabel }}</span>
+                    <span style="font:400 11.5px/1.5 Figtree, sans-serif; color:#6C6862; flex:1 1 170px">{{ st.policyDetail }}</span>
+                  </div>
                   <button type="button" onClick="{{ st.remove }}" style="{{ st.removeStyle }}">Remove</button>
                 </div>
               </sc-for>
@@ -370,7 +375,7 @@ class Component extends DCLogic {
     addBefore: false, addAfter: false, quotes: null, ackSurcharge: false, extras: [], counts: {}, profileFields: [], answers: {}, notice: "",
     firstName: "", lastName: "", email: "", mobile: "", address: "", city: "", postcode: "",
     cardName: "", cardNumber: "", cardExpiry: "", cardCvv: "",
-    marketing: false, consent: false, error: "", busy: false, validated: null, booked: null, cart: [], loaded: false
+    marketing: false, consent: false, error: "", busy: false, validated: null, booked: null, cart: [], loaded: false, holdUntil: 0
   };
 
   params() {
@@ -386,7 +391,10 @@ class Component extends DCLogic {
       adults: Number(q.get("adults") || 2),
       children: Number(q.get("children") || 0),
       infants: Number(q.get("infants") || 0),
-      total: Number(q.get("total") || 0)
+      total: Number(q.get("total") || 0),
+      rateName: q.get("rateName") || "",
+      cancellation: q.get("cancellation") || "",
+      policyText: q.get("policy") || ""
     };
   }
 
@@ -480,6 +488,33 @@ class Component extends DCLogic {
     return this.gp ? this.gp.nameForRoom(slug) : String(slug || "");
   }
 
+  checkoutDeadline(items) {
+    const key = "kosipark-checkout-timer";
+    const fingerprint = (items || []).map(i => i.id).filter(Boolean).sort().join("|");
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(key) || "null");
+      if (saved && saved.fingerprint === fingerprint && Number(saved.deadline) > 0) return Number(saved.deadline);
+      const deadline = Date.now() + 15 * 60 * 1000;
+      sessionStorage.setItem(key, JSON.stringify({ fingerprint, deadline }));
+      return deadline;
+    } catch (e) {
+      return Date.now() + 15 * 60 * 1000;
+    }
+  }
+
+  ratePolicy(it) {
+    const detail = it.cancellation || it.policyText || "Ask reception if you need to cancel or change this rate.";
+    const source = [it.rateName, it.cancellation, it.policyText].filter(Boolean).join(" ");
+    const nonRefundable = /non[\s-]?refund|no refunds?|not refundable/i.test(source);
+    const known = !!(it.cancellation || it.policyText);
+    return {
+      label: nonRefundable ? "Non-refundable" : known ? "Refundable" : "Cancellation terms",
+      detail,
+      nonRefundable,
+      known
+    };
+  }
+
   async componentDidMount() {
     try {
       const gp = await import("./guestpoint.js");
@@ -497,7 +532,8 @@ class Component extends DCLogic {
           id: p.selection || undefined,
           roomTypeId: p.room, name: this.roomName(p.room), ratePlanId: p.plan,
           arrival: p.arrival, departure: p.departure, nights: this.nights(),
-          adults: p.adults, children: p.children, infants: p.infants, total: p.total
+          adults: p.adults, children: p.children, infants: p.infants, total: p.total,
+          rateName: p.rateName, cancellation: p.cancellation, policyText: p.policyText
         };
         // Adding the same type for the same nights is a no-op, and it used to
         // be a SILENT one: the guest went back, searched, chose, landed here
@@ -514,7 +550,9 @@ class Component extends DCLogic {
           }
         }
       }
-      this.setState({ cart, loaded: true, notice });
+      const holdUntil = this.checkoutDeadline(cart);
+      this.setState({ cart, loaded: true, notice, holdUntil });
+      if (!this._tick) this._tick = setInterval(() => this.forceUpdate(), 1000);
       const [rawExtras, profileFields] = await Promise.all([
         gp.getExtras([this.roomStay()]),
         gp.getProfileFields()
@@ -638,8 +676,7 @@ class Component extends DCLogic {
         stage: "details-complete"
       });
     }
-    this.setState({ step: "options", error: "", holdUntil: Date.now() + 15 * 60 * 1000 });
-    if (!this._tick) this._tick = setInterval(() => this.forceUpdate(), 1000);
+    this.setState({ step: "options", error: "" });
   }
 
   componentWillUnmount() { clearInterval(this._tick); }
@@ -730,8 +767,8 @@ class Component extends DCLogic {
     if (s.holdUntil && s.step !== "done") {
       const left = Math.max(0, Math.round((s.holdUntil - Date.now()) / 1000));
       holdText = left > 0
-        ? "This price is confirmed for " + Math.floor(left / 60) + ":" + String(left % 60).padStart(2, "0") + ". Nothing is reserved until payment goes through."
-        : "We'll re-check the price and availability when you continue — nothing has been charged.";
+        ? "Price check in " + Math.floor(left / 60) + ":" + String(left % 60).padStart(2, "0") + " · Nothing is reserved until payment goes through."
+        : "Price and availability will be rechecked when you continue · Nothing has been charged.";
     }
 
     const stepDefs = [
@@ -815,12 +852,19 @@ class Component extends DCLogic {
           "font:500 13.5px/1.6 Figtree, sans-serif; color:#3A4E3C; animation:riseIn .18s ease both"
         : "display:none",
       dismissNotice: () => this.setState({ notice: "" }),
-      stays: items.map((it, i) => ({
+      stays: items.map((it, i) => {
+        const policy = this.ratePolicy(it);
+        return {
         name: it.name,
         total: money(Number(it.total) + (i === 0 ? this.extensionCost() : 0)),
         detail: this.fmtDate(i === 0 ? d.arrival : it.arrival) + " → " + this.fmtDate(i === 0 ? d.departure : it.departure) +
           " · " + (i === 0 ? nights : it.nights) + ((i === 0 ? nights : it.nights) === 1 ? " night" : " nights") +
           " · " + this.partyLabel(it),
+        policyLabel: policy.label,
+        policyDetail: policy.detail,
+        policyBadgeStyle: "display:inline-flex; align-items:center; border-radius:999px; padding:6px 8px; white-space:nowrap; " +
+          "font:700 9.5px/1 Figtree, sans-serif; letter-spacing:.08em; text-transform:uppercase; " +
+          (policy.nonRefundable ? "background:#F7E7E1; color:#8C3B2A" : policy.known ? "background:#E3EDDD; color:#40563B" : "background:#EFEDE7; color:#6C6862"),
         removeStyle: items.length > 1
           ? "border:0; background:transparent; font:600 11px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; color:#8C3B2A; cursor:pointer; padding:10px 0 0"
           : "display:none",
@@ -828,7 +872,8 @@ class Component extends DCLogic {
           const next = this.gp.removeFromCart(it.id);
           this.setState({ cart: next, validated: null });
         }
-      })),
+        };
+      }),
 
       // Numbered circles rather than three wide pills: the pills wrapped onto
       // two rows on a phone and read as tabs you could jump between, when in
@@ -935,7 +980,7 @@ class Component extends DCLogic {
       onAckSurcharge: e => this.setState({ ackSurcharge: e.target.checked, error: "" }),
       holdText: holdText,
       holdStyle: holdText
-        ? "margin:0 0 16px; font:500 13px/1.5 Figtree, sans-serif; color:#4C5C40; background:#E9EEE3; border-radius:10px; padding:12px 14px"
+        ? "display:flex; align-items:center; width:fit-content; max-width:100%; margin:18px 0 0; font:600 13px/1.5 Figtree, sans-serif; color:#31472D; background:#E3EDDD; border:1px solid rgba(49,71,45,.12); border-radius:999px; padding:10px 15px"
         : "display:none",
 
       fields,
