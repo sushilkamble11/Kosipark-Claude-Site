@@ -1,0 +1,10 @@
+{
+  "name": "kosipark-v2",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "python3 dev-server.py 8772",
+    "test": "node test/v2.test.mjs"
+  }
+}
+

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<base href="/">
+<link rel="icon" type="image/svg+xml" href="/assets/kosipark-favicon.svg?v=20260909">
+<link rel="apple-touch-icon" href="/assets/kosipark-logo.png">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Accommodation | Kosciuszko Tourist Park</title>
+<meta name="description" content="Compare Heritage Chalets, Cedar Cabins, powered caravan, camper trailer and motorhome sites, and unpowered camping at Sawpit Creek.">
+<script src="/booking-config.js"></script>
+<script src="/vendor-map.js"></script>
+<script src="./support.js"></script>
+<script src="/site.js" defer></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Petrona:wght@300;400;500;600&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="./image-slot.js"></script>
+<script src="/gp-images.js" defer></script>
+<style>
+  body { margin: 0; background: #FCFAF6; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #1D3730; text-decoration: none; }
+  a:hover { color: #96592A; }
+  @keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+  /* One accommodation, one balanced row. The previous layout put the photo
+     beside copy + calendar, leaving a large empty block beneath the photo. */
+  .accommodation-row {
+    display:grid;
+    align-items:start;
+    background:#FFFFFF !important;
+    border:1px solid rgba(29,55,48,0.08) !important;
+    border-radius:16px !important;
+    box-shadow:0 18px 38px -28px rgba(18,39,32,0.45) !important;
+    padding:clamp(18px,2.3vw,30px) !important;
+    margin-bottom:clamp(22px,3vw,36px) !important;
+    overflow:visible !important;
+  }
+  .accommodation-media { position:relative; overflow:hidden; border-radius:16px; }
+  .accommodation-action {
+    justify-self:start;
+    background:transparent !important;
+    color:#1D3730 !important;
+    border-radius:0 !important;
+    border-bottom:1px solid #96592A !important;
+    padding:0 0 8px !important;
+  }
+  /* The overview stays concise; full specifications remain on each detail page. */
+  .accommodation-copy > dl { display:none !important; }
+  .accommodation-stack { display:grid; }
+  @media (min-width: 960px) {
+    .accommodation-row {
+      grid-template-columns:minmax(0, .92fr) minmax(500px, 1.08fr) !important;
+      column-gap:clamp(28px,3.5vw,52px) !important;
+      row-gap:14px !important;
+    }
+    .accommodation-media {
+      grid-column:1;
+      grid-row:1;
+      aspect-ratio:16/9 !important;
+    }
+    .accommodation-copy { display:contents; }
+    .accommodation-copy > h3,
+    .accommodation-copy > p,
+    .accommodation-copy > ul,
+    .accommodation-copy > .accommodation-action { grid-column:1; }
+    .accommodation-copy > h3 { grid-row:2; margin-top:4px !important; }
+    .accommodation-copy > p { grid-row:3; }
+    .accommodation-copy > ul { grid-row:4; }
+    .accommodation-copy > .accommodation-action { grid-row:5; margin-top:6px !important; }
+    .accommodation-copy > .accommodation-calendar {
+      display:block;
+      grid-column:2;
+      grid-row:1 / span 5;
+      margin-top:0 !important;
+    }
+    .accommodation-stack { grid-template-columns:1fr !important; gap:clamp(34px,4.5vw,60px) !important; }
+    .accommodation-stack .accommodation-row {
+      padding:clamp(20px,2.3vw,30px) !important;
+      margin-bottom:0 !important;
+      overflow:visible !important;
+    }
+  }
+  @media (max-width: 959px) {
+    .accommodation-row { display:flex !important; flex-direction:column; gap:18px !important; }
+    .accommodation-media { order:1; width:100%; aspect-ratio:4/3 !important; }
+    .accommodation-copy { order:2; width:100%; }
+    .accommodation-calendar { display:none; }
+    .accommodation-row { padding:16px !important; margin-bottom:22px !important; }
+    .accommodation-stack .accommodation-row { margin-bottom:0 !important; }
+  }
+</style>
+</helmet>
+
+<div style="background:#FCFAF6; color:#292724; font-family:Figtree, system-ui, sans-serif">
+  <dc-import name="SiteNav" active="stay" book-href="/#book" hint-size="100%,84px"></dc-import>
+
+  <section data-screen-label="Page head" style="position:relative; z-index:30; background:#1D3730">
+    <div style="position:absolute; inset:0"><image-slot id="a-head" gp-property gp-index="0" shape="rect" fit="cover" src="/assets/property/park-panorama.jpg" alt="Kosciuszko Tourist Park among the snowgums at Sawpit Creek" placeholder="Wide photo — chalets or sites at Sawpit Creek"></image-slot></div>
+    <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient(180deg, rgba(18,39,32,0.68) 0%, rgba(18,39,32,0.86) 100%)"></div>
+    <div style="position:relative; max-width:1320px; margin:0 auto; padding:clamp(34px,4.6vw,62px) clamp(20px,5vw,56px) clamp(22px,3vw,34px); pointer-events:none">
+      <p style="font:600 11px/1 Figtree, sans-serif; letter-spacing:.24em; text-transform:uppercase; color:#CDD9B7; margin:0 0 16px">Accommodation</p>
+      <h1 style="font:300 clamp(24px,3vw,35px)/1.05 Petrona, Georgia, serif; letter-spacing:-0.02em; color:#FCFAF6; margin:0; max-width:20ch; text-wrap:balance">Chalets, cabins and sites inside the national park</h1>
+      <p style="font:400 clamp(14.5px,1.5vw,16.5px)/1.7 Figtree, sans-serif; color:rgba(252,250,246,0.86); margin:20px 0 0; max-width:52ch">Choose from fully self-contained Heritage Chalets, Cedar Cabins and powered or unpowered sites. A 2-night minimum applies in peak periods.</p>
+      <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:26px; pointer-events:auto">
+        <a href="#chalets" style="border:1px solid rgba(237,228,212,0.35); color:#EDE4D4; font:600 12px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:13px 18px; border-radius:999px">Chalets</a>
+        <a href="#cabins" style="border:1px solid rgba(237,228,212,0.35); color:#EDE4D4; font:600 12px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:13px 18px; border-radius:999px">Cabins</a>
+        <a href="#sites" style="border:1px solid rgba(237,228,212,0.35); color:#EDE4D4; font:600 12px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:13px 18px; border-radius:999px">Powered sites</a>
+        <a href="#camping" style="border:1px solid rgba(237,228,212,0.35); color:#EDE4D4; font:600 12px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:13px 18px; border-radius:999px">Camping</a>
+        <a href="/book/calendar" style="border:1px solid rgba(150,89,42,0.7); background:rgba(150,89,42,0.18); color:#EDE4D4; font:600 12px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:13px 18px; border-radius:999px">Availability calendar</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="chalets" data-screen-label="Chalets" style="max-width:1320px; margin:0 auto; padding:clamp(24px,3vw,40px) clamp(20px,5vw,56px) 0">
+    <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#74836A; margin:0">Heritage Chalets</p>
+    <h2 style="font:300 clamp(24px,3vw,35px)/1.08 Petrona, Georgia, serif; letter-spacing:-0.015em; color:#1D3730; margin:12px 0 clamp(20px,2.8vw,32px); max-width:24ch">Fully self-contained, linen provided</h2>
+
+    <article class="accommodation-row" style="display:grid; gap:clamp(20px,3vw,44px); grid-template-columns:repeat(auto-fit, minmax(min(100%, 320px), 1fr)); align-items:start; padding-bottom:clamp(36px,5vw,64px)">
+      <div class="accommodation-media" style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="a-3bed" gp-room="three-bedroom-chalet" gp-index="0" shape="rect" src="/assets/accommodation/three-bedroom-chalet/living-room.jpg" alt="Living room in the Three Bedroom Chalet" placeholder="Three bedroom chalet — living area or deck"></image-slot></div>
+      <div class="accommodation-copy">
+        <h3 style="font:400 clamp(21px,2.4vw,27px)/1.15 Petrona, Georgia, serif; color:#1D3730; margin:0">Three Bedroom Chalet</h3>
+        <p style="font:400 14.5px/1.7 Figtree, sans-serif; color:#56534C; margin:14px 0 0">A sophisticated and spacious retreat for up to eight guests. Fully self-contained, with a lounge, kitchen and dining area, private deck, spa bath and all linen provided.</p>
+        <dl style="margin:22px 0 0; display:grid; gap:1px; border-radius:14px; overflow:hidden">
+          <div style="display:flex; flex-wrap:wrap; gap:4px 18px; padding:14px 16px; background:#F3ECE0; box-shadow:0 0 0 1px rgba(29,55,48,0.08)"><dt style="flex:0 0 130px; font:700 10.5px/1.6 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Sleeping</dt><dd style="margin:0; flex:1 1 180px; font:400 14.5px/1.6 Figtree, sans-serif; color:#292724">Three bedrooms, sleeps up to 8</dd></div>
+          <div style="display:flex; flex-wrap:wrap; gap:4px 18px; padding:14px 16px; background:#F3ECE0; box-shadow:0 0 0 1px rgba(29,55,48,0.08)"><dt style="flex:0 0 130px; font:700 10.5px/1.6 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Bathrooms</dt><dd style="margin:0; flex:1 1 180px; font:400 14.5px/1.6 Figtree, sans-serif; color:#292724">Two bathrooms, including a spa bath</dd></div>
+          <div style="display:flex; flex-wrap:wrap; gap:4px 18px; padding:14px 16px; background:#F3ECE0; box-shadow:0 0 0 1px rgba(29,55,48,0.08)"><dt style="flex:0 0 130px; font:700 10.5px/1.6 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Comfort</dt><dd style="margin:0; flex:1 1 180px; font:400 14.5px/1.6 Figtree, sans-serif; color:#292724">Reverse cycle heating and cooling, colour TV, personal drying cupboard</dd></div>
+          <div style="display:flex; flex-wrap:wrap; gap:4px 18px; padding:14px 16px; background:#F3ECE0; box-shadow:0 0 0 1px rgba(29,55,48,0.08)"><dt style="flex:0 0 130px; font:700 10.5px/1.6 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Linen</dt><dd style="margin:0; flex:1 1 180px; font:400 14.5px/1.6 Figtree, sans-serif; color:#292724">All linen supplied · 2-night minimum stay</dd></div>
+        </dl>
+        <div class="accommodation-calendar" style="margin-top:22px"><dc-import name="TypeCalendar" room="three-bedroom-chalet" label="Three Bedroom Chalet — availability" months="{{ 1 }}" hint-size="100%,420px"></dc-import></div>
+        <a class="accommodation-action" href="/accommodation/three-bedroom-chalet" style="display:inline-block; margin-top:22px; background:#1D3730; color:#FCFAF6; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:16px 24px; border-radius:999px">View details &amp; availability</a>
+      </div>
+    </article>
+
+    <article class="accommodation-row" style="display:grid; gap:clamp(20px,3vw,44px); grid-template-columns:repeat(auto-fit, minmax(min(100%, 320px), 1fr)); align-items:start; padding-bottom:clamp(36px,5vw,64px)">
+      <div class="accommodation-copy">
+        <h3 style="font:400 clamp(21px,2.4vw,27px)/1.15 Petrona, Georgia, serif; color:#1D3730; margin:0">Two Bedroom Chalet — Upgraded</h3>
+        <p style="font:400 14.5px/1.7 Figtree, sans-serif; color:#56534C; margin:14px 0 0">Our recently upgraded 2-bedroom Heritage Chalet offers a contemporary retreat with enhanced features. A walk-in shower with underfloor heating, an electric fireplace in the living room and improved thermal insulation make it a warm base for families or small groups.</p>
+        <dl style="margin:22px 0 0; display:grid; gap:1px; border-radius:14px; overflow:hidden">
+          <div style="display:flex; flex-wrap:wrap; gap:4px 18px; padding:14px 16px; background:#F3ECE0; box-shadow:0 0 0 1px rgba(29,55,48,0.08)"><dt style="flex:0 0 130px; font:700 10.5px/1.6 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Sleeping</dt><dd style="margin:0; flex:1 1 180px; font:400 14.5px/1.6 Figtree, sans-serif; color:#292724">1 queen with electric blanket, 2 sets of bunks in separate rooms</dd></div>
+          <div style="display:flex; flex-wrap:wrap; gap:4px 18px; padding:14px 16px; background:#F3ECE0; box-shadow:0 0 0 1px rgba(29,55,48,0.08)"><dt style="flex:0 0 130px; font:700 10.5px/1.6 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Kitchen</dt><dd style="margin:0; flex:1 1 180px; font:400 14.5px/1.6 Figtree, sans-serif; color:#292724">Full-size fridge, microwave, induction cooktop (no oven), full kitchenware</dd></div>
+          <div style="display:flex; flex-wrap:wrap; gap:4px 18px; padding:14px 16px; background:#F3ECE0; box-shadow:0 0 0 1px rgba(29,55,48,0.08)"><dt style="flex:0 0 130px; font:700 10.5px/1.6 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Comfort</dt><dd style="margin:0; flex:1 1 180px; font:400 14.5px/1.6 Figtree, sans-serif; color:#292724">Reverse cycle air-conditioning, electric fireplace, underfloor-heated shower</dd></div>
+          <div style="display:flex; flex-wrap:wrap; gap:4px 18px; padding:14px 16px; background:#F3ECE0; box-shadow:0 0 0 1px rgba(29,55,48,0.08)"><dt style="flex:0 0 130px; font:700 10.5px/1.6 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Extras</dt><dd style="margin:0; flex:1 1 180px; font:400 14.5px/1.6 Figtree, sans-serif; color:#292724">15 amp EV charging point · all linen provided; top bunks supplied but not made up</dd></div>
+        </dl>
+        <div class="accommodation-calendar" style="margin-top:22px"><dc-import name="TypeCalendar" room="two-bedroom-chalet-upgraded" label="Two Bedroom Chalet — Upgraded — availability" months="{{ 1 }}" hint-size="100%,420px"></dc-import></div>
+        <a class="accommodation-action" href="/accommodation/two-bedroom-chalet-upgraded" style="display:inline-block; margin-top:22px; background:#1D3730; color:#FCFAF6; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:16px 24px; border-radius:999px">View details &amp; availability</a>
+      </div>
+      <div class="accommodation-media" style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="a-2bedup" gp-room="two-bedroom-chalet-upgraded" gp-index="0" shape="rect" src="/assets/accommodation/two-bedroom-chalet-upgraded/living-room-2026.jpg" alt="Living room in the upgraded Two Bedroom Chalet" placeholder="Upgraded two bedroom chalet interior"></image-slot></div>
+    </article>
+
+    <article class="accommodation-row" style="display:grid; gap:clamp(20px,3vw,44px); grid-template-columns:repeat(auto-fit, minmax(min(100%, 320px), 1fr)); align-items:start; padding-bottom:clamp(36px,5vw,64px)">
+      <div class="accommodation-media" style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="a-2bed" gp-room="two-bedroom-chalet" gp-index="0" shape="rect" src="/assets/accommodation/two-bedroom-chalet/living-room.jpg" alt="Living room in the Two Bedroom Heritage Chalet" placeholder="Two bedroom heritage chalet"></image-slot></div>
+      <div class="accommodation-copy">
+        <h3 style="font:400 clamp(21px,2.4vw,27px)/1.15 Petrona, Georgia, serif; color:#1D3730; margin:0">Two Bedroom Chalet</h3>
+        <p style="font:400 14.5px/1.7 Figtree, sans-serif; color:#56534C; margin:14px 0 0">Heritage Bedroom Chalets designed to accommodate up to six guests with ease — fully self-contained, with 24-hour silent heating, carpet and insulation for cold nights, and carport parking at the door.</p>
+        <dl style="margin:22px 0 0; display:grid; gap:1px; border-radius:14px; overflow:hidden">
+          <div style="display:flex; flex-wrap:wrap; gap:4px 18px; padding:14px 16px; background:#F3ECE0; box-shadow:0 0 0 1px rgba(29,55,48,0.08)"><dt style="flex:0 0 130px; font:700 10.5px/1.6 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Sleeping</dt><dd style="margin:0; flex:1 1 180px; font:400 14.5px/1.6 Figtree, sans-serif; color:#292724">1 queen with electric blanket, 2 double bunks — sleeps 6</dd></div>
+          <div style="display:flex; flex-wrap:wrap; gap:4px 18px; padding:14px 16px; background:#F3ECE0; box-shadow:0 0 0 1px rgba(29,55,48,0.08)"><dt style="flex:0 0 130px; font:700 10.5px/1.6 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Kitchen</dt><dd style="margin:0; flex:1 1 180px; font:400 14.5px/1.6 Figtree, sans-serif; color:#292724">Cooktop with oven, microwave, fridge, toaster, kettle and all utensils</dd></div>
+          <div style="display:flex; flex-wrap:wrap; gap:4px 18px; padding:14px 16px; background:#F3ECE0; box-shadow:0 0 0 1px rgba(29,55,48,0.08)"><dt style="flex:0 0 130px; font:700 10.5px/1.6 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Bathroom</dt><dd style="margin:0; flex:1 1 180px; font:400 14.5px/1.6 Figtree, sans-serif; color:#292724">One bathroom · colour TV · carport parking</dd></div>
+          <div style="display:flex; flex-wrap:wrap; gap:4px 18px; padding:14px 16px; background:#F3ECE0; box-shadow:0 0 0 1px rgba(29,55,48,0.08)"><dt style="flex:0 0 130px; font:700 10.5px/1.6 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Linen</dt><dd style="margin:0; flex:1 1 180px; font:400 14.5px/1.6 Figtree, sans-serif; color:#292724">All linen provided; top bunks are supplied but not made up</dd></div>
+        </dl>
+        <div class="accommodation-calendar" style="margin-top:22px"><dc-import name="TypeCalendar" room="two-bedroom-chalet" label="Two Bedroom Chalet — availability" months="{{ 1 }}" hint-size="100%,420px"></dc-import></div>
+        <a class="accommodation-action" href="/accommodation/two-bedroom-chalet" style="display:inline-block; margin-top:22px; background:#1D3730; color:#FCFAF6; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:16px 24px; border-radius:999px">View details &amp; availability</a>
+      </div>
+    </article>
+  </section>
+
+  <section id="cabins" data-screen-label="Cabins" style="background:#E9EEE3">
+    <div style="max-width:1320px; margin:0 auto; padding:clamp(34px,4.6vw,62px) clamp(20px,5vw,56px)">
+      <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#74836A; margin:0">Cabins</p>
+      <h2 style="font:300 clamp(24px,3vw,35px)/1.08 Petrona, Georgia, serif; letter-spacing:-0.015em; color:#1D3730; margin:12px 0 clamp(20px,2.8vw,32px); max-width:24ch">Comfort on a budget, amenities next door</h2>
+      <article class="accommodation-row" style="display:grid; gap:clamp(20px,3vw,44px); grid-template-columns:repeat(auto-fit, minmax(min(100%, 320px), 1fr)); align-items:start">
+        <div class="accommodation-media" style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="a-cedar" gp-room="cedar-cabin" gp-index="0" shape="rect" src="/assets/accommodation/cedar-cabin/exterior-v2.jpg" alt="Cedar Cabin at dusk among the snowgums" placeholder="Cedar cabin exterior or interior"></image-slot></div>
+        <div class="accommodation-copy">
+          <h3 style="font:400 clamp(21px,2.4vw,27px)/1.15 Petrona, Georgia, serif; color:#1D3730; margin:0">Cedar Cabin</h3>
+          <p style="font:400 14.5px/1.7 Figtree, sans-serif; color:#56534C; margin:14px 0 0">Our Modern Cedar Cabins offer a budget-friendly option without compromising on comfort. Ideal for up to six guests, with the renovated amenities block and laundry a few steps away. All bed linen is provided; please bring your own towels.</p>
+          <dl style="margin:22px 0 0; display:grid; gap:1px; border-radius:14px; overflow:hidden">
+            <div style="display:flex; flex-wrap:wrap; gap:4px 18px; padding:14px 16px; background:#FCFAF6; box-shadow:0 0 0 1px rgba(29,55,48,0.08)"><dt style="flex:0 0 130px; font:700 10.5px/1.6 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Sleeping</dt><dd style="margin:0; flex:1 1 180px; font:400 14.5px/1.6 Figtree, sans-serif; color:#292724">1 double with electric blanket, 2 singles, 1 double bunk — sleeps 6</dd></div>
+            <div style="display:flex; flex-wrap:wrap; gap:4px 18px; padding:14px 16px; background:#FCFAF6; box-shadow:0 0 0 1px rgba(29,55,48,0.08)"><dt style="flex:0 0 130px; font:700 10.5px/1.6 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Bathroom</dt><dd style="margin:0; flex:1 1 180px; font:400 14.5px/1.6 Figtree, sans-serif; color:#292724">No private bathroom — adjacent to the renovated amenities block</dd></div>
+            <div style="display:flex; flex-wrap:wrap; gap:4px 18px; padding:14px 16px; background:#FCFAF6; box-shadow:0 0 0 1px rgba(29,55,48,0.08)"><dt style="flex:0 0 130px; font:700 10.5px/1.6 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Kitchen</dt><dd style="margin:0; flex:1 1 180px; font:400 14.5px/1.6 Figtree, sans-serif; color:#292724">Gas cooktop, microwave, under-bench fridge, toaster, kettle and all utensils</dd></div>
+            <div style="display:flex; flex-wrap:wrap; gap:4px 18px; padding:14px 16px; background:#FCFAF6; box-shadow:0 0 0 1px rgba(29,55,48,0.08)"><dt style="flex:0 0 130px; font:700 10.5px/1.6 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Linen</dt><dd style="margin:0; flex:1 1 180px; font:400 14.5px/1.6 Figtree, sans-serif; color:#292724">All bed linen provided; guests bring their own towels</dd></div>
+          </dl>
+          <div class="accommodation-calendar" style="margin-top:22px"><dc-import name="TypeCalendar" room="cedar-cabin" label="Cedar Cabin — availability" months="{{ 1 }}" hint-size="100%,420px"></dc-import></div>
+        <a class="accommodation-action" href="/accommodation/cedar-cabin" style="display:inline-block; margin-top:22px; background:#1D3730; color:#FCFAF6; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:16px 24px; border-radius:999px">View details &amp; availability</a>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section id="sites" data-screen-label="Powered sites" style="max-width:1320px; margin:0 auto; padding:clamp(34px,4.6vw,62px) clamp(20px,5vw,56px) 0">
+    <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#74836A; margin:0">Powered Sites</p>
+    <h2 style="font:300 clamp(24px,3vw,35px)/1.08 Petrona, Georgia, serif; letter-spacing:-0.015em; color:#1D3730; margin:12px 0 0; max-width:26ch">Generous sites among the snowgums</h2>
+    <p style="font:400 clamp(14px,1.4vw,16px)/1.75 Figtree, sans-serif; color:#56534C; margin:16px 0 clamp(20px,2.8vw,32px); max-width:60ch">Each site is positioned for privacy and comfort, with safe drinking water and sullage sinks. Personal campfires are available when park and fire restrictions allow. Live site availability comes from GuestPoint.</p>
+    <div class="accommodation-stack" style="display:grid; gap:clamp(16px,2.4vw,26px); grid-template-columns:repeat(auto-fit, minmax(min(100%, 300px), 1fr))">
+      <article class="accommodation-row" style="background:#FFFFFF; border-radius:14px; overflow:hidden; border:1px solid rgba(29,55,48,0.07); box-shadow:0 14px 30px -22px rgba(18,39,32,0.4)">
+        <div class="accommodation-media" style="aspect-ratio:4/3; position:relative"><image-slot id="a-caravan" gp-room="caravan-site" gp-index="0" shape="rect" src="/assets/accommodation/sites/caravan-site-v2.jpg" alt="Powered caravan site among the snowgums" placeholder="Powered caravan site, drive-through"></image-slot></div>
+        <div class="accommodation-copy" style="padding:24px 24px 28px">
+          <h3 style="font:400 19px/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Caravan Site</h3>
+          <p style="font:400 14.5px/1.7 Figtree, sans-serif; color:#56534C; margin:10px 0 0">Spacious powered sites for a memorable bush camping experience. Drive-through for easy access and manoeuvring, spaced apart and nestled among snowgums for natural shelter and shade.</p>
+          <ul style="list-style:none; margin:18px 0 0; padding:0; display:flex; flex-wrap:wrap; gap:8px">
+            <li style="font:500 12px/1 Figtree, sans-serif; color:#4C5C40; background:#E9EEE3; padding:9px 13px; border-radius:999px">Drive-through</li>
+            <li style="font:500 12px/1 Figtree, sans-serif; color:#4C5C40; background:#E9EEE3; padding:9px 13px; border-radius:999px">Campfire when permitted</li>
+            <li style="font:500 12px/1 Figtree, sans-serif; color:#4C5C40; background:#E9EEE3; padding:9px 13px; border-radius:999px">Sullage sink</li>
+          </ul>
+          <a class="accommodation-action" href="/accommodation/caravan-site" style="display:inline-block; margin-top:18px; font:700 12px/1 Figtree, sans-serif; letter-spacing:.12em; text-transform:uppercase; color:#1D3730; border-bottom:1px solid #96592A; padding-bottom:8px">View details &amp; availability</a>
+          <div class="accommodation-calendar" style="margin-top:18px"><dc-import name="TypeCalendar" room="caravan-site" label="Caravan Site — availability" months="{{ 1 }}" hint-size="100%,420px"></dc-import></div>
+        </div>
+      </article>
+      <article class="accommodation-row" style="background:#FFFFFF; border-radius:14px; overflow:hidden; border:1px solid rgba(29,55,48,0.07); box-shadow:0 14px 30px -22px rgba(18,39,32,0.4)">
+        <div class="accommodation-media" style="aspect-ratio:4/3; position:relative"><image-slot id="a-trailer" gp-room="camper-trailer-site" gp-index="0" shape="rect" src="/assets/accommodation/sites/camper-trailer-site-v2.jpg" alt="Powered camper trailer site among the snowgums" placeholder="Camper trailer site with campfire"></image-slot></div>
+        <div class="accommodation-copy" style="padding:24px 24px 28px">
+          <h3 style="font:400 19px/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Camper Trailer Site</h3>
+          <p style="font:400 14.5px/1.7 Figtree, sans-serif; color:#56534C; margin:10px 0 0">Suitable for caravans, camper trailers, motorhomes and tents. Designed for easy reversing, with snowgum shelter and a personal campfire when restrictions allow. Water taps are located throughout the park.</p>
+          <ul style="list-style:none; margin:18px 0 0; padding:0; display:flex; flex-wrap:wrap; gap:8px">
+            <li style="font:500 12px/1 Figtree, sans-serif; color:#4C5C40; background:#E9EEE3; padding:9px 13px; border-radius:999px">Powered</li>
+            <li style="font:500 12px/1 Figtree, sans-serif; color:#4C5C40; background:#E9EEE3; padding:9px 13px; border-radius:999px">Easy reversing</li>
+            <li style="font:500 12px/1 Figtree, sans-serif; color:#4C5C40; background:#E9EEE3; padding:9px 13px; border-radius:999px">Campfire when permitted</li>
+          </ul>
+          <a class="accommodation-action" href="/accommodation/camper-trailer-site" style="display:inline-block; margin-top:18px; font:700 12px/1 Figtree, sans-serif; letter-spacing:.12em; text-transform:uppercase; color:#1D3730; border-bottom:1px solid #96592A; padding-bottom:8px">View details &amp; availability</a>
+          <div class="accommodation-calendar" style="margin-top:18px"><dc-import name="TypeCalendar" room="camper-trailer-site" label="Camper Trailer Site — availability" months="{{ 1 }}" hint-size="100%,420px"></dc-import></div>
+        </div>
+      </article>
+      <article class="accommodation-row" style="background:#FFFFFF; border-radius:14px; overflow:hidden; border:1px solid rgba(29,55,48,0.07); box-shadow:0 14px 30px -22px rgba(18,39,32,0.4)">
+        <div class="accommodation-media" style="aspect-ratio:4/3; position:relative"><image-slot id="a-motorhome" gp-room="motorhome-site" gp-index="0" shape="rect" src="/assets/accommodation/sites/motorhome-site-v3.jpg" alt="Motorhome and camper sites among the snowgums at Kosciuszko Tourist Park" placeholder="Motorhome or camper van on site"></image-slot></div>
+        <div class="accommodation-copy" style="padding:24px 24px 28px">
+          <h3 style="font:400 19px/1.2 Petrona, Georgia, serif; color:#1D3730; margin:0">Motorhome Site</h3>
+          <p style="font:400 14.5px/1.7 Figtree, sans-serif; color:#56534C; margin:10px 0 0">Powered sites for small camper-vans and motorhomes, in a natural setting with thoughtful spacing. Awnings are not permitted due to site width.</p>
+          <ul style="list-style:none; margin:18px 0 0; padding:0; display:flex; flex-wrap:wrap; gap:8px">
+            <li style="font:500 12px/1 Figtree, sans-serif; color:#4C5C40; background:#E9EEE3; padding:9px 13px; border-radius:999px">Powered</li>
+            <li style="font:500 12px/1 Figtree, sans-serif; color:#4C5C40; background:#E9EEE3; padding:9px 13px; border-radius:999px">Small vans</li>
+            <li style="font:500 12px/1 Figtree, sans-serif; color:#4C5C40; background:#E9EEE3; padding:9px 13px; border-radius:999px">No awnings</li>
+          </ul>
+          <a class="accommodation-action" href="/accommodation/motorhome-site" style="display:inline-block; margin-top:18px; font:700 12px/1 Figtree, sans-serif; letter-spacing:.12em; text-transform:uppercase; color:#1D3730; border-bottom:1px solid #96592A; padding-bottom:8px">View details &amp; availability</a>
+          <div class="accommodation-calendar" style="margin-top:18px"><dc-import name="TypeCalendar" room="motorhome-site" label="Motorhome Site — availability" months="{{ 1 }}" hint-size="100%,420px"></dc-import></div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section id="camping" data-screen-label="Camping" style="max-width:1320px; margin:0 auto; padding:clamp(34px,4.6vw,62px) clamp(20px,5vw,56px) 0">
+    <article class="accommodation-row" style="display:grid; gap:clamp(20px,3vw,44px); grid-template-columns:repeat(auto-fit, minmax(min(100%, 320px), 1fr)); align-items:start">
+      <div class="accommodation-copy">
+        <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#74836A; margin:0">Camping</p>
+        <h3 style="font:300 clamp(22px,2.7vw,32px)/1.1 Petrona, Georgia, serif; color:#1D3730; margin:12px 0 0">Unpowered Tent Site</h3>
+        <p style="font:400 14.5px/1.7 Figtree, sans-serif; color:#56534C; margin:14px 0 0">A classic camping experience for those looking to immerse themselves in nature. Sites are not drive-in — you carry and pitch your tent with the car parked one to two metres away.</p>
+        <dl style="margin:22px 0 0; display:grid; gap:1px; border-radius:14px; overflow:hidden">
+          <div style="display:flex; flex-wrap:wrap; gap:4px 18px; padding:14px 16px; background:#F3ECE0; box-shadow:0 0 0 1px rgba(29,55,48,0.08)"><dt style="flex:0 0 130px; font:700 10.5px/1.6 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Capacity</dt><dd style="margin:0; flex:1 1 180px; font:400 14.5px/1.6 Figtree, sans-serif; color:#292724">Up to 6 people, one car and one tent (or two swags) per site</dd></div>
+          <div style="display:flex; flex-wrap:wrap; gap:4px 18px; padding:14px 16px; background:#F3ECE0; box-shadow:0 0 0 1px rgba(29,55,48,0.08)"><dt style="flex:0 0 130px; font:700 10.5px/1.6 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Power</dt><dd style="margin:0; flex:1 1 180px; font:400 14.5px/1.6 Figtree, sans-serif; color:#292724">Tents only, no power available</dd></div>
+          <div style="display:flex; flex-wrap:wrap; gap:4px 18px; padding:14px 16px; background:#F3ECE0; box-shadow:0 0 0 1px rgba(29,55,48,0.08)"><dt style="flex:0 0 130px; font:700 10.5px/1.6 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Shared</dt><dd style="margin:0; flex:1 1 180px; font:400 14.5px/1.6 Figtree, sans-serif; color:#292724">Guest kitchen and lounge with wood fire, hot showers, laundry, playground</dd></div>
+        </dl>
+        <div class="accommodation-calendar" style="margin-top:22px"><dc-import name="TypeCalendar" room="unpowered-site" label="Unpowered Tent Site — availability" months="{{ 1 }}" hint-size="100%,420px"></dc-import></div>
+        <a class="accommodation-action" href="/accommodation/unpowered-site" style="display:inline-block; margin-top:22px; background:#1D3730; color:#FCFAF6; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:16px 24px; border-radius:999px">View details &amp; availability</a>
+      </div>
+      <div class="accommodation-media" style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="a-tent" gp-room="unpowered-site" gp-index="0" shape="rect" src="/assets/accommodation/sites/unpowered-site.jpg" alt="Unpowered tent site among the snowgums" placeholder="Tent pitched among the snowgums"></image-slot></div>
+    </article>
+  </section>
+
+  <section data-screen-label="Shared facilities" style="max-width:1320px; margin:clamp(34px,4.6vw,62px) auto 0; padding:0 clamp(20px,5vw,56px) clamp(38px,5.2vw,70px)">
+    <div style="background:#1D3730; border-radius:16px; padding:clamp(22px,3.2vw,44px)">
+      <h2 style="font:300 clamp(22px,2.7vw,32px)/1.1 Petrona, Georgia, serif; color:#FCFAF6; margin:0; max-width:24ch">Shared with every stay</h2>
+      <div style="display:grid; gap:14px 28px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 210px), 1fr)); margin-top:clamp(20px,2.8vw,32px)">
+        <span style="font:400 15px/1.6 Figtree, sans-serif; color:#EDE4D4">Guest kitchen &amp; lounge with wood fire</span>
+        <span style="font:400 15px/1.6 Figtree, sans-serif; color:#EDE4D4">Two stoves with ovens &amp; microwave</span>
+        <span style="font:400 15px/1.6 Figtree, sans-serif; color:#EDE4D4">Free gas barbecue</span>
+        <span style="font:400 15px/1.6 Figtree, sans-serif; color:#EDE4D4">Kiosk at reception</span>
+        <span style="font:400 15px/1.6 Figtree, sans-serif; color:#EDE4D4">Two amenity blocks, hot showers</span>
+        <span style="font:400 15px/1.6 Figtree, sans-serif; color:#EDE4D4">Coin-operated laundry</span>
+        <span style="font:400 15px/1.6 Figtree, sans-serif; color:#EDE4D4">Undercover wash-up area</span>
+        <span style="font:400 15px/1.6 Figtree, sans-serif; color:#EDE4D4">Children's playground</span>
+        <span style="font:400 15px/1.6 Figtree, sans-serif; color:#EDE4D4">Picnic area &amp; walking trails</span>
+        <span style="font:400 15px/1.6 Figtree, sans-serif; color:#EDE4D4">Paid Wi-Fi available</span>
+      </div>
+    </div>
+  </section>
+
+  <dc-import name="SiteFooter" hint-size="100%,420px"></dc-import>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}"></script>
+</body>
+</html>

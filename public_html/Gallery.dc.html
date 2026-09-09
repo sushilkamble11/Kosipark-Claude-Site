@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<base href="/">
+<link rel="icon" type="image/svg+xml" href="/assets/kosipark-favicon.svg?v=20260909">
+<link rel="apple-touch-icon" href="/assets/kosipark-logo.png">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gallery | Kosciuszko Tourist Park</title>
+<meta name="description" content="Explore Kosciuszko Tourist Park through authentic photos of its chalets, cabins, camping sites, shared facilities and Snowy Mountains setting.">
+<script src="/vendor-map.js"></script>
+<script src="./support.js"></script>
+<script src="/site.js" defer></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Petrona:wght@300;400;500;600&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="./image-slot.js"></script>
+<script src="/gp-images.js" defer></script>
+<style>
+  body { margin: 0; background: #FCFAF6; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #1D3730; text-decoration: none; }
+  a:hover { color: #96592A; }
+</style>
+</helmet>
+
+<div style="background:#FCFAF6; color:#292724; font-family:Figtree, system-ui, sans-serif">
+  <dc-import name="SiteNav" active="gallery" hint-size="100%,84px"></dc-import>
+
+  <section data-screen-label="Page head" style="max-width:1320px; margin:0 auto; padding:clamp(32px,4.2vw,58px) clamp(20px,5vw,56px) 0">
+    <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#74836A; margin:0">Gallery</p>
+    <h1 style="font:300 clamp(27px,4vw,44px)/1.05 Petrona, Georgia, serif; letter-spacing:-0.02em; color:#1D3730; margin:14px 0 0; max-width:20ch; text-wrap:balance">The park, through the seasons</h1>
+    <p style="font:400 clamp(15px,1.8vw,18px)/1.7 Figtree, sans-serif; color:#56534C; margin:18px 0 0; max-width:52ch">Snowgum forest under snow, campfires when restrictions allow, and long green evenings in summer at Sawpit Creek.</p>
+  </section>
+
+  <section data-screen-label="Grid" style="max-width:1320px; margin:0 auto; padding:clamp(22px,3vw,38px) clamp(20px,5vw,56px) clamp(38px,5.2vw,70px)">
+    <div style="display:grid; gap:12px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 230px), 1fr))">
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/5; position:relative; grid-row:span 2"><image-slot id="g-1" gp-property gp-index="0" shape="rect" src="/assets/property/park-panorama.jpg" alt="Kosciuszko Tourist Park among the snowgums" placeholder="Chalets under snow"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="g-2" gp-property gp-index="1" shape="rect" src="/assets/property/guest-lounge-v2.jpg" alt="Guest recreation lounge with central fireplace and pool table" placeholder="Guest recreation lounge with wood fire"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="g-3" gp-property gp-index="2" shape="rect" src="/assets/accommodation/sites/caravan-site-v2.jpg" alt="Caravan site at Kosciuszko Tourist Park" placeholder="Campfire at a powered site"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="g-4" gp-property gp-index="3" shape="rect" src="/assets/property/cabins-panorama.jpg" alt="Cabins surrounded by Kosciuszko National Park" placeholder="Snowgums in morning light"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="g-5" gp-property gp-index="4" shape="rect" src="/assets/accommodation/three-bedroom-chalet/living-room.jpg" alt="Three Bedroom Chalet living room" placeholder="Three bedroom chalet living room"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/5; position:relative; grid-row:span 2"><image-slot id="g-6" gp-property gp-index="5" shape="rect" src="/assets/accommodation/sites/camper-trailer-site.jpg" alt="Camper trailer site in summer" placeholder="Caravan site in summer"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="g-7" gp-property gp-index="6" shape="rect" src="/assets/accommodation/cedar-cabin/exterior-v2.jpg" alt="Cedar Cabin at dusk among the snowgums" placeholder="Cedar cabin exterior"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="g-8" gp-property gp-index="7" shape="rect" src="/assets/accommodation/two-bedroom-chalet-upgraded/living-room-2026.jpg" alt="Upgraded Two Bedroom Chalet living room" placeholder="Chalet living room"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="g-9" gp-property gp-index="8" shape="rect" src="/assets/attractions/bushwalking.jpg" alt="Bushwalking in Kosciuszko National Park" placeholder="Bushwalking in Kosciuszko National Park"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="g-10" gp-property gp-index="9" shape="rect" src="/assets/accommodation/sites/unpowered-site.jpg" alt="Tent site among the snowgums" placeholder="Tent site in the bush"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="g-11" gp-property gp-index="10" shape="rect" src="/assets/accommodation/two-bedroom-chalet-upgraded/queen-bedroom.jpg" alt="Queen sleeping area in the upgraded Two Bedroom Chalet" placeholder="Upgraded chalet queen sleeping area"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="g-12" gp-property gp-index="11" shape="rect" src="/assets/attractions/perisher.jpg" alt="Snow season at nearby Perisher" placeholder="Snow on the road to Perisher"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="g-13" gp-property gp-index="12" shape="rect" src="/assets/property/amenities-ladies-v2.jpg" alt="Ladies amenities with toilets, basins and showers" placeholder="Ladies amenities block interior"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="g-14" gp-property gp-index="13" shape="rect" src="/assets/property/camp-kitchen-v2.jpg" alt="Shared camp kitchen with ovens, cooktops, sinks and dining tables" placeholder="Shared camp kitchen"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="g-15" gp-property gp-index="14" shape="rect" src="/assets/accommodation/two-bedroom-chalet-upgraded/kitchen-2026.jpg" alt="Kitchen, dining bench and electric fireplace in the upgraded Two Bedroom Chalet" placeholder="Upgraded chalet kitchen and fireplace"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="g-16" gp-property gp-index="15" shape="rect" src="/assets/accommodation/three-bedroom-chalet/spa-bath.jpg" alt="Spa bath in the Three Bedroom Chalet" placeholder="Three Bedroom Chalet spa bath"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="g-17" shape="rect" src="/assets/property/amenities-b-block-cubicles-v1.jpg" alt="Renovated B Block bathroom cubicles at Kosciuszko Tourist Park" placeholder="Renovated shared bathroom cubicles"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="g-18" shape="rect" src="/assets/property/amenities-b-block-toilet-v1.jpg" alt="Modern toilet cubicle in the renovated B Block amenities" placeholder="Modern toilet cubicle"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="g-19" shape="rect" src="/assets/property/amenities-b-block-shower-v1.jpg" alt="Modern shower cubicle in the renovated B Block amenities" placeholder="Modern shower cubicle"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/5; position:relative; grid-row:span 2"><image-slot id="g-20" shape="rect" src="/assets/property/kangaroo-sawpit-creek-v1.jpg" alt="Kangaroo among the snowgums at Sawpit Creek" placeholder="Kangaroo at Sawpit Creek"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="g-21" shape="rect" src="/assets/property/amenities-showers-v2.jpg" alt="Shared amenities block with basins and shower cubicles" placeholder="Shared shower amenities"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="g-22" shape="rect" src="/assets/property/campfire-evening-v1.jpg" alt="Couple relaxing beside a campfire at dusk" placeholder="Campfire evening"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/5; position:relative; grid-row:span 2"><image-slot id="g-23" shape="rect" src="/assets/property/kids-in-snow-v1.jpg" alt="Children playing in the snow in the Snowy Mountains" placeholder="Children playing in snow"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="g-24" shape="rect" src="/assets/property/family-snow-v1.jpg" alt="Family building a snowman beside a Heritage Chalet" placeholder="Family snow day"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/5; position:relative; grid-row:span 2"><image-slot id="g-25" shape="rect" src="/assets/attractions/mount-kosciuszko-summit-v1.jpg" alt="Hiker celebrating on the Mount Kosciuszko summit marker" placeholder="On the Mount Kosciuszko summit"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="g-26" shape="rect" src="/assets/attractions/cyclists-suspension-bridge-v1.jpg" alt="Cyclists crossing a suspension bridge near Thredbo" placeholder="Cyclists crossing a suspension bridge"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="g-27" shape="rect" src="/assets/attractions/mountain-bike-trail-v1.jpg" alt="Mountain biker riding through alpine wildflowers" placeholder="Mountain biking through alpine country"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="g-28" shape="rect" src="/assets/attractions/family-cycling-lake-v1.jpg" alt="Family taking a break beside a mountain lake with their bikes" placeholder="Family cycling beside a mountain lake"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="g-29" shape="rect" src="/assets/attractions/thredbo-village-bridge-v1.jpg" alt="Walking group on a bridge in Thredbo Village" placeholder="Walking in Thredbo Village"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="g-30" shape="rect" src="/assets/attractions/alpine-sunrise-v1.jpg" alt="Alpine wildflowers and mountain ranges at sunrise" placeholder="Alpine sunrise"></image-slot></div>
+      <div style="border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative"><image-slot id="g-31" shape="rect" src="/assets/attractions/family-bobsled-v1.jpg" alt="Parent and child enjoying the alpine bobsled" placeholder="Family alpine bobsled fun"></image-slot></div>
+    </div>
+
+    <div style="margin-top:clamp(36px,5vw,64px); background:#E9EEE3; border-radius:16px; padding:clamp(22px,3vw,38px); display:flex; flex-wrap:wrap; gap:20px 32px; align-items:center; justify-content:space-between">
+      <div>
+        <h2 style="font:300 clamp(21px,2.6vw,30px)/1.12 Petrona, Georgia, serif; color:#1D3730; margin:0; max-width:22ch">Ready when you are</h2>
+        <p style="font:400 15px/1.7 Figtree, sans-serif; color:#56534C; margin:10px 0 0; max-width:44ch">Check dates for chalets, cabins and sites at Sawpit Creek.</p>
+      </div>
+      <a href="/accommodation#book" style="background:#1D3730; color:#FCFAF6; font:700 13px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:18px 28px; border-radius:999px; white-space:nowrap">Check availability</a>
+    </div>
+  </section>
+
+  <dc-import name="SiteFooter" hint-size="100%,420px"></dc-import>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}"></script>
+</body>
+</html>

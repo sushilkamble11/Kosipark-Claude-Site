@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/booking-config.js"></script>
+<script src="/vendor-map.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Petrona:wght@300;400;500;600&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  @keyframes riseIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  @keyframes pulseFade { 0%,100% { opacity: .5 } 50% { opacity: .85 } }
+</style>
+</helmet>
+
+<div style="font-family:Figtree, system-ui, sans-serif; background:#FFFFFF; border:1px solid rgba(29,55,48,0.10); border-radius:16px; padding:clamp(14px,1.8vw,20px)">
+  <div style="display:flex; flex-wrap:wrap; gap:10px 16px; align-items:baseline; justify-content:space-between">
+    <div style="min-width:0">
+      <p style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A; margin:0">Availability</p>
+      <p style="font:400 clamp(17px,1.9vw,21px)/1.25 Petrona, Georgia, serif; color:#1D3730; margin:8px 0 0">{{ heading }}</p>
+    </div>
+    <div style="display:flex; align-items:center; gap:8px">
+      <button type="button" onClick="{{ prev }}" style="{{ prevStyle }}">‹</button>
+      <span style="font:500 12.5px/1 Figtree, sans-serif; color:#56534C; min-width:9ch; text-align:center">{{ rangeLabel }}</span>
+      <button type="button" onClick="{{ next }}" style="width:40px; height:40px; border-radius:999px; border:1px solid rgba(29,55,48,0.16); background:transparent; color:#1D3730; font:400 16px/1 Figtree, sans-serif; cursor:pointer">›</button>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-wrap:wrap; gap:10px 14px; margin-top:14px">
+    <span style="display:flex; align-items:center; gap:6px; font:500 11.5px/1 Figtree, sans-serif; color:#56534C"><span style="width:11px; height:11px; border-radius:3px; background:#DCEBD6; box-shadow:inset 0 0 0 1px rgba(58,110,72,0.35)"></span>Available</span>
+    <span style="display:flex; align-items:center; gap:6px; font:500 11.5px/1 Figtree, sans-serif; color:#56534C"><span style="width:11px; height:11px; border-radius:3px; background:#F6DED7; box-shadow:inset 0 0 0 1px rgba(140,59,42,0.3)"></span>Booked out</span>
+    <span style="display:flex; align-items:center; gap:6px; font:500 11.5px/1 Figtree, sans-serif; color:#56534C"><span style="width:11px; height:11px; border-radius:3px; background:#1D3730"></span>Your dates</span>
+  </div>
+
+  <sc-if value="{{ loading }}" hint-placeholder-val="{{ true }}">
+    <div style="height:250px; border-radius:12px; background:#F3ECE0; margin-top:14px; animation:pulseFade 1.4s ease-in-out infinite"></div>
+  </sc-if>
+
+  <sc-if value="{{ ready }}" hint-placeholder-val="{{ false }}">
+    <div style="display:grid; gap:18px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 250px), 1fr)); margin-top:16px">
+      <sc-for list="{{ months }}" as="m" hint-placeholder-count="1">
+        <div style="min-width:0">
+          <div style="font:400 16px/1 Petrona, Georgia, serif; color:#1D3730; text-align:center; padding:2px 0 12px">{{ m.title }}</div>
+          <div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:3px">
+            <sc-for list="{{ weekdays }}" as="wd" hint-placeholder-count="7">
+              <div style="text-align:center; font:700 8px/1 Figtree, sans-serif; letter-spacing:.08em; color:#A6A29A; padding:0 0 6px">{{ wd }}</div>
+            </sc-for>
+            <sc-for list="{{ m.days }}" as="d" hint-placeholder-count="31">
+              <button type="button" disabled="{{ d.disabled }}" onClick="{{ d.pick }}" style="{{ d.style }}">
+                <span style="{{ d.numStyle }}">{{ d.num }}</span>
+                <span style="{{ d.noteStyle }}">{{ d.note }}</span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="{{ reasonStyle }}">
+      <p style="font:500 13.5px/1.5 Figtree, sans-serif; color:#8C3B2A; margin:0">{{ reasonTitle }}</p>
+      <p style="font:400 13px/1.6 Figtree, sans-serif; color:#56534C; margin:6px 0 0">{{ reasonDetail }}</p>
+      <span style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px">
+        <sc-for list="{{ reasonFixes }}" as="fx" hint-placeholder-count="1">
+          <button type="button" onClick="{{ fx.apply }}" style="border:0; border-radius:999px; background:#1D3730; color:#FCFAF6; font:700 11.5px/1 Figtree, sans-serif; letter-spacing:.08em; padding:14px 18px; cursor:pointer">{{ fx.label }}</button>
+        </sc-for>
+      </span>
+    </div>
+
+    <div style="display:flex; flex-wrap:wrap; gap:12px 16px; align-items:center; justify-content:space-between; margin-top:16px; padding-top:14px; border-top:1px solid rgba(29,55,48,0.09)">
+      <div style="min-width:0">
+        <p style="font:500 14px/1.4 Figtree, sans-serif; color:#292724; margin:0">{{ selectionText }}</p>
+        <p style="font:400 12.5px/1.5 Figtree, sans-serif; color:#8B877E; margin:5px 0 0">{{ selectionNote }}</p>
+        <div style="{{ extendStyle }}">
+          <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">{{ extendLead }}</span>
+          <sc-for list="{{ extendOptions }}" as="ex" hint-placeholder-count="2">
+            <button type="button" onClick="{{ ex.add }}" style="{{ ex.style }}">{{ ex.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+      <span style="display:flex; flex-wrap:wrap; gap:8px; align-items:center">
+        <button type="button" onClick="{{ clear }}" style="{{ clearStyle }}">Reset</button>
+        <button type="button" disabled="{{ bookDisabled }}" onClick="{{ book }}" style="{{ bookStyle }}">{{ bookLabel }}</button>
+      </span>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:720,&quot;height&quot;:520},&quot;room&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;three-bedroom-chalet&quot;,&quot;two-bedroom-chalet-upgraded&quot;,&quot;two-bedroom-chalet&quot;,&quot;cedar-cabin&quot;,&quot;caravan-site&quot;,&quot;camper-trailer-site&quot;,&quot;motorhome-site&quot;,&quot;unpowered-site&quot;],&quot;default&quot;:&quot;two-bedroom-chalet&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;label&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Choose your nights&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;months&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:null,&quot;min&quot;:1,&quot;max&quot;:2,&quot;tsType&quot;:&quot;number&quot;},&quot;adults&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:2,&quot;min&quot;:1,&quot;max&quot;:8,&quot;tsType&quot;:&quot;number&quot;}}">
+class Component extends DCLogic {
+  state = { days: {}, loading: true, offset: 0, from: "", to: "", reason: null, ratesFailed: false, wide: typeof window !== "undefined" ? window.innerWidth >= 900 : true };
+
+  money(n) { return this.gp ? this.gp.money(n) : "$" + Math.round(Number(n) || 0); }
+
+  static iso(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+  static today() { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }
+
+  async componentDidMount() {
+    this._onResize = () => {
+      const wide = window.innerWidth >= 900;
+      if (wide !== this.state.wide) this.setState({ wide }, () => this.load());
+    };
+    window.addEventListener("resize", this._onResize);
+    this.gp = await import("./guestpoint.js");
+    this.load();
+  }
+  componentWillUnmount() { window.removeEventListener("resize", this._onResize); }
+
+  monthCount() { return this.props.months || (this.state.wide ? 2 : 1); }
+  monthStart(offset) { const d = Component.today(); return new Date(d.getFullYear(), d.getMonth() + offset, 1); }
+
+  async load() {
+    if (!this.gp) return;
+    const room = this.props.room || "two-bedroom-chalet";
+    const start = this.monthStart(this.state.offset);
+    const end = new Date(start.getFullYear(), start.getMonth() + this.monthCount(), 0);
+    this.setState({ loading: true });
+    try {
+      // Per-category counts: /availabilities carries ForSale per night for
+      // this room type, which /bestavailablerates does not.
+      const days = await this.gp.availabilityCalendar({
+        room, fromDate: Component.iso(start), toDate: Component.iso(end),
+        numAdults: Number(this.props.adults) || 2
+      });
+      this.setState({ days, loading: false, ratesFailed: Object.keys(days).length === 0 });
+    } catch (e) {
+      this.setState({ days: {}, loading: false, ratesFailed: true });
+    }
+  }
+
+  fmt(v) { const p = (v || "").split("-"); return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString("en-AU", { day: "numeric", month: "short" }); }
+  shift(v, n) { const d = new Date(v); d.setDate(d.getDate() + n); return Component.iso(d); }
+
+  pickDay(iso) {
+    const s = this.state;
+    if (!s.from || s.to || iso <= s.from) { this.setState({ from: iso, to: "", reason: null }); return; }
+    const minStay = (s.days[s.from] || {}).minStay || 1;
+    const nights = Math.round((new Date(iso) - new Date(s.from)) / 86400000);
+    if (nights < minStay) {
+      this.setState({
+        reason: {
+          title: minStay + " night minimum from " + this.fmt(s.from),
+          detail: "Winter weekends need two nights and the Christmas period three, so single nights aren't left stranded.",
+          fixes: [{ label: "Extend to " + minStay + " nights", apply: () => this.setState({ to: this.shift(s.from, minStay), reason: null }) }]
+        }
+      });
+      return;
+    }
+    for (let i = 0; i < nights; i++) {
+      const night = this.shift(s.from, i);
+      const d = s.days[night];
+      if (d && d.soldOut) {
+        this.setState({
+          reason: {
+            title: this.fmt(night) + " is booked out",
+            detail: "That night sits inside the range you picked, so the stay can't run through it.",
+            fixes: i >= minStay ? [{ label: "Stay until " + this.fmt(night), apply: () => this.setState({ to: night, reason: null }) }] : []
+          }
+        });
+        return;
+      }
+    }
+    this.setState({ to: iso, reason: null });
+  }
+
+  buildMonth(base) {
+    const s = this.state;
+    const today = Component.today();
+    const first = new Date(base.getFullYear(), base.getMonth(), 1);
+    const lead = (first.getDay() + 6) % 7;
+    const count = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate();
+    const cell = "display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; border:0; border-radius:8px; padding:6px 1px; min-height:46px; ";
+    const days = [];
+    for (let i = 0; i < lead; i++) days.push({ num: "", note: "", disabled: true, style: "visibility:hidden", numStyle: "", noteStyle: "", pick: () => {} });
+
+    for (let n = 1; n <= count; n++) {
+      const date = new Date(base.getFullYear(), base.getMonth(), n);
+      const iso = Component.iso(date);
+      const info = s.days[iso] || {};
+      const past = date < today;
+      const soldOut = info.soldOut === true || info.count === 0 || typeof info.rate !== "number";
+      const left = typeof info.count === "number" ? info.count : null;
+      const isIn = iso === s.from, isOut = iso === s.to;
+      const inRange = s.from && s.to && iso > s.from && iso < s.to;
+      const selected = isIn || isOut;
+
+      let style = cell;
+      if (past) style += "background:transparent; cursor:default";
+      else if (soldOut) style += "background:#F6DED7; box-shadow:inset 0 0 0 1px rgba(140,59,42,0.28); cursor:not-allowed";
+      else if (selected) style += "background:#1D3730; cursor:pointer";
+      else if (inRange) style += "background:#BFD6B7; cursor:pointer";
+      else style += "background:#DCEBD6; box-shadow:inset 0 0 0 1px rgba(58,110,72,0.28); cursor:pointer";
+
+      let note = "";
+      if (past) note = "";
+      else if (soldOut) note = "Full";
+      else if (left !== null && left <= 2) note = left === 1 ? "1 left" : left + " left";
+      else if (info.rate) note = "$" + Math.round(info.rate);
+
+      days.push({
+        num: String(n),
+        note,
+        disabled: past || soldOut,
+        style,
+        numStyle: "font:600 12.5px/1 Figtree, sans-serif; color:" + (selected ? "#FCFAF6" : past ? "#C7C3B9" : soldOut ? "#8C3B2A" : "#1D3730"),
+        noteStyle: "font:600 9px/1 Figtree, sans-serif; color:" +
+          (selected ? "rgba(237,228,212,0.9)" : soldOut ? "rgba(140,59,42,0.75)" : (left !== null && left <= 2) ? "#96592A" : "#5F7A56"),
+        pick: (past || soldOut) ? () => {} : () => this.pickDay(iso)
+      });
+    }
+    return { title: base.toLocaleDateString("en-AU", { month: "long", year: "numeric" }), days };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const start = this.monthStart(s.offset);
+    const months = [];
+    for (let i = 0; i < this.monthCount(); i++) {
+      months.push(this.buildMonth(new Date(start.getFullYear(), start.getMonth() + i, 1)));
+    }
+    const nights = s.from && s.to ? Math.round((new Date(s.to) - new Date(s.from)) / 86400000) : 0;
+    let total = 0;
+    for (let i = 0; i < nights; i++) {
+      const info = s.days[this.shift(s.from, i)];
+      if (info && info.rate) total += info.rate;
+    }
+    const ready = !s.loading;
+    const canBook = !!(s.from && s.to && nights > 0 && total > 0 && !s.ratesFailed);
+    const lastMonth = new Date(start.getFullYear(), start.getMonth() + this.monthCount() - 1, 1);
+
+    /* Adding a night is the biggest single thing a guest can do for the park's
+       take, and until now the only place to do it was the next booking step —
+       long after they had settled on their dates. The rates for the nights on
+       either side are already in s.days from the same call that drew the grid,
+       so this costs no request: it just names the price and extends the
+       selection. Real rates only, and nothing offered on a night the calendar
+       itself shows as closed. */
+    const extendPill = (date, direction) => {
+      const info = s.days[date];
+      // The same sold-out test the grid itself uses, so a pill can never offer
+      // a night the calendar is showing in red.
+      const gone = !info || info.soldOut === true || info.count === 0 || typeof info.rate !== "number";
+      if (gone || !info.rate) return null;
+      // Moving check-in onto a night closed to arrival would be refused at the
+      // point of booking, so it is not offered.
+      if (direction === "before" && info.closedToArrival) return null;
+      const label = new Date(date + "T00:00:00")
+        .toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" });
+      return {
+        label: "+ " + this.money(info.rate) + "  " + label,
+        style: "border:1px solid rgba(29,55,48,0.2); border-radius:999px; background:#FCFAF6; " +
+               "color:#1D3730; font:600 12.5px/1 Figtree, sans-serif; padding:13px 17px; cursor:pointer; white-space:nowrap",
+        add: () => this.setState(
+          direction === "before" ? { from: date, reason: null } : { to: this.shift(date, 1), reason: null })
+      };
+    };
+    // "before" is the night before check-in; "after" is the departure night,
+    // which becomes a night stayed once the checkout date moves on by one.
+    const extendOptions = canBook
+      ? [extendPill(this.shift(s.from, -1), "before"), extendPill(s.to, "after")].filter(Boolean)
+      : [];
+
+    return {
+      heading: this.props.label || "Choose your nights",
+      loading: s.loading,
+      ready,
+      months,
+      weekdays: ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"],
+      rangeLabel: months.length > 1
+        ? start.toLocaleDateString("en-AU", { month: "short" }) + " – " + lastMonth.toLocaleDateString("en-AU", { month: "short", year: "2-digit" })
+        : start.toLocaleDateString("en-AU", { month: "long", year: "numeric" }),
+      prev: () => { if (s.offset > 0) this.setState({ offset: s.offset - 1, reason: null }, () => this.load()); },
+      next: () => { if (s.offset < 11) this.setState({ offset: s.offset + 1, reason: null }, () => this.load()); },
+      prevStyle: "width:40px; height:40px; border-radius:999px; border:1px solid rgba(29,55,48,0.16); background:transparent; font:400 16px/1 Figtree, sans-serif; cursor:" +
+        (s.offset > 0 ? "pointer" : "not-allowed") + "; color:" + (s.offset > 0 ? "#1D3730" : "#C7C3B9"),
+
+      reasonStyle: s.reason
+        ? "margin-top:14px; background:#F7E7E1; border-radius:12px; padding:16px 18px; animation:riseIn .18s ease both"
+        : "display:none",
+      reasonTitle: s.reason ? s.reason.title : "",
+      reasonDetail: s.reason ? s.reason.detail : "",
+      reasonFixes: s.reason ? s.reason.fixes : [],
+
+      selectionText: canBook
+        ? this.fmt(s.from) + " → " + this.fmt(s.to) + " · " + nights + (nights === 1 ? " night" : " nights")
+        : s.from ? "Arriving " + this.fmt(s.from) : "Tap your arrival night",
+      selectionNote: s.ratesFailed
+        ? "We couldn't load rates just now. Please call reception on 02 6456 2224."
+        : canBook ? "About $" + Math.round(total) + " for the stay"
+        : s.from ? "Now tap your check-out date" : "Green nights are open, red are booked out",
+      clear: () => this.setState({ from: "", to: "", reason: null }),
+      clearStyle: (s.from ? "" : "display:none; ") +
+        "border:1px solid rgba(29,55,48,0.18); border-radius:999px; background:transparent; color:#1D3730; font:600 12px/1 Figtree, sans-serif; letter-spacing:.06em; padding:15px 18px; cursor:pointer",
+      extendOptions,
+      extendStyle: extendOptions.length
+        ? "display:flex; flex-wrap:wrap; gap:9px; align-items:center; margin-top:14px; padding-top:14px; border-top:1px solid rgba(29,55,48,0.10)"
+        : "display:none",
+      extendLead: nights >= 4 ? "Make it longer:" : "Add a night:",
+      bookDisabled: !canBook,
+      bookLabel: canBook ? "Continue to secure booking" : "Pick your dates",
+      bookStyle: "border:0; border-radius:999px; font:700 12px/1 Figtree, sans-serif; letter-spacing:.09em; text-transform:uppercase; padding:17px 24px; " +
+        (canBook ? "background:#96592A; color:#FCFAF6; cursor:pointer" : "background:#EFEDE7; color:#A6A29A; cursor:not-allowed"),
+      book: () => {
+        if (!canBook) return;
+        const bookingBase = window.KOSIPARK_V2 && window.KOSIPARK_V2.secureBookingUrl;
+        if (!bookingBase) {
+          this.setState({
+            reason: {
+              title: "Secure Online Booking is ready to connect",
+              detail: "GuestPoint has not supplied Kosipark's hosted booking address yet. Your selected dates remain here in this local preview.",
+              fixes: []
+            }
+          });
+          return;
+        }
+        const url = new URL(bookingBase, window.location.href);
+        url.searchParams.set("startDate", s.from);
+        url.searchParams.set("numAdults", String(this.props.adults || 2));
+        url.searchParams.set("numChildren", "0");
+        url.searchParams.set("numNights", String(nights));
+        window.location.href = url.toString();
+      }
+    };
+  }
+}
+
+</script>
+</body>
+</html>
