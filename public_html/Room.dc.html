@@ -25,14 +25,26 @@
   a { color: #1D3730; text-decoration: none; }
   a:hover { color: #96592A; }
   @keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-  @media (max-width: 900px) {
-    .room-photo-grid { grid-template-columns: minmax(0, 1fr) !important; }
-    .room-photo-main { grid-column: auto !important; }
-    .room-photo-secondary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  }
+  .room-photo-slider { position:relative; margin-top:clamp(20px,3vw,32px); }
+  .room-photo-viewport { position:relative; overflow:hidden; border-radius:18px; aspect-ratio:16/9; background:#E9EEE3; touch-action:pan-y; }
+  .room-photo-track { display:flex; width:100%; height:100%; transition:transform .42s cubic-bezier(.22,.61,.36,1); }
+  .room-photo-slide { flex:0 0 100%; width:100%; height:100%; position:relative; min-width:0; }
+  .room-photo-slide image-slot { display:block; width:100%; height:100%; }
+  .room-slider-button { position:absolute; z-index:5; top:50%; width:46px; height:46px; margin-top:-23px; border:1px solid rgba(252,250,246,.6); border-radius:50%; background:rgba(18,39,32,.78); color:#FCFAF6; display:grid; place-items:center; cursor:pointer; box-shadow:0 8px 24px rgba(18,39,32,.2); backdrop-filter:blur(8px); }
+  .room-slider-button:hover { background:#1D3730; }
+  .room-slider-button:focus-visible, .room-slider-dot:focus-visible { outline:3px solid #C97836; outline-offset:3px; }
+  .room-slider-prev { left:16px; }
+  .room-slider-next { right:16px; }
+  .room-slider-count { position:absolute; z-index:5; top:14px; right:14px; padding:8px 11px; border-radius:999px; background:rgba(18,39,32,.78); color:#FCFAF6; font:600 12px/1 Figtree,sans-serif; letter-spacing:.08em; backdrop-filter:blur(8px); }
+  .room-slider-dots { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-top:14px; }
+  .room-slider-dot { width:10px; height:10px; padding:0; border:0; border-radius:50%; background:#C8CEC2; cursor:pointer; transition:width .2s ease, background .2s ease; }
+  .room-slider-dot[aria-current="true"] { width:26px; border-radius:999px; background:#1D3730; }
+  @media (prefers-reduced-motion: reduce) { .room-photo-track, .room-slider-dot { transition:none; } }
   @media (max-width: 520px) {
-    .room-photo-secondary { grid-template-columns: minmax(0, 1fr); }
-    .room-photo-more { grid-template-columns: minmax(0, 1fr) !important; }
+    .room-photo-viewport { aspect-ratio:4/3; border-radius:16px; }
+    .room-slider-button { width:44px; height:44px; margin-top:-22px; }
+    .room-slider-prev { left:10px; }
+    .room-slider-next { right:10px; }
   }
 </style>
 </helmet>
@@ -61,19 +73,32 @@
       </div>
     </div>
 
-    <div class="room-photo-grid" style="display:grid; gap:12px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 240px), 1fr)); margin-top:clamp(20px,3vw,32px)">
-      <div class="room-photo-main" style="border-radius:16px; overflow:hidden; aspect-ratio:16/11; position:relative; grid-column:span 2; min-width:0"><image-slot id="{{ room.img1 }}" data-room-photo="0" shape="rect" placeholder="{{ room.ph1 }}"></image-slot></div>
-      <div class="room-photo-secondary" style="display:grid; gap:12px; min-width:0">
-        <div style="border-radius:16px; overflow:hidden; aspect-ratio:16/10; position:relative"><image-slot id="{{ room.img2 }}" data-room-photo="1" shape="rect" placeholder="{{ room.ph2 }}"></image-slot></div>
-        <div style="border-radius:16px; overflow:hidden; aspect-ratio:16/10; position:relative"><image-slot id="{{ room.img3 }}" data-room-photo="2" shape="rect" placeholder="{{ room.ph3 }}"></image-slot></div>
+    <div class="room-photo-slider" data-room-slider>
+      <div class="room-photo-viewport" data-room-slider-viewport tabindex="0" role="region" aria-label="{{ room.name }} photo gallery">
+        <div class="room-photo-track" data-room-slider-track>
+          <div class="room-photo-slide" data-room-photo-wrap="0"><image-slot id="{{ room.img1 }}" data-room-photo="0" shape="rect" placeholder="{{ room.ph1 }}"></image-slot></div>
+          <div class="room-photo-slide" data-room-photo-wrap="1"><image-slot id="{{ room.img2 }}" data-room-photo="1" shape="rect" placeholder="{{ room.ph2 }}"></image-slot></div>
+          <div class="room-photo-slide" data-room-photo-wrap="2"><image-slot id="{{ room.img3 }}" data-room-photo="2" shape="rect" placeholder="{{ room.ph3 }}"></image-slot></div>
+          <div class="room-photo-slide" data-room-photo-wrap="3"><image-slot id="room-photo-4" data-room-photo="3" shape="rect" placeholder="Additional accommodation photo"></image-slot></div>
+          <div class="room-photo-slide" data-room-photo-wrap="4"><image-slot id="room-photo-5" data-room-photo="4" shape="rect" placeholder="Additional accommodation photo"></image-slot></div>
+          <div class="room-photo-slide" data-room-photo-wrap="5"><image-slot id="room-photo-6" data-room-photo="5" shape="rect" placeholder="Additional accommodation photo"></image-slot></div>
+          <div class="room-photo-slide" data-room-photo-wrap="6"><image-slot id="room-photo-7" data-room-photo="6" shape="rect" placeholder="Additional accommodation photo"></image-slot></div>
+          <div class="room-photo-slide" data-room-photo-wrap="7"><image-slot id="room-photo-8" data-room-photo="7" shape="rect" placeholder="Additional accommodation photo"></image-slot></div>
+        </div>
+        <button class="room-slider-button room-slider-prev" type="button" data-room-slider-prev aria-label="Previous photo">&#8592;</button>
+        <button class="room-slider-button room-slider-next" type="button" data-room-slider-next aria-label="Next photo">&#8594;</button>
+        <span class="room-slider-count" data-room-slider-count aria-live="polite">1 / 1</span>
       </div>
-    </div>
-    <div class="room-photo-more" style="display:grid; gap:12px; grid-template-columns:repeat(auto-fit, minmax(min(100%, 220px), 1fr)); margin-top:12px">
-      <div data-room-photo-wrap="3" style="display:none; border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative; min-width:0"><image-slot id="room-photo-4" data-room-photo="3" shape="rect" placeholder="Additional accommodation photo"></image-slot></div>
-      <div data-room-photo-wrap="4" style="display:none; border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative; min-width:0"><image-slot id="room-photo-5" data-room-photo="4" shape="rect" placeholder="Additional accommodation photo"></image-slot></div>
-      <div data-room-photo-wrap="5" style="display:none; border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative; min-width:0"><image-slot id="room-photo-6" data-room-photo="5" shape="rect" placeholder="Additional accommodation photo"></image-slot></div>
-      <div data-room-photo-wrap="6" style="display:none; border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative; min-width:0"><image-slot id="room-photo-7" data-room-photo="6" shape="rect" placeholder="Additional accommodation photo"></image-slot></div>
-      <div data-room-photo-wrap="7" style="display:none; border-radius:16px; overflow:hidden; aspect-ratio:4/3; position:relative; min-width:0"><image-slot id="room-photo-8" data-room-photo="7" shape="rect" placeholder="Additional accommodation photo"></image-slot></div>
+      <div class="room-slider-dots" aria-label="Choose a photo">
+        <button class="room-slider-dot" type="button" data-room-slider-dot="0" aria-label="Show photo 1"></button>
+        <button class="room-slider-dot" type="button" data-room-slider-dot="1" aria-label="Show photo 2"></button>
+        <button class="room-slider-dot" type="button" data-room-slider-dot="2" aria-label="Show photo 3"></button>
+        <button class="room-slider-dot" type="button" data-room-slider-dot="3" aria-label="Show photo 4"></button>
+        <button class="room-slider-dot" type="button" data-room-slider-dot="4" aria-label="Show photo 5"></button>
+        <button class="room-slider-dot" type="button" data-room-slider-dot="5" aria-label="Show photo 6"></button>
+        <button class="room-slider-dot" type="button" data-room-slider-dot="6" aria-label="Show photo 7"></button>
+        <button class="room-slider-dot" type="button" data-room-slider-dot="7" aria-label="Show photo 8"></button>
+      </div>
     </div>
   </section>
 
@@ -351,6 +376,31 @@ class Component extends DCLogic {
     };
     window.addEventListener("hashchange", this._onNav);
     window.addEventListener("popstate", this._onNav);
+    this._onSliderClick = event => {
+      const dot = event.target.closest && event.target.closest("[data-room-slider-dot]");
+      if (dot) return this.showRoomPhoto(Number(dot.getAttribute("data-room-slider-dot")));
+      if (event.target.closest && event.target.closest("[data-room-slider-prev]")) return this.moveRoomPhoto(-1);
+      if (event.target.closest && event.target.closest("[data-room-slider-next]")) return this.moveRoomPhoto(1);
+    };
+    this._onSliderKey = event => {
+      if (!(event.target.closest && event.target.closest("[data-room-slider-viewport]"))) return;
+      if (event.key === "ArrowLeft") { event.preventDefault(); this.moveRoomPhoto(-1); }
+      if (event.key === "ArrowRight") { event.preventDefault(); this.moveRoomPhoto(1); }
+    };
+    this._onTouchStart = event => {
+      if (!(event.target.closest && event.target.closest("[data-room-slider-viewport]"))) return;
+      this._touchStartX = event.changedTouches[0].clientX;
+    };
+    this._onTouchEnd = event => {
+      if (this._touchStartX == null || !(event.target.closest && event.target.closest("[data-room-slider-viewport]"))) return;
+      const distance = event.changedTouches[0].clientX - this._touchStartX;
+      this._touchStartX = null;
+      if (Math.abs(distance) > 45) this.moveRoomPhoto(distance < 0 ? 1 : -1);
+    };
+    document.addEventListener("click", this._onSliderClick);
+    document.addEventListener("keydown", this._onSliderKey);
+    document.addEventListener("touchstart", this._onTouchStart, { passive: true });
+    document.addEventListener("touchend", this._onTouchEnd, { passive: true });
     requestAnimationFrame(() => this.applyRoomImages());
   }
   componentDidUpdate() {
@@ -359,6 +409,43 @@ class Component extends DCLogic {
   componentWillUnmount() {
     window.removeEventListener("hashchange", this._onNav);
     window.removeEventListener("popstate", this._onNav);
+    document.removeEventListener("click", this._onSliderClick);
+    document.removeEventListener("keydown", this._onSliderKey);
+    document.removeEventListener("touchstart", this._onTouchStart);
+    document.removeEventListener("touchend", this._onTouchEnd);
+  }
+
+  availableRoomPhotos() {
+    return Array.from(document.querySelectorAll("[data-room-photo-wrap]"))
+      .filter(wrap => wrap.style.display !== "none");
+  }
+
+  showRoomPhoto(index) {
+    const photos = this.availableRoomPhotos();
+    if (!photos.length) return;
+    const wanted = Math.max(0, Math.min(photos.length - 1, Number(index) || 0));
+    this._photoIndex = wanted;
+    const track = document.querySelector("[data-room-slider-track]");
+    if (track) track.style.transform = `translateX(-${wanted * 100}%)`;
+    photos.forEach((photo, i) => photo.setAttribute("aria-hidden", i === wanted ? "false" : "true"));
+    document.querySelectorAll("[data-room-slider-dot]").forEach(dot => {
+      const originalIndex = Number(dot.getAttribute("data-room-slider-dot"));
+      const availableIndex = photos.findIndex(photo => Number(photo.getAttribute("data-room-photo-wrap")) === originalIndex);
+      dot.style.display = availableIndex < 0 ? "none" : "block";
+      dot.setAttribute("aria-current", availableIndex === wanted ? "true" : "false");
+    });
+    const count = document.querySelector("[data-room-slider-count]");
+    if (count) count.textContent = `${wanted + 1} / ${photos.length}`;
+    document.querySelectorAll("[data-room-slider-prev], [data-room-slider-next]").forEach(button => {
+      button.style.display = photos.length > 1 ? "grid" : "none";
+    });
+  }
+
+  moveRoomPhoto(direction) {
+    const photos = this.availableRoomPhotos();
+    if (photos.length < 2) return;
+    const next = ((this._photoIndex || 0) + direction + photos.length) % photos.length;
+    this.showRoomPhoto(next);
   }
 
   applyRoomImages() {
@@ -367,12 +454,18 @@ class Component extends DCLogic {
       const index = Number(slot.getAttribute("data-room-photo"));
       slot.id = `r-${r.slug}-${index + 1}`;
       if (r.images[index]) slot.setAttribute("src", r.images[index]);
+      else slot.removeAttribute("src");
       if (r.alts[index]) slot.setAttribute("alt", r.alts[index]);
     });
     document.querySelectorAll("[data-room-photo-wrap]").forEach(wrap => {
       const index = Number(wrap.getAttribute("data-room-photo-wrap"));
       wrap.style.display = r.images[index] ? "block" : "none";
     });
+    if (this._sliderSlug !== r.slug) {
+      this._sliderSlug = r.slug;
+      this._photoIndex = 0;
+    }
+    this.showRoomPhoto(this._photoIndex || 0);
   }
 
   renderVals() {
