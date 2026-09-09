@@ -3,7 +3,7 @@
  *
  * support.js loads React and ReactDOM from unpkg.com on every page. For a
  * booking site that is a live dependency on someone else's CDN: if unpkg is
- * slow or down, the search bar, calendars and checkout never mount.
+ * slow or down, the search bar and calendars never mount.
  *
  * support.js already supports self-hosting — it checks window.__resources for
  * a replacement path before falling back to the CDN — so nothing in it needs

@@ -609,6 +609,17 @@ export const CART_TTL = 24 * 60 * 60 * 1000;
 /** Rates move. Past this, checkout re-quotes rather than trusting what's stored. */
 export const CART_PRICE_TTL = 30 * 60 * 1000;
 
+/** The checkout and header use one window for an active, bookable quote. */
+export const CHECKOUT_QUOTE_TTL = 15 * 60 * 1000;
+
+/** Time left before the oldest quoted stay must be searched again. */
+export function cartQuoteExpiresIn() {
+  const items = readCart();
+  if (!items.length) return 0;
+  const oldestQuote = Math.min.apply(null, items.map(i => i.pricedAt || i.addedAt || 0));
+  return Math.max(0, CHECKOUT_QUOTE_TTL - (Date.now() - oldestQuote));
+}
+
 /** Time until the next item lapses — the honest answer to "when does this go?". */
 export function cartExpiresIn() {
   const items = readCart();

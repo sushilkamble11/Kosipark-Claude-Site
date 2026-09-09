@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <base href="/">
-<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png?v=20260909">
-<link rel="icon" type="image/png" sizes="192x192" href="/assets/favicon-192.png?v=20260909">
-<link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png?v=20260909">
+<link rel="icon" type="image/svg+xml" href="/assets/kosipark-favicon-skier.svg?v=20260910">
+<link rel="apple-touch-icon" href="/assets/kosipark-logo.png">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Accommodation Details | Kosciuszko Tourist Park</title>
 <meta name="description" content="View photos, facilities and live availability for accommodation at Kosciuszko Tourist Park in Sawpit Creek.">
+<script src="/booking-config.js"></script>
 <script src="/vendor-map.js"></script>
 <script src="./support.js"></script>
 <script src="/site.js" defer></script>
@@ -38,7 +38,7 @@
 </helmet>
 
 <div style="background:#FCFAF6; color:#292724; font-family:Figtree, system-ui, sans-serif">
-  <dc-import name="SiteNav" active="stay" book-href="#availability" hint-size="100%,84px"></dc-import>
+  <dc-import name="SiteNav" active="stay" book-href="/#book" hint-size="100%,84px"></dc-import>
 
   <section data-screen-label="Room hero" style="max-width:1320px; margin:0 auto; padding:clamp(20px,3vw,34px) clamp(20px,5vw,56px) 0">
     <nav style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; font:500 12px/1 Figtree, sans-serif; color:#8B877E">
@@ -301,8 +301,8 @@ const ROOMS = [
       { k: "Nearby", v: "Guest kitchen and lounge, hot showers, laundry, wash-up area" }
     ],
     ph: ["Camper van on a powered site", "Guest recreation lounge", "Camp kitchen", "Ladies amenities", "Shared shower amenities"],
-    images: ["/assets/accommodation/sites/motorhome-site-v2.jpg", "/assets/property/guest-lounge-v2.jpg", "/assets/property/camp-kitchen-v2.jpg", "/assets/property/amenities-ladies-v2.jpg", "/assets/property/amenities-showers-v2.jpg"],
-    alts: ["Motorhome site at Kosciuszko Tourist Park", "Guest recreation lounge with central fireplace and pool table", "Shared camp kitchen with ovens, cooktops, sinks and dining tables", "Ladies amenities with toilets, basins and showers", "Shared amenities block with basins and shower cubicles"]
+    images: ["/assets/accommodation/sites/motorhome-site-v3.jpg", "/assets/property/guest-lounge-v2.jpg", "/assets/property/camp-kitchen-v2.jpg", "/assets/property/amenities-ladies-v2.jpg", "/assets/property/amenities-showers-v2.jpg"],
+    alts: ["Motorhome and camper sites among the snowgums at Kosciuszko Tourist Park", "Guest recreation lounge with central fireplace and pool table", "Shared camp kitchen with ovens, cooktops, sinks and dining tables", "Ladies amenities with toilets, basins and showers", "Shared amenities block with basins and shower cubicles"]
   },
   {
     slug: "unpowered-site", name: "Unpowered Tent Site", category: "Camping", noun: "site",

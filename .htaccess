@@ -31,10 +31,9 @@ ErrorDocument 404 /404.html
   # --- Routes -----------------------------------------------------------
   RewriteRule ^accommodation/?$                Accommodation.dc.html   [L]
   RewriteRule ^accommodation/([a-z0-9-]+)/?$   Room.dc.html?room=$1    [L,QSA]
-  RewriteRule ^book/?$                         Availability.dc.html    [L,QSA]
+  RewriteRule ^availability/?$                 Calendar.dc.html        [L,QSA]
+  RewriteRule ^book/?$                         Calendar.dc.html        [L,QSA]
   RewriteRule ^book/calendar/?$                Calendar.dc.html        [L,QSA]
-  RewriteRule ^book/checkout/?$                Checkout.dc.html        [L,QSA]
-  RewriteRule ^manage/?$                       Manage.dc.html          [L,QSA]
   RewriteRule ^terms/?$                        Terms.dc.html           [L]
   RewriteRule ^privacy/?$                      Privacy.dc.html         [L]
   RewriteRule ^attractions/?$                  Attractions.dc.html     [L]
@@ -47,7 +46,6 @@ ErrorDocument 404 /404.html
   RewriteRule ^Attractions\.dc\.html$   /attractions [L,R=301]
   RewriteRule ^Gallery\.dc\.html$       /gallery     [L,R=301]
   RewriteRule ^Contact\.dc\.html$       /contact     [L,R=301]
-  RewriteRule ^Manage\.dc\.html$        /manage      [L,R=301]
   RewriteRule ^Terms\.dc\.html$         /terms       [L,R=301]
   RewriteRule ^Privacy\.dc\.html$       /privacy     [L,R=301]
 </IfModule>

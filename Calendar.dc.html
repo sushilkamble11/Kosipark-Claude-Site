@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <base href="/">
-<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png?v=20260909">
-<link rel="icon" type="image/png" sizes="192x192" href="/assets/favicon-192.png?v=20260909">
-<link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png?v=20260909">
+<link rel="icon" type="image/svg+xml" href="/assets/kosipark-favicon-skier.svg?v=20260910">
+<link rel="apple-touch-icon" href="/assets/kosipark-logo.png">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/booking-config.js"></script>
 <script src="/vendor-map.js"></script>
 <script src="./support.js"></script>
 <script src="/site.js" defer></script>
@@ -26,7 +26,7 @@
 </helmet>
 
 <div style="background:#FCFAF6; color:#292724; font-family:Figtree, system-ui, sans-serif; min-height:100vh">
-  <dc-import name="SiteNav" active="stay" book-href="/book" sticky-book-bar="{{ false }}" hint-size="100%,84px"></dc-import>
+  <dc-import name="SiteNav" active="availability" book-href="/#book" sticky-book-bar="{{ false }}" hint-size="100%,84px"></dc-import>
 
   <section data-screen-label="Calendar" style="max-width:1320px; margin:0 auto; padding:clamp(26px,3.6vw,50px) clamp(20px,5vw,56px) clamp(38px,5.2vw,70px)">
     <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#74836A; margin:0">Availability &amp; rates</p>
@@ -106,7 +106,7 @@
       <span style="display:flex; flex-wrap:wrap; gap:8px; align-items:center">
         <span style="{{ blockStyle }}">{{ blockText }}</span>
         <button type="button" onClick="{{ clear }}" style="border:1px solid rgba(237,228,212,0.35); background:transparent; color:#EDE4D4; font:600 12px/1 Figtree, sans-serif; letter-spacing:.08em; text-transform:uppercase; padding:15px 18px; border-radius:999px; cursor:pointer">Clear</button>
-        <button type="button" onClick="{{ book }}" style="border:0; background:#96592A; color:#FCFAF6; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:16px 24px; border-radius:999px; cursor:pointer; white-space:nowrap">Check this stay</button>
+        <button type="button" onClick="{{ book }}" style="border:0; background:#96592A; color:#FCFAF6; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:16px 24px; border-radius:999px; cursor:pointer; white-space:nowrap">Continue to secure booking</button>
       </span>
     </div>
 
@@ -370,12 +370,13 @@ class Component extends DCLogic {
       next: () => { if (s.offset < 11) this.setState({ offset: s.offset + 1 }, () => this.load()); },
       prevStyle: "width:42px; height:42px; border-radius:999px; border:1px solid rgba(29,55,48,0.16); background:transparent; font:400 17px/1 Figtree, sans-serif; cursor:" +
         (s.offset > 0 ? "pointer" : "not-allowed") + "; color:" + (s.offset > 0 ? "#1D3730" : "#C7C3B9"),
-      barStyle: (s.from ? "" : "display:none; ") +
-        "position:sticky; z-index:195; bottom:14px; margin-top:22px; max-width:920px; display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between; background:#1D3730; border-radius:14px; padding:18px 20px; box-shadow:0 22px 44px -26px rgba(18,39,32,0.6); animation:riseIn .2s ease both",
+      barStyle: s.from
+        ? "position:sticky; z-index:195; bottom:14px; margin-top:22px; max-width:920px; display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between; background:#1D3730; border-radius:14px; padding:18px 20px; box-shadow:0 22px 44px -26px rgba(18,39,32,0.6); animation:riseIn .2s ease both"
+        : "display:none",
       selectionEyebrow: label ? label.label : "Selected",
       selectionText: s.from && s.to
         ? fmt(s.from) + " → " + fmt(s.to) + " · " + nights + (nights === 1 ? " night" : " nights")
-        : "Arriving " + fmt(s.from),
+        : (s.from ? "Arriving " + fmt(s.from) : ""),
       selectionNote: s.from && s.to
         ? (total ? "About $" + Math.round(total) + " for the stay, before extras" : "Rates confirmed at the next step")
         : "Now pick your check-out date",
@@ -396,8 +397,24 @@ class Component extends DCLogic {
         if (!s.from) return;
         if (s.to && nights < minStay) { this.setState({ to: "" }); return; }
         const out = s.to || (() => { const d = new Date(s.from); d.setDate(d.getDate() + 2); return Component.iso(d); })();
-        const q = new URLSearchParams({ arrival: s.from, departure: out, adults: "2", children: "0", infants: "0", room: s.slug });
-        window.location.href = "/book?" + q.toString();
+        const bookingBase = window.KOSIPARK_V2 && window.KOSIPARK_V2.secureBookingUrl;
+        if (!bookingBase) {
+          this.setState({
+            explain: {
+              date: "Secure Online Booking",
+              title: "The booking link is ready to connect",
+              detail: "GuestPoint has not supplied Kosipark's hosted booking address yet. Your selected dates remain here; please call reception on 02 6456 2224 for booking assistance.",
+              fixes: []
+            }
+          });
+          return;
+        }
+        const url = new URL(bookingBase, window.location.href);
+        url.searchParams.set("startDate", s.from);
+        url.searchParams.set("numAdults", "2");
+        url.searchParams.set("numChildren", "0");
+        url.searchParams.set("numNights", String(Math.max(1, Math.round((new Date(out) - new Date(s.from)) / 86400000))));
+        window.location.href = url.toString();
       }
     };
   }

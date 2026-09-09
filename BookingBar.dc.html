@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/booking-config.js"></script>
 <script src="/vendor-map.js"></script>
 <script src="./support.js"></script>
 </head>
@@ -96,7 +97,7 @@
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1100,&quot;height&quot;:420},&quot;maxGuests&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:8,&quot;min&quot;:2,&quot;max&quot;:16,&quot;tsType&quot;:&quot;number&quot;},&quot;allowPets&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;compact&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
 class Component extends DCLogic {
-  state = { checkIn: this.props.initialArrival || "", checkOut: this.props.initialDeparture || "", adults: this.props.initialAdults || 2, children: this.props.initialChildren || 0, infants: this.props.initialInfants || 0, pets: 0, openField: null, monthOffset: 0, guestsOpen: false, searched: false, w: typeof window !== "undefined" ? window.innerWidth : 1200, cw: 1200 };
+  state = { checkIn: this.props.initialArrival || "", checkOut: this.props.initialDeparture || "", adults: this.props.initialAdults || 2, children: this.props.initialChildren || 0, infants: this.props.initialInfants || 0, pets: 0, openField: null, monthOffset: 0, guestsOpen: false, searched: false, bookingLinkMissing: false, w: typeof window !== "undefined" ? window.innerWidth : 1200, cw: 1200 };
   uid = "bb-" + Math.random().toString(36).slice(2, 8);
 
   el() { return document.querySelector('[data-booking="' + this.uid + '"]'); }
@@ -228,9 +229,11 @@ class Component extends DCLogic {
     const months = narrow ? [this.buildMonth(base)] : [this.buildMonth(base), this.buildMonth(new Date(base.getFullYear(), base.getMonth() + 1, 1))];
 
     let resultText = "";
-    if (s.searched) {
+    if (s.bookingLinkMissing) {
+      resultText = "Secure Online Booking is ready to connect as soon as GuestPoint supplies the Kosipark booking link.";
+    } else if (s.searched) {
       if (!s.checkIn || !s.checkOut) resultText = "Add your check-in and check-out dates to see live availability.";
-      else resultText = n + (n === 1 ? " night" : " nights") + " for " + label + " — chalets, cabins, powered and unpowered sites available. Reception confirms by email or on 02 6456 2224.";
+      else resultText = n + (n === 1 ? " night" : " nights") + " for " + label + ".";
     }
 
     return {
@@ -262,20 +265,25 @@ class Component extends DCLogic {
         toggle: () => this.setState(p => ({ guestsOpen: !p.guestsOpen, openField: null }))
       },
       submit: () => {
-        this.setState({ searched: true, guestsOpen: false, openField: null });
+        this.setState({ searched: true, bookingLinkMissing: false, guestsOpen: false, openField: null });
         if (typeof this.props.onSubmit === "function") {
           this.props.onSubmit({ checkIn: s.checkIn, checkOut: s.checkOut, nights: n, adults: s.adults, children: s.children, infants: s.infants, guestLabel: label });
           return;
         }
         if (!s.checkIn || !s.checkOut) return;
-        const p = new URLSearchParams({
-          arrival: s.checkIn, departure: s.checkOut,
-          adults: String(s.adults), children: String(s.children), infants: String(s.infants)
-        });
-        if (this.props.room) p.set("room", this.props.room);
-        window.location.href = (this.props.action || "/book") + "?" + p.toString();
+        const bookingBase = window.KOSIPARK_V2 && window.KOSIPARK_V2.secureBookingUrl;
+        if (!bookingBase) {
+          this.setState({ bookingLinkMissing: true });
+          return;
+        }
+        const url = new URL(bookingBase, window.location.href);
+        url.searchParams.set("startDate", s.checkIn);
+        url.searchParams.set("numAdults", String(s.adults));
+        url.searchParams.set("numChildren", String(s.children + s.infants));
+        url.searchParams.set("numNights", String(n));
+        window.location.href = url.toString();
       },
-      submitLabel: this.props.submitLabel || "Check Availability",
+      submitLabel: this.props.submitLabel || "Search & Book Online",
       // Sized to its label on a wide bar, full width once the fields stack.
       // It used to take a fixed quarter of the row, which on desktop made a
       // brown slab wider than the check-in and check-out fields put together.
@@ -284,7 +292,7 @@ class Component extends DCLogic {
         "letter-spacing:.12em; text-transform:uppercase; padding:16px 30px; white-space:nowrap; " +
         (box < 560 ? "flex:1 1 100%; min-width:0" : box < 760 ? "flex:1 1 205px; min-width:0" : "flex:0 0 auto"),
       resultText,
-      resultStyle: (s.searched && !this.props.onSubmit)
+      resultStyle: ((s.searched || s.bookingLinkMissing) && !this.props.onSubmit)
         ? "margin:12px 8px 4px; font:500 13.5px/1.5 Figtree, sans-serif; color:#4C5C40; animation:riseIn .2s ease both"
         : "display:none"
     };

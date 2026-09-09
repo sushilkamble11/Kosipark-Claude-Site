@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Kosciuszko Tourist Park</title>
+  <desc id="desc">A sunrise over layered mountains and a flowing alpine creek.</desc>
+  <style>
+    .sun {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: sunrise 8s cubic-bezier(.4, 0, .2, 1) infinite;
+    }
+    .creek {
+      stroke-dasharray: 18 7;
+      animation: creek-flow 8s linear infinite;
+    }
+    .creek-soft { animation-delay: -.35s; }
+    @keyframes sunrise {
+      0%, 10%, 100% { transform: translateY(3px) scale(.84); opacity: .72; }
+      28%, 72% { transform: translateY(0) scale(1); opacity: 1; }
+    }
+    @keyframes creek-flow {
+      0%, 10% { stroke-dashoffset: 0; }
+      72%, 100% { stroke-dashoffset: -25; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .sun, .creek { animation: none; }
+    }
+  </style>
+  <rect width="64" height="64" rx="15" fill="#193D34"/>
+  <circle class="sun" cx="46" cy="16" r="6" fill="#C97836"/>
+  <path d="M7 42 25.5 17 35 29.5 42 21l15 21H7Z" fill="#F8F4EA"/>
+  <path d="m7 42 18.5-25L35 29.5l-4.5 5.8-6.3-7.2L14.5 42H7Z" fill="#ADC3AE"/>
+  <path d="m31 34.9 4-5.4 7-8.5 15 21H43.7L37 34.1l-3.5 4.3-2.5-3.5Z" fill="#78957B"/>
+  <path class="creek" d="M9 47c8-3 15-3 23 0s15 3 23 0" fill="none" stroke="#C97836" stroke-width="3" stroke-linecap="round"/>
+  <path class="creek creek-soft" d="M15 53c6-1.8 11-1.8 17 0s11 1.8 17 0" fill="none" stroke="#F8F4EA" stroke-width="2.5" stroke-linecap="round" opacity=".9"/>
+</svg>

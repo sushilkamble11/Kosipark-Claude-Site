@@ -60,49 +60,7 @@
           <span style="{{ weatherPlaceStyle }}">{{ weatherPlace }}</span>
         </div>
         <a href="tel:0264562224" style="{{ phoneStyle }}">02 6456 2224</a>
-        <div data-cart="1" style="{{ cartWrapStyle }}">
-          <button type="button" onClick="{{ toggleCart }}" aria-label="Your booking" style="{{ cartBtnStyle }}">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M4 6h2.2l2.2 9.4a1.6 1.6 0 0 0 1.6 1.2h7.3a1.6 1.6 0 0 0 1.6-1.2L20.5 9H7"></path>
-              <circle cx="10.2" cy="20" r="1.2"></circle>
-              <circle cx="17.6" cy="20" r="1.2"></circle>
-            </svg>
-            <span style="{{ cartLabelStyle }}">{{ cartLabel }}</span>
-            <span style="{{ cartBadgeStyle }}">{{ cartCount }}</span>
-          </button>
-          <sc-if value="{{ cartOpen }}" hint-placeholder-val="{{ false }}">
-            <div style="position:absolute; z-index:220; top:calc(100% + 12px); right:0; width:min(92vw, 330px); background:#FCFAF6; border:1px solid rgba(29,55,48,0.12); border-radius:16px; box-shadow:0 30px 60px -22px rgba(18,39,32,0.45); padding:16px; animation:riseIn .18s ease both">
-              <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px">
-                <p style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A; margin:0">Your booking</p>
-                <p style="{{ cartTimerStyle }}">{{ cartTimer }}</p>
-              </div>
-              <sc-if value="{{ cartEmpty }}" hint-placeholder-val="{{ true }}">
-                <p style="font:400 13.5px/1.6 Figtree, sans-serif; color:#6C6862; margin:12px 0 0">Nothing selected yet. Pick your nights on any cabin, chalet or site and they'll show up here.</p>
-              </sc-if>
-              <sc-if value="{{ cartHasItems }}" hint-placeholder-val="{{ false }}">
-                <div style="display:grid; gap:8px; margin-top:12px">
-                  <sc-for list="{{ cartItems }}" as="ci" hint-placeholder-count="1">
-                    <div style="background:#F3ECE0; border-radius:11px; padding:12px 14px">
-                      <div style="display:flex; gap:10px; align-items:baseline; justify-content:space-between">
-                        <span style="font:500 13.5px/1.3 Figtree, sans-serif; color:#1D3730">{{ ci.name }}</span>
-                        <span style="font:500 13px/1.3 Figtree, sans-serif; color:#292724; white-space:nowrap">{{ ci.total }}</span>
-                      </div>
-                      <p style="font:400 12px/1.5 Figtree, sans-serif; color:#6C6862; margin:5px 0 0">{{ ci.detail }}</p>
-                    </div>
-                  </sc-for>
-                </div>
-                <div style="display:flex; gap:14px; justify-content:space-between; align-items:baseline; margin-top:12px; padding-top:10px; border-top:1px solid rgba(29,55,48,0.1)">
-                  <span style="font:500 13px/1 Figtree, sans-serif; color:#8B877E">Accommodation</span>
-                  <span style="font:400 18px/1 Petrona, Georgia, serif; color:#1D3730">{{ cartSum }}</span>
-                </div>
-              </sc-if>
-              <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:14px">
-                <a href="/book/checkout" style="{{ cartCheckoutStyle }}">Checkout</a>
-                <a href="/#book" onClick="{{ closeCart }}" style="border:1px solid rgba(29,55,48,0.18); color:#1D3730; font:600 12px/1 Figtree, sans-serif; letter-spacing:.06em; padding:15px 18px; border-radius:999px">Add another</a>
-              </div>
-            </div>
-          </sc-if>
-        </div>
+        <a href="{{ bookHref }}" style="display:flex;align-items:center;border-radius:999px;background:#1D3730;color:#FCFAF6;padding:14px 20px;text-decoration:none;font:700 11.5px/1 Figtree,sans-serif;letter-spacing:.09em;text-transform:uppercase;white-space:nowrap">Book online</a>
         <button type="button" onClick="{{ toggleMenu }}" style="{{ menuBtnStyle }}" aria-label="Menu">
           <span style="display:block; width:18px; height:1.5px; background:#1D3730"></span>
           <span style="display:block; width:18px; height:1.5px; background:#1D3730"></span>
@@ -132,9 +90,9 @@
 </div>
 
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1200,&quot;height&quot;:200},&quot;active&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;home&quot;,&quot;stay&quot;,&quot;do&quot;,&quot;gallery&quot;,&quot;contact&quot;],&quot;default&quot;:&quot;home&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;bookHref&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;/accommodation#book&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;stickyBookBar&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;liveWeather&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Weather&quot;},&quot;temperature&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:4,&quot;min&quot;:-20,&quot;max&quot;:45,&quot;unit&quot;:&quot;°C&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Weather&quot;},&quot;weather&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;sun&quot;,&quot;cloud&quot;,&quot;rain&quot;,&quot;snow&quot;],&quot;default&quot;:&quot;sun&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Weather&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1200,&quot;height&quot;:200},&quot;active&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;home&quot;,&quot;stay&quot;,&quot;availability&quot;,&quot;do&quot;,&quot;gallery&quot;,&quot;contact&quot;],&quot;default&quot;:&quot;home&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;bookHref&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;/#book&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;stickyBookBar&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;liveWeather&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Weather&quot;},&quot;temperature&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:4,&quot;min&quot;:-20,&quot;max&quot;:45,&quot;unit&quot;:&quot;°C&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Weather&quot;},&quot;weather&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;sun&quot;,&quot;cloud&quot;,&quot;rain&quot;,&quot;snow&quot;],&quot;default&quot;:&quot;sun&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Weather&quot;}}">
 class Component extends DCLogic {
-  state = { menuOpen: false, w: typeof window !== "undefined" ? window.innerWidth : 1200, barH: 76, liveTemp: null, liveCond: null, liveAt: 0, cartOpen: false, cart: [], cartMs: 0 };
+  state = { menuOpen: false, w: typeof window !== "undefined" ? window.innerWidth : 1200, barH: 76, liveTemp: null, liveCond: null, liveAt: 0 };
 
   /** Fallback only: real sunrise/sunset when we have them, a conservative window otherwise. */
   static daylightFrom(daily) {
@@ -244,34 +202,17 @@ class Component extends DCLogic {
     setTimeout(() => this.measure(), 300);
     this.loadWeather();
     this._wt = setInterval(() => this.loadWeather(), 900000);
-    import("./guestpoint.js").then(gp => {
-      this.gp = gp;
-      const sync = () => this.setState({ cart: gp.readCart(), cartMs: gp.cartExpiresIn() });
-      sync();
-      this._ct = setInterval(sync, 1000);
-      window.addEventListener("storage", sync);
-      this._sync = sync;
-    }).catch(() => {});
-    this._onDocDown = e => {
-      if (this.state.cartOpen && (!e.target.closest || !e.target.closest("[data-cart]"))) this.setState({ cartOpen: false });
-    };
-    document.addEventListener("mousedown", this._onDocDown);
   }
   componentDidUpdate() { this.measure(); }
   componentWillUnmount() {
     window.removeEventListener("resize", this._onResize);
-    document.removeEventListener("mousedown", this._onDocDown);
-    if (this._sync) window.removeEventListener("storage", this._sync);
     clearInterval(this._wt);
-    clearInterval(this._ct);
   }
 
   renderVals() {
     const w = this.state.w;
     const narrow = w < 1180;
     const s = this.state;
-    const cart = s.cart || [];
-    const fmtShort = v => { const p = (v || "").split("-"); return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString("en-AU", { day: "numeric", month: "short" }); };
     // The pill used to fall back to a sun and 4°C whenever the reading hadn't
     // landed — which is every first paint, and forever if the call fails. That
     // is how a bright sun ended up over Sawpit Creek at two in the morning.
@@ -282,17 +223,13 @@ class Component extends DCLogic {
     const temp = canvas ? (this.props.temperature ?? 4) : s.liveTemp;
     const haveWeather = cond != null && temp != null;
     const active = this.props.active || "home";
-    // Checkout renders its own, fuller booking summary; the floating panel
-    // would sit on top of it.
-    const onCheckout = typeof window !== "undefined" &&
-      /^\/book\/checkout\/?$/.test(window.location.pathname);
     const defs = [
       { key: "home", label: "Home", href: "/" },
       { key: "stay", label: "Accommodation", href: "/accommodation" },
+      { key: "availability", label: "Availability", href: "/availability" },
       { key: "do", label: "Attractions", href: "/attractions" },
       { key: "gallery", label: "Gallery", href: "/gallery" },
-      { key: "contact", label: "Contact & Map", href: "/contact" },
-      { key: "manage", label: "Manage booking", href: "/manage" }
+      { key: "contact", label: "Contact & Map", href: "/contact" }
     ];
     return {
       links: defs.map(d => ({
@@ -301,7 +238,7 @@ class Component extends DCLogic {
         style: "font:500 13.5px/1 Figtree, sans-serif; letter-spacing:.01em; white-space:nowrap; padding-bottom:4px; " +
           (d.key === active ? "color:#1D3730; border-bottom:1.5px solid #96592A" : "color:#56534C; border-bottom:1.5px solid transparent")
       })),
-      // A compact temperature + icon fits beside the cart on normal phones;
+      // A compact temperature + icon fits beside the booking link on normal phones;
       // only the 320px edge case drops it. The place label still disappears
       // first, so the header never crowds or wraps.
       weatherStyle: (!haveWeather || w < 360)
@@ -317,50 +254,6 @@ class Component extends DCLogic {
         ? "Live conditions at Sawpit Creek, Kosciuszko National Park" +
           (s.liveAt ? " — read " + new Date(s.liveAt).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" }) : "")
         : "",
-      // On checkout the page already shows the booking summary, in more detail.
-      // The floating panel landed on top of it — two "Your booking" boxes with
-      // different totals, overlapping. One summary per screen.
-      cartOpen: s.cartOpen && !onCheckout,
-      showCart: !onCheckout,
-      cartWrapStyle: onCheckout ? "display:none" : "position:relative; flex:0 0 auto",
-      toggleCart: () => this.setState(x => ({ cartOpen: !x.cartOpen, menuOpen: false })),
-      closeCart: () => this.setState({ cartOpen: false }),
-      cartCount: String(cart.length),
-      // Never "held": nothing is reserved until payment goes through, and the
-      // checkout page says exactly that two inches below. Claiming a hold here
-      // contradicted it on the same screen.
-      cartLabel: cart.length ? (cart.length === 1 ? "1 stay" : cart.length + " stays") : "Book now",
-      cartLabelStyle: w < 620 ? "display:none" : "font:600 12.5px/1 Figtree, sans-serif; letter-spacing:.06em; white-space:nowrap",
-      cartBtnStyle: "display:flex; align-items:center; gap:9px; border:0; cursor:pointer; padding:" +
-        (w < 620 ? "13px 15px" : "13px 20px") + "; border-radius:999px; white-space:nowrap; background:" +
-        (cart.length ? "#96592A" : "#1D3730") + "; color:#FCFAF6",
-      cartBadgeStyle: cart.length
-        ? "min-width:20px; height:20px; display:flex; align-items:center; justify-content:center; border-radius:999px; background:#FCFAF6; color:#96592A; font:700 11px/1 Figtree, sans-serif; padding:0 5px"
-        : "display:none",
-      cartEmpty: cart.length === 0,
-      cartHasItems: cart.length > 0,
-      cartItems: cart.map(i => ({
-        name: i.name,
-        total: "$" + Math.round(Number(i.total) || 0),
-        detail: fmtShort(i.arrival) + " → " + fmtShort(i.departure) + " · " + (i.nights || 1) + ((i.nights || 1) === 1 ? " night" : " nights")
-      })),
-      // "Total" here read as the amount payable, but it is accommodation only —
-      // checkout's total adds extras, so the two disagreed on the same screen.
-      cartSum: "$" + cart.reduce((sum, i) => sum + (Number(i.total) || 0), 0),
-      // Two countdowns on one screen, meaning different things, was the real
-      // confusion: this one is just how long the browser remembers the
-      // selection, while checkout's is how long the quoted price holds. This
-      // one now stays quiet until it actually matters — under two minutes —
-      // and says what it does rather than implying a reservation.
-      cartTimer: cart.length && s.cartMs > 0 && s.cartMs < 120000
-        ? "Clears in " + Math.floor(s.cartMs / 60000) + ":" + String(Math.floor((s.cartMs % 60000) / 1000)).padStart(2, "0")
-        : "",
-      cartTimerStyle: (cart.length && s.cartMs > 0 && s.cartMs < 120000)
-        ? "font:600 10px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; color:#96592A; margin:0"
-        : "display:none",
-      cartCheckoutStyle: cart.length
-        ? "background:#1D3730; color:#FCFAF6; font:700 12px/1 Figtree, sans-serif; letter-spacing:.08em; text-transform:uppercase; padding:16px 22px; border-radius:999px"
-        : "display:none",
       isSun: cond === "sun",
       isNight: cond === "night",
       isSnow: cond === "snow",
@@ -369,7 +262,7 @@ class Component extends DCLogic {
       tempLabel: haveWeather ? Math.round(temp) + "°C" : "",
       headerRef: this.headerRef,
       spacerStyle: "height:" + this.state.barH + "px",
-      bookHref: this.props.bookHref || "/accommodation#book",
+      bookHref: this.props.bookHref || "/#book",
       menuOpen: this.state.menuOpen,
       toggleMenu: () => this.setState(p => ({ menuOpen: !p.menuOpen })),
       closeMenu: () => this.setState({ menuOpen: false }),

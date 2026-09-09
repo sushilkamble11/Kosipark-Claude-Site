@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <base href="/">
-<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png?v=20260909">
-<link rel="icon" type="image/png" sizes="192x192" href="/assets/favicon-192.png?v=20260909">
-<link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png?v=20260909">
+<link rel="icon" type="image/svg+xml" href="/assets/kosipark-favicon-skier.svg?v=20260910">
+<link rel="apple-touch-icon" href="/assets/kosipark-logo.png">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kosciusko Tourist Park | Stay in Kosciuszko National Park</title>
 <meta name="description" content="Stay at Sawpit Creek in Kosciuszko National Park, with Heritage Chalets, Cedar Cabins, powered sites and unpowered camping near the Snowy Mountains.">
+<script src="/booking-config.js"></script>
 <script src="/vendor-map.js"></script>
 <script src="./support.js"></script>
 <script src="/site.js" defer></script>
@@ -27,32 +27,33 @@
   a { color: #1D3730; text-decoration: none; }
   a:hover { color: #96592A; }
   @keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-  @keyframes markBreathe { 0%,100% { transform:scale(.92); opacity:.62 } 50% { transform:scale(1); opacity:1 } }
-  @keyframes loaderLeave { to { opacity:0; visibility:hidden; pointer-events:none } }
 
-  .site-arrival { position:fixed; inset:0; z-index:9999; display:grid; place-items:center; background:#FCFAF6; animation:loaderLeave .42s ease 1.05s forwards; }
-  .site-arrival::after { content:""; position:absolute; width:88px; height:1px; background:#96592A; transform-origin:left; animation:riseIn .7s ease both; }
-  .site-arrival img { width:74px; height:74px; object-fit:contain; animation:markBreathe 1s ease-in-out infinite; }
-
+  /* The homepage's first screen is intentionally bounded. A vh-only hero
+     became a large empty wall on tall and retina desktop displays, while its
+     overlapping search panel could climb into the copy. */
   .home-hero {
     position: relative;
     z-index: 30;
-    min-height: clamp(570px, 68vh, 650px);
-    display: grid;
-    grid-template-columns: minmax(390px, .86fr) minmax(0, 1.14fr);
-    grid-template-areas: "copy media";
-    background:#1D3730;
+    min-height: clamp(560px, 68vh, 660px);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
     overflow: hidden;
   }
-  .home-hero-media { grid-area:media; position:relative; min-width:0; color:transparent; overflow:hidden; }
-  .home-hero-shade { display:none; }
+  .home-hero-media,
+  .home-hero-shade { position: absolute; inset: 0; }
+  .home-hero-media { color: transparent; }
+  .home-hero-shade {
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(18,39,32,.46) 0%, rgba(18,39,32,.13) 34%, rgba(18,39,32,.88) 100%);
+  }
   .home-hero-copy {
-    grid-area:copy;
-    position:relative;
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-    padding:clamp(54px,7vw,94px) clamp(32px,6vw,92px);
+    position: relative;
+    width: 100%;
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: clamp(86px, 10vh, 112px) clamp(20px, 5vw, 56px) 118px;
+    pointer-events: none;
   }
   .home-hero-eyebrow {
     font: 600 11px/1 Figtree, sans-serif;
@@ -62,12 +63,13 @@
     margin: 0 0 18px;
   }
   .home-hero-title {
-    font: 300 clamp(43px, 4.1vw, 63px)/1.02 Petrona, Georgia, serif;
+    font: 300 clamp(40px, 4.3vw, 64px)/1.02 Petrona, Georgia, serif;
     letter-spacing: -.02em;
     color: #FCFAF6;
     margin: 0;
     max-width: 15ch;
     text-wrap: balance;
+    text-shadow: 0 2px 30px rgba(18,39,32,.35);
   }
   .home-hero-lede {
     font: 400 clamp(15px, 1.35vw, 17.5px)/1.65 Figtree, sans-serif;
@@ -80,16 +82,13 @@
     z-index: 40;
     width: 100%;
     max-width: 1240px;
-    margin: 0 auto;
-    padding: 18px clamp(14px, 4vw, 44px);
+    margin: -52px auto 0;
+    padding: 0 clamp(14px, 4vw, 44px);
   }
   .home-hero-photo {
-    position:absolute;
-    inset:0;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: 72% 34%;
     display: block;
   }
   .home-highlight-grid {
@@ -127,18 +126,18 @@
   }
 
   @media (max-width: 1100px) {
-    .home-hero { grid-template-columns:minmax(340px,.92fr) minmax(0,1.08fr); min-height:560px; }
-    .home-hero-copy { padding:52px clamp(28px,5vw,58px); }
+    .home-hero { min-height: clamp(540px, 64vh, 620px); }
+    .home-hero-copy { padding-bottom: 104px; }
+    .home-booking { margin-top: -42px; }
   }
 
   @media (max-width: 699px) {
-    .home-hero { min-height:0; display:grid; grid-template-columns:1fr; grid-template-rows:clamp(330px,44svh,430px) auto; grid-template-areas:"media" "copy"; }
-    .home-hero-photo { object-position: 73% 42%; }
-    .home-hero-copy { padding:42px 20px 36px; }
+    .home-hero { min-height: clamp(520px, 72svh, 620px); }
+    .home-hero-copy { padding: 76px 20px 76px; }
     .home-hero-eyebrow { font-size: 9.5px; line-height: 1.45; letter-spacing: .2em; margin-bottom: 14px; }
     .home-hero-title { font-size: clamp(35px, 10.5vw, 46px); line-height: 1.04; max-width: 13ch; }
     .home-hero-lede { font-size: 15px; line-height: 1.58; margin-top: 18px; max-width: 38ch; }
-    .home-booking { padding:12px; background:#1D3730; }
+    .home-booking { margin-top: -24px; padding: 0 12px; }
     .home-highlight-grid { grid-template-columns: 1fr; }
     .home-highlight--wide,
     .home-highlight--tall,
@@ -156,13 +155,10 @@
     .home-hero-copy { padding-left: 16px; padding-right: 16px; }
     .home-hero-title { font-size: 34px; }
   }
-  @media (prefers-reduced-motion: reduce) { .site-arrival { display:none; } }
 </style>
 </helmet>
 
 <div style="background:#FCFAF6; color:#292724; font-family:Figtree, system-ui, sans-serif">
-
-  <div class="site-arrival" aria-hidden="true"><img src="/assets/favicon-192.png?v=20260909" alt="" /></div>
 
   <template id="__bundler_thumbnail">
     <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
@@ -175,7 +171,7 @@
 
   <section id="top" class="home-hero" data-screen-label="Hero">
     <div class="home-hero-media">
-      <img src="/assets/attractions/snowboarder-winter-v1.jpg" alt="A snowboarder in the Snowy Mountains" fetchpriority="high" class="home-hero-photo" />
+      <img src="/assets/attractions/snowboarder-winter-v1.jpg" alt="A snowboarder in the Snowy Mountains" fetchpriority="high" class="home-hero-photo" style="object-position:center 48%" />
     </div>
     <div class="home-hero-shade"></div>
 
