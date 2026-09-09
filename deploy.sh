@@ -7,7 +7,7 @@ cd "$(dirname "$0")"
 REMOTE="https://github.com/sushilkamble11/Kosipark-Claude-Site.git"
 MSG="${1:-Publish Kosipark V2}"
 
-if grep -q 'coachmans-eden\.bookus\.direct' public_html/booking-config.js; then
+if grep -Eq 'secureBookingUrl:[[:space:]]*"https://coachmans-eden\.bookus\.direct' public_html/booking-config.js; then
   echo "Refusing to publish: replace the temporary demonstration booking URL first."
   exit 1
 fi
@@ -30,4 +30,3 @@ fi
 NEW="$(git commit-tree "$TREE" -p "$PARENT" -m "$MSG")"
 git push -q origin "$NEW:refs/heads/deploy"
 echo "Published. Hostinger will pull the update through its existing webhook."
-
