@@ -12,6 +12,7 @@ const bookingConfig = read("public_html/booking-config.js");
 const home = read("public_html/Kosipark.dc.html");
 const accommodation = read("public_html/Accommodation.dc.html");
 const room = read("public_html/Room.dc.html");
+const contact = read("public_html/Contact.dc.html");
 
 assert.match(bookingBar, /startDate/);
 assert.match(bookingBar, /numAdults/);
@@ -33,5 +34,7 @@ assert.match(home, /kosipark-favicon-skier\.svg\?v=20260910/);
 assert.match(home, /src="\/booking-config\.js"/);
 assert.match(accommodation, /src="\/booking-config\.js"/);
 assert.match(room, /src="\/booking-config\.js"/);
+assert.match(contact, /\/assets\/park-map-2026\.jpg/);
+assert.doesNotMatch(contact, /park-map-2026\.(pdf|preview\.jpg)/);
 
 console.log("Kosipark V2 booking-boundary checks passed.");
