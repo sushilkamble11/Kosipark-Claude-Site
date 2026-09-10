@@ -45,6 +45,10 @@ assert.match(home, /snowboarder-winter-v1\.jpg/);
 assert.match(home, /bike-chairlift-v1\.jpg/);
 assert.match(home, /campfire-evening-v1\.jpg/);
 assert.match(home, /two-bedroom-chalet\/exterior-snow\.jpg/);
+assert.match(home, /bushwalking\.jpg/);
+assert.match(home, /fly-fishing\.jpg/);
+assert.match(home, /mountain-bike-sunrise-v1\.jpg/);
+assert.match(home, /summit-walk\.jpg/);
 assert.match(home, /prefers-reduced-motion/);
 
 console.log("Kosipark V2 booking-boundary checks passed.");
