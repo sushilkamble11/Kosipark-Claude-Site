@@ -95,14 +95,16 @@
     display: block;
     opacity: 0;
     transform: scale(1.015);
-    animation: homeHeroCrossfade 24s ease-in-out infinite;
+    animation: homeHeroCrossfade 40s ease-in-out infinite;
   }
   .home-hero-photo:nth-child(1) { opacity: 1; animation-delay: 0s; }
   .home-hero-photo:nth-child(2) { animation-delay: 8s; }
   .home-hero-photo:nth-child(3) { animation-delay: 16s; }
+  .home-hero-photo:nth-child(4) { animation-delay: 24s; }
+  .home-hero-photo:nth-child(5) { animation-delay: 32s; }
   @keyframes homeHeroCrossfade {
-    0%, 27% { opacity: 1; transform: scale(1.015); }
-    35%, 92% { opacity: 0; transform: scale(1.045); }
+    0%, 16% { opacity: 1; transform: scale(1.015); }
+    20%, 96% { opacity: 0; transform: scale(1.045); }
     100% { opacity: 1; transform: scale(1.015); }
   }
   .home-highlight-grid {
@@ -191,9 +193,11 @@
 
   <section id="top" class="home-hero" data-screen-label="Hero">
     <div class="home-hero-media">
-      <img src="/assets/attractions/snowboarder-winter-v1.jpg" alt="" fetchpriority="high" class="home-hero-photo" style="--hero-position:center 48%; --hero-position-mobile:64% 48%" />
+      <img src="/assets/attractions/perisher.jpg" alt="" fetchpriority="high" class="home-hero-photo" style="--hero-position:center 58%; --hero-position-mobile:68% 54%" />
+      <img src="/assets/attractions/snowboarder-winter-v1.jpg" alt="" decoding="async" class="home-hero-photo" style="--hero-position:center 48%; --hero-position-mobile:64% 48%" />
       <img src="/assets/attractions/bike-chairlift-v1.jpg" alt="" decoding="async" class="home-hero-photo" style="--hero-position:center 48%; --hero-position-mobile:55% 48%" />
-      <img src="/assets/property/cabins-panorama.jpg" alt="" decoding="async" class="home-hero-photo" style="--hero-position:center center; --hero-position-mobile:55% center" />
+      <img src="/assets/property/campfire-evening-v1.jpg" alt="" decoding="async" class="home-hero-photo" style="--hero-position:center center; --hero-position-mobile:62% center" />
+      <img src="/assets/accommodation/two-bedroom-chalet/exterior-snow.jpg" alt="" decoding="async" class="home-hero-photo" style="--hero-position:center 52%; --hero-position-mobile:54% center" />
     </div>
     <div class="home-hero-shade"></div>
 

@@ -40,8 +40,11 @@ assert.match(contact, /download="Kosciuszko-Tourist-Park-Map-2026\.jpg"/);
 assert.match(contact, /data-park-map-open/);
 assert.doesNotMatch(contact, /target="_blank"[^>]+park-map-2026/);
 assert.match(contact, /\.park-map-toggle:checked ~ \.park-map-dialog/);
+assert.match(home, /perisher\.jpg/);
+assert.match(home, /snowboarder-winter-v1\.jpg/);
 assert.match(home, /bike-chairlift-v1\.jpg/);
-assert.match(home, /cabins-panorama\.jpg/);
+assert.match(home, /campfire-evening-v1\.jpg/);
+assert.match(home, /two-bedroom-chalet\/exterior-snow\.jpg/);
 assert.match(home, /prefers-reduced-motion/);
 
 console.log("Kosipark V2 booking-boundary checks passed.");
