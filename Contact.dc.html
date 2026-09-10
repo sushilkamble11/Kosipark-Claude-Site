@@ -22,6 +22,72 @@
   * { box-sizing: border-box; }
   a { color: #1D3730; text-decoration: none; }
   a:hover { color: #96592A; }
+  .park-map-preview {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 14px;
+    overflow: hidden;
+    background: transparent;
+    box-shadow: 0 12px 34px rgba(29,55,48,.12);
+    cursor: zoom-in;
+  }
+  .park-map-preview img { display: block; width: 100%; height: auto; }
+  .park-map-preview:focus-visible { outline: 3px solid #96592A; outline-offset: 4px; }
+  .park-map-dialog {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: grid;
+    place-items: center;
+    padding: 16px;
+    background: rgba(8,20,16,.78);
+    backdrop-filter: blur(4px);
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s ease, visibility 0s linear .2s;
+  }
+  .park-map-toggle { position: fixed; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  .park-map-toggle:checked ~ .park-map-dialog { visibility: visible; opacity: 1; pointer-events: auto; transition-delay: 0s; }
+  .park-map-dialog__backdrop { position: absolute; inset: 0; cursor: zoom-out; }
+  .park-map-dialog__panel {
+    position: relative;
+    z-index: 1;
+    width: min(1120px, calc(100vw - 32px));
+    max-height: calc(100dvh - 32px);
+    border-radius: 16px;
+    overflow: hidden;
+    background: #FCFAF6;
+    box-shadow: 0 28px 90px rgba(8,20,16,.4);
+  }
+  .park-map-dialog__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 14px 12px 18px;
+    border-bottom: 1px solid rgba(29,55,48,.12);
+  }
+  .park-map-dialog__viewport { max-height: calc(100dvh - 96px); overflow: auto; background: #d8f3fb; }
+  .park-map-dialog__viewport img { display: block; width: 100%; height: auto; }
+  .park-map-dialog__close {
+    flex: 0 0 auto;
+    width: 42px;
+    height: 42px;
+    border: 1px solid rgba(29,55,48,.16);
+    border-radius: 999px;
+    background: #FCFAF6;
+    color: #1D3730;
+    font: 400 24px/1 Figtree, sans-serif;
+    cursor: pointer;
+  }
+  @media (max-width: 620px) {
+    .park-map-dialog { padding: 0; }
+    .park-map-dialog__panel { width: 100vw; max-height: 100dvh; border-radius: 0; }
+    .park-map-dialog__viewport { max-height: calc(100dvh - 67px); }
+  }
 </style>
 </helmet>
 
@@ -74,19 +140,33 @@
     </div>
   </section>
 
+  <input type="checkbox" id="park-map-toggle" class="park-map-toggle" aria-hidden="true" />
   <section id="park-map" data-screen-label="2026 Park Map" style="max-width:1320px; margin:0 auto; padding:clamp(34px,4.6vw,62px) clamp(20px,5vw,56px) 0">
     <div style="display:grid; gap:clamp(24px,4vw,56px); grid-template-columns:repeat(auto-fit, minmax(min(100%, 360px), 1fr)); align-items:center; background:#E9EEE3; border-radius:20px; padding:clamp(22px,4vw,48px); overflow:hidden">
       <div>
         <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#74836A; margin:0">2026 Park Map</p>
         <h2 style="font:300 clamp(26px,3.4vw,39px)/1.08 Petrona, Georgia, serif; letter-spacing:-0.015em; color:#1D3730; margin:12px 0 0; max-width:17ch">Find your cabin or site before you arrive</h2>
-        <p style="font:400 clamp(14px,1.4vw,16px)/1.75 Figtree, sans-serif; color:#56534C; margin:16px 0 0; max-width:48ch">See numbered accommodation sites, amenities blocks, the camp kitchen, reception, water points, fire pits and internal park roads. Open the full map for a closer look or save it to your phone before travelling.</p>
-        <a href="/assets/park-map-2026.pdf" target="_blank" rel="noopener" aria-label="Open the 2026 Kosciuszko Tourist Park map as a PDF" style="display:inline-block; margin-top:22px; background:#1D3730; color:#FCFAF6; font:700 12px/1 Figtree, sans-serif; letter-spacing:.11em; text-transform:uppercase; padding:17px 24px; border-radius:999px">View park map (PDF)</a>
+        <p style="font:400 clamp(14px,1.4vw,16px)/1.75 Figtree, sans-serif; color:#56534C; margin:16px 0 0; max-width:48ch">See numbered accommodation sites, amenities blocks, the camp kitchen, reception, water points, fire pits and internal park roads. Tap the map for a closer look, or download a full-size copy before travelling.</p>
+        <a href="/assets/park-map-2026.jpg" download="Kosciuszko-Tourist-Park-Map-2026.jpg" aria-label="Download the full-size 2026 Kosciuszko Tourist Park map" style="display:inline-block; margin-top:22px; background:#1D3730; color:#FCFAF6; font:700 12px/1 Figtree, sans-serif; letter-spacing:.11em; text-transform:uppercase; padding:17px 24px; border-radius:999px">Download full-size map</a>
       </div>
-      <a href="/assets/park-map-2026.pdf" target="_blank" rel="noopener" aria-label="Open the full 2026 Kosciuszko Tourist Park map" style="display:block; background:#FCFAF6; border-radius:14px; padding:clamp(8px,1.4vw,14px); box-shadow:0 12px 34px rgba(29,55,48,.12)">
-        <img src="/assets/park-map-2026-preview.jpg" alt="2026 Kosciuszko Tourist Park map showing numbered sites, facilities and internal roads" loading="lazy" style="display:block; width:100%; height:auto; border-radius:8px" />
-      </a>
+      <label for="park-map-toggle" class="park-map-preview" data-park-map-open role="button" tabindex="0" aria-haspopup="dialog" aria-controls="park-map-view" aria-label="Enlarge the 2026 Kosciuszko Tourist Park map on this page">
+        <img src="/assets/park-map-2026.jpg" alt="2026 Kosciuszko Tourist Park map showing numbered sites, facilities, park rules and internal roads" loading="lazy" />
+      </label>
     </div>
   </section>
+
+  <div id="park-map-view" class="park-map-dialog" role="dialog" aria-modal="true" aria-labelledby="park-map-dialog-title">
+    <label for="park-map-toggle" class="park-map-dialog__backdrop" aria-label="Close park map"></label>
+    <div class="park-map-dialog__panel">
+      <div class="park-map-dialog__bar">
+        <strong id="park-map-dialog-title" style="font:500 clamp(16px,2vw,20px)/1.25 Petrona, Georgia, serif; color:#1D3730">Kosciuszko Tourist Park map</strong>
+        <label for="park-map-toggle" class="park-map-dialog__close" data-park-map-close role="button" tabindex="0" aria-label="Close park map" style="display:grid; place-items:center">×</label>
+      </div>
+      <div class="park-map-dialog__viewport">
+        <img src="/assets/park-map-2026.jpg" alt="Full-size 2026 Kosciuszko Tourist Park map" />
+      </div>
+    </div>
+  </div>
 
   <section data-screen-label="Getting here" style="max-width:1320px; margin:0 auto; padding:clamp(34px,4.6vw,62px) clamp(20px,5vw,56px) clamp(38px,5.2vw,70px)">
     <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#74836A; margin:0">Getting Here</p>
