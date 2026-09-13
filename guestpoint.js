@@ -25,9 +25,10 @@
 function autoMock() {
   if (typeof window === "undefined") return true;
   if (typeof window.KOSIPARK_MOCK === "boolean") return window.KOSIPARK_MOCK;
-  const h = location.hostname;
-  return location.protocol === "file:" || h === "localhost" || h === "127.0.0.1" ||
-         h === "[::1]" || h.endsWith(".local") || h.endsWith(".test");
+  // The local preview server has the same private /api/gp bridge as production.
+  // It returns an explicit Unconfigured marker when no credentials are present,
+  // so localhost can try real data safely and still fall back to labelled samples.
+  return location.protocol === "file:";
 }
 
 export const CONFIG = {
@@ -65,7 +66,7 @@ const CACHE_TTL = {
 };
 
 const memory = new Map();
-const LS_PREFIX = "gp:";
+const LS_PREFIX = "gp:v2-restrictions:";
 
 function cacheGet(key, ttl) {
   const live = e => Date.now() - e.ts < (e.sample ? Math.min(ttl, SAMPLE_TTL) : ttl);
@@ -135,7 +136,10 @@ async function request(method, path, { params, body, cacheKind } = {}) {
 
   if (key && ttl) {
     const cached = cacheGet(key, ttl);
-    if (cached) return cached;
+    if (cached) {
+      noteDataSource(cached);
+      return cached;
+    }
   }
 
   if (CONFIG.mock) {
@@ -145,7 +149,7 @@ async function request(method, path, { params, body, cacheKind } = {}) {
     return mocked;
   }
 
-  if (notConfigured) {                     // already learned there are no credentials
+  if (notConfigured && mayUseSamples()) { // local preview already learned there are no credentials
     const mocked = await mockResponse(method, path, params, body);
     if (key && ttl) cacheSet(key, mocked);
     return mocked;
@@ -172,10 +176,15 @@ async function request(method, path, { params, body, cacheKind } = {}) {
       notConfigured = true;
       console.info("[guestpoint] booking service not configured yet — showing sample data");
     }
-    announceSample();
-    const mocked = await mockResponse(method, path, params, body);
-    if (key && ttl) cacheSet(key, mocked);
-    return mocked;
+    if (mayUseSamples()) {
+      announceSample();
+      const mocked = await mockResponse(method, path, params, body);
+      if (key && ttl) cacheSet(key, mocked);
+      return mocked;
+    }
+    const err = new Error("GuestPoint is not configured on this server.");
+    err.status = 503;
+    throw err;
   }
 
   if (!res.ok) {
@@ -186,6 +195,10 @@ async function request(method, path, { params, body, cacheKind } = {}) {
   }
 
   const data = payload && payload.data !== undefined ? payload.data : payload;
+  noteDataSource(data);
+  try {
+    window.dispatchEvent(new CustomEvent(snapshotMode ? "kosipark:snapshot-data" : "kosipark:live-data"));
+  } catch (e) {}
   if (key && ttl) cacheSet(key, data);
   return data;
 }
@@ -204,8 +217,19 @@ async function request(method, path, { params, body, cacheKind } = {}) {
  * the one thing this must never do.
  */
 let notConfigured = false;
+let snapshotMode = false;
 let announced = false;
 export function isUnconfigured() { return notConfigured || CONFIG.mock; }
+export function isSnapshot() { return snapshotMode; }
+
+function mayUseSamples() {
+  if (typeof window === "undefined") return true;
+  return CONFIG.mock || /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+}
+
+function noteDataSource(data) {
+  if (data && data.DataSource === "guestpoint-har-snapshot") snapshotMode = true;
+}
 
 function announceSample() {
   if (announced) return;
@@ -733,7 +757,7 @@ export function flattenAvailability(data) {
     // Availabilities carries one entry per night of the requested stay.
     const nights = Array.isArray(rt.Availabilities) ? rt.Availabilities : [];
     const counts = nights
-      .map(n => (typeof n.ForSale === "number" ? n.ForSale : null))
+      .map(n => (n.ForSale !== undefined && n.ForSale !== null && n.ForSale !== "" ? num(n.ForSale) : null))
       .filter(n => n !== null);
     // The stay can only be sold as many times as its tightest night allows.
     const roomsLeft = counts.length ? Math.min(...counts)
@@ -768,8 +792,8 @@ export function flattenAvailability(data) {
         sortOrder: typeof p.WebSortOrder === "number" ? p.WebSortOrder : 999,
         // Restrictions are per-date on the rate, not per room type.
         closed: rates.length ? rates.some(r => r.Closed === true) : false,
-        closedToArrival: first.ClosedToArrival === true,
-        closedToDeparture: last.ClosedToDeparture === true,
+        closedToArrival: first.ClosedToArrival === true || first.Cta === true || first.CTA === true,
+        closedToDeparture: last.ClosedToDeparture === true || last.Ctd === true || last.CTD === true,
         closedDueToCriteria: rates.some(r => r.ClosedDueToCriteria === true),
         minStayArrival: num(first.MinStayArrival) || 0
       };
@@ -975,7 +999,8 @@ export async function availabilityCalendar({ room, fromDate, toDate, numAdults =
   // Counts and closures, per night.
   (rt.Availabilities || []).forEach(a => {
     if (!a || !a.Date) return;
-    const forSale = typeof a.ForSale === "number" ? a.ForSale : null;
+    const forSale = a.ForSale !== undefined && a.ForSale !== null && a.ForSale !== ""
+      ? num(a.ForSale) : null;
     out[a.Date] = {
       rate: null, strikeRate: null, discountReason: "",
       count: forSale,
@@ -1002,9 +1027,9 @@ export async function availabilityCalendar({ room, fromDate, toDate, numAdults =
     day.rate = sell > 0 ? sell : null;
     day.strikeRate = r.StrikeOutRate !== undefined ? num(r.StrikeOutRate) : null;
     day.discountReason = r.DiscountReason || "";
-    day.minStay = num(r.MinStayArrival) || day.minStay || null;
-    day.closedToArrival = r.ClosedToArrival === true;
-    day.closedToDeparture = r.ClosedToDeparture === true;
+    day.minStay = num(r.MinStayArrival || r.MinimumStay || r.MinStay) || day.minStay || null;
+    day.closedToArrival = r.ClosedToArrival === true || r.Cta === true || r.CTA === true;
+    day.closedToDeparture = r.ClosedToDeparture === true || r.Ctd === true || r.CTD === true;
     if (r.Closed === true) { day.soldOut = true; day.closed = true; }
   });
 

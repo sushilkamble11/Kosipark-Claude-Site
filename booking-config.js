@@ -1,11 +1,15 @@
-// Guest-facing language deliberately says "Secure Online Booking" rather
-// than exposing the name of the hosted booking software.
-const isLocalPreview = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
-
 window.KOSIPARK_V2 = Object.assign({
-  // The other-property destination is strictly limited to local demonstrations.
-  // Replace the empty live value with Kosipark's URL when GuestPoint supplies it.
-  secureBookingUrl: isLocalPreview
-    ? "https://coachmans-eden.bookus.direct/booking-details"
-    : ""
+  // GuestPoint's hosted page owns guest details, payment and confirmation.
+  // Its root route accepts startDate, numAdults, numChildren and numNights.
+  secureBookingUrl: "https://10092601.bookus.dev/",
+
+  // Keep the development property unmistakable on the Hostinger preview.
+  // Change this to "production" only when the live key, property and hosted
+  // booking address have all been installed together.
+  bookingEnvironment: "development",
+
+  // GuestPoint's development property contains four hotel-style test rooms.
+  // One category is enough to prove all calendar behaviour without presenting
+  // those placeholders as Kosipark accommodation. Set to 0 with live details.
+  testCategoryLimit: 1
 }, window.KOSIPARK_V2 || {});
