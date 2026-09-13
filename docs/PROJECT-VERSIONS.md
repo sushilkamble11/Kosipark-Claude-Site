@@ -29,7 +29,10 @@ codebases, not separate booking databases.
 
 ## Publishing rule
 
-V2 must never be published with another property's demonstration booking URL.
-Replace the temporary URL in `public_html/booking-config.js` with Kosciuszko
-Tourist Park's GuestPoint hosted booking URL, run the checks, then publish V2.
-
+The temporary Hostinger preview may use the supplied Kosipark GuestPoint
+development property only while every page carries the test-environment banner.
+Before the real launch, install the production Booking Engine API key, property
+ID and API base URL in the server-only `api/gp/config.php`; then replace the
+hosted booking URL in `public_html/booking-config.js`, set
+`bookingEnvironment` to `production`, remove the one-category test limit, run
+all checks and publish V2. Never publish another property's booking URL.

@@ -7,8 +7,13 @@ cd "$(dirname "$0")"
 REMOTE="https://github.com/sushilkamble11/Kosipark-Claude-Site.git"
 MSG="${1:-Publish Kosipark V2}"
 
-if grep -Eq 'secureBookingUrl:[[:space:]]*"https://coachmans-eden\.bookus\.direct' public_html/booking-config.js; then
-  echo "Refusing to publish: replace the temporary demonstration booking URL first."
+if grep -Eq 'coachmans-eden\.bookus\.direct|secureBookingUrl:[[:space:]]*""' public_html/booking-config.js; then
+  echo "Refusing to publish: configure Kosipark's hosted booking URL first."
+  exit 1
+fi
+
+if ! grep -Eq 'bookingEnvironment:[[:space:]]*"(development|production)"' public_html/booking-config.js; then
+  echo "Refusing to publish: declare the GuestPoint environment explicitly."
   exit 1
 fi
 

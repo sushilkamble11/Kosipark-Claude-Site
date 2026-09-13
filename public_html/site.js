@@ -55,7 +55,7 @@
    * guestpoint.js fires this event the first time it serves a fixture; it never
    * fires once real credentials answer.
    */
-  function showSampleBanner() {
+  function showSampleBanner(event) {
     if (document.getElementById("kosipark-sample-note")) return;
     var bar = document.createElement("div");
     bar.id = "kosipark-sample-note";
@@ -71,10 +71,14 @@
     // Three lines of banner on a 390px phone covers the content it is warning
     // about. Same meaning, fewer words, where there is less room.
     var narrow = window.matchMedia && window.matchMedia("(max-width: 560px)").matches;
-    bar.textContent = narrow
-      ? "Preview — sample data, not live. Call 02 6456 2224."
-      : "Preview — rates and availability on this page are sample data, " +
-        "not live. Call 02 6456 2224 to book.";
+    var configuredTest = window.KOSIPARK_V2 && window.KOSIPARK_V2.bookingEnvironment === "development";
+    bar.textContent = configuredTest
+      ? (narrow
+          ? "Test booking system — not for real bookings."
+          : "GuestPoint test environment — availability and bookings are demonstrations, not real park inventory.")
+      : (narrow
+          ? "Preview — sample data, not live. Call 02 6456 2224."
+          : "Preview — rates and availability on this page are sample data, not live. Call 02 6456 2224 to book.");
 
     var close = document.createElement("button");
     close.type = "button";
@@ -92,4 +96,8 @@
   }
 
   window.addEventListener("kosipark:sample-data", showSampleBanner);
+  if (window.KOSIPARK_V2 && window.KOSIPARK_V2.bookingEnvironment === "development") {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", showSampleBanner, { once: true });
+    else showSampleBanner();
+  }
 })();

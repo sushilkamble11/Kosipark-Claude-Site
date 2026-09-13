@@ -1,0 +1,4 @@
+public_html/api/gp/config.php
+.env
+.env.*
+!.env.example

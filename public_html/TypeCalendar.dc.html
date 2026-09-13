@@ -23,6 +23,7 @@
       <p style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A; margin:0">Availability</p>
       <p style="font:400 clamp(17px,1.9vw,21px)/1.25 Petrona, Georgia, serif; color:#1D3730; margin:8px 0 0">{{ heading }}</p>
     </div>
+    <div role="status" style="{{ sourceStyle }}"><span style="{{ sourceDotStyle }}"></span>{{ sourceLabel }}</div>
     <div style="display:flex; align-items:center; gap:8px">
       <button type="button" onClick="{{ prev }}" style="{{ prevStyle }}">‹</button>
       <span style="font:500 12.5px/1 Figtree, sans-serif; color:#56534C; min-width:9ch; text-align:center">{{ rangeLabel }}</span>
@@ -92,7 +93,7 @@
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:720,&quot;height&quot;:520},&quot;room&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;three-bedroom-chalet&quot;,&quot;two-bedroom-chalet-upgraded&quot;,&quot;two-bedroom-chalet&quot;,&quot;cedar-cabin&quot;,&quot;caravan-site&quot;,&quot;camper-trailer-site&quot;,&quot;motorhome-site&quot;,&quot;unpowered-site&quot;],&quot;default&quot;:&quot;two-bedroom-chalet&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;label&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Choose your nights&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;months&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:null,&quot;min&quot;:1,&quot;max&quot;:2,&quot;tsType&quot;:&quot;number&quot;},&quot;adults&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:2,&quot;min&quot;:1,&quot;max&quot;:8,&quot;tsType&quot;:&quot;number&quot;}}">
 class Component extends DCLogic {
-  state = { days: {}, loading: true, offset: 0, from: "", to: "", reason: null, ratesFailed: false, wide: typeof window !== "undefined" ? window.innerWidth >= 900 : true };
+  state = { days: {}, loading: true, offset: 0, from: "", to: "", reason: null, ratesFailed: false, source: "connecting", wide: typeof window !== "undefined" ? window.innerWidth >= 900 : true };
 
   money(n) { return this.gp ? this.gp.money(n) : "$" + Math.round(Number(n) || 0); }
 
@@ -118,7 +119,7 @@ class Component extends DCLogic {
     const room = this.props.room || "two-bedroom-chalet";
     const start = this.monthStart(this.state.offset);
     const end = new Date(start.getFullYear(), start.getMonth() + this.monthCount(), 0);
-    this.setState({ loading: true });
+    this.setState({ loading: true, source: "connecting" });
     try {
       // Per-category counts: /availabilities carries ForSale per night for
       // this room type, which /bestavailablerates does not.
@@ -126,9 +127,9 @@ class Component extends DCLogic {
         room, fromDate: Component.iso(start), toDate: Component.iso(end),
         numAdults: Number(this.props.adults) || 2
       });
-      this.setState({ days, loading: false, ratesFailed: Object.keys(days).length === 0 });
+      this.setState({ days, loading: false, ratesFailed: Object.keys(days).length === 0, source: this.gp.isUnconfigured() ? "sample" : this.gp.isSnapshot() ? "snapshot" : "live" });
     } catch (e) {
-      this.setState({ days: {}, loading: false, ratesFailed: true });
+      this.setState({ days: {}, loading: false, ratesFailed: true, source: "error" });
     }
   }
 
@@ -137,14 +138,30 @@ class Component extends DCLogic {
 
   pickDay(iso) {
     const s = this.state;
-    if (!s.from || s.to || iso <= s.from) { this.setState({ from: iso, to: "", reason: null }); return; }
+    if (!s.from || s.to || iso <= s.from) {
+      if ((s.days[iso] || {}).soldOut) {
+        this.setState({ reason: { title: this.fmt(iso) + " is sold out", detail: "GuestPoint is showing no availability left for this category. Choose a nearby green date instead.", fixes: [] } });
+        return;
+      }
+      if ((s.days[iso] || {}).closedToArrival) {
+        const saturday = new Date(iso + "T12:00:00").getDay() === 6;
+        this.setState({ reason: { title: saturday ? "No Saturday check-ins in winter" : "Check-in is closed on " + this.fmt(iso), detail: saturday ? "The night is available for guests already staying, but new arrivals cannot check in on Saturday during winter." : "An existing stay may continue through this date, but GuestPoint does not allow a new stay to begin on it.", fixes: [] } });
+        return;
+      }
+      this.setState({ from: iso, to: "", reason: null }); return;
+    }
+    if ((s.days[iso] || {}).closedToDeparture) {
+      const saturday = new Date(iso + "T12:00:00").getDay() === 6;
+      this.setState({ reason: { title: saturday ? "No Saturday check-outs in winter" : "Check-out is closed on " + this.fmt(iso), detail: saturday ? "You can stay on Saturday, but departures are not available that day during winter. Choose Sunday instead." : "You may stay through this date, but GuestPoint does not allow the booking to end on it.", fixes: [] } });
+      return;
+    }
     const minStay = (s.days[s.from] || {}).minStay || 1;
     const nights = Math.round((new Date(iso) - new Date(s.from)) / 86400000);
     if (nights < minStay) {
       this.setState({
         reason: {
           title: minStay + " night minimum from " + this.fmt(s.from),
-          detail: "Winter weekends need two nights and the Christmas period three, so single nights aren't left stranded.",
+          detail: "The minimum stay belongs to your check-in date. Choose a check-out date at least " + minStay + " nights later.",
           fixes: [{ label: "Extend to " + minStay + " nights", apply: () => this.setState({ to: this.shift(s.from, minStay), reason: null }) }]
         }
       });
@@ -182,34 +199,43 @@ class Component extends DCLogic {
       const iso = Component.iso(date);
       const info = s.days[iso] || {};
       const past = date < today;
-      const soldOut = info.soldOut === true || info.count === 0 || typeof info.rate !== "number";
+      const fullInventory = info.soldOut === true || info.count === 0;
+      const missingRate = typeof info.rate !== "number";
+      const soldOut = fullInventory || missingRate;
       const left = typeof info.count === "number" ? info.count : null;
       const isIn = iso === s.from, isOut = iso === s.to;
       const inRange = s.from && s.to && iso > s.from && iso < s.to;
       const selected = isIn || isOut;
+      const pickingOut = !!(s.from && !s.to);
+      const nightsIfChosen = pickingOut ? Math.round((date - new Date(s.from)) / 86400000) : 0;
+      const minStay = pickingOut ? ((s.days[s.from] || {}).minStay || 1) : 1;
+      const checkoutOnFull = fullInventory && ((pickingOut && iso > s.from) || isOut);
+      const disabled = past;
 
       let style = cell;
       if (past) style += "background:transparent; cursor:default";
-      else if (soldOut) style += "background:#F6DED7; box-shadow:inset 0 0 0 1px rgba(140,59,42,0.28); cursor:not-allowed";
       else if (selected) style += "background:#1D3730; cursor:pointer";
+      else if (checkoutOnFull) style += "background:#EFEDE7; box-shadow:inset 0 0 0 1px rgba(29,55,48,0.34); cursor:pointer";
+      else if (soldOut) style += "background:#F6DED7; box-shadow:inset 0 0 0 1px rgba(140,59,42,0.28); cursor:not-allowed";
       else if (inRange) style += "background:#BFD6B7; cursor:pointer";
       else style += "background:#DCEBD6; box-shadow:inset 0 0 0 1px rgba(58,110,72,0.28); cursor:pointer";
 
       let note = "";
       if (past) note = "";
+      else if (checkoutOnFull) note = "Checkout OK";
       else if (soldOut) note = "Full";
-      else if (left !== null && left <= 2) note = left === 1 ? "1 left" : left + " left";
+      else if (left !== null) note = left === 1 ? "1 left" : left + " left";
       else if (info.rate) note = "$" + Math.round(info.rate);
 
       days.push({
         num: String(n),
         note,
-        disabled: past || soldOut,
+        disabled,
         style,
         numStyle: "font:600 12.5px/1 Figtree, sans-serif; color:" + (selected ? "#FCFAF6" : past ? "#C7C3B9" : soldOut ? "#8C3B2A" : "#1D3730"),
         noteStyle: "font:600 9px/1 Figtree, sans-serif; color:" +
           (selected ? "rgba(237,228,212,0.9)" : soldOut ? "rgba(140,59,42,0.75)" : (left !== null && left <= 2) ? "#96592A" : "#5F7A56"),
-        pick: (past || soldOut) ? () => {} : () => this.pickDay(iso)
+        pick: disabled ? () => {} : () => this.pickDay(iso)
       });
     }
     return { title: base.toLocaleDateString("en-AU", { month: "long", year: "numeric" }), days };
@@ -266,6 +292,15 @@ class Component extends DCLogic {
 
     return {
       heading: this.props.label || "Choose your nights",
+      sourceLabel: s.source === "live" ? "Live GuestPoint"
+        : s.source === "snapshot" ? "GuestPoint HAR test"
+        : s.source === "sample" ? "Sample preview"
+        : s.source === "error" ? "Connection problem"
+        : "Connecting…",
+      sourceStyle: "display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:8px 10px; font:600 10.5px/1 Figtree, sans-serif; white-space:nowrap; " +
+        (s.source === "live" ? "background:#E3EFE0; color:#315B3B" : s.source === "snapshot" ? "background:#E8EEF3; color:#31546B" : s.source === "error" ? "background:#F7E7E1; color:#8C3B2A" : "background:#F3ECE0; color:#665F54"),
+      sourceDotStyle: "width:7px; height:7px; border-radius:999px; background:" +
+        (s.source === "live" ? "#3A7748" : s.source === "snapshot" ? "#3E6F8C" : s.source === "error" ? "#A94632" : "#B68A56"),
       loading: s.loading,
       ready,
       months,
