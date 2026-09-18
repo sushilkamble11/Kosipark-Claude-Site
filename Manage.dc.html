@@ -579,7 +579,7 @@ class Component extends DCLogic {
       canCancel: canAct && !!permissions.Cancel,
       canPay: canAct && !!permissions.PayNow && b.balance > 0 && !!b.paymentUrl,
       showCapabilityNotice: canAct && unavailable.length > 0,
-      capabilityNotice: "Guest details, arrival time, vehicle registrations and special requests save directly to GuestPoint. GuestPoint has not enabled " + unavailable.join(", ") + " through its guest API for this booking, so the portal will not pretend those actions completed.",
+      capabilityNotice: "Guest details, arrival time, vehicle registrations and special requests save directly to GuestPoint. GuestPoint has not enabled " + unavailable.join(", ") + " for online completion, so the portal will not pretend those actions completed.",
       noticeText: b && p && p.days < 0 ? "This stay has already taken place, so it can no longer be changed online."
         : b && !canAct ? "GuestPoint has marked this booking as view-only. Reception can help with anything that still needs attention."
         : "",
