@@ -81,9 +81,14 @@ assert.match(proxySource, /GetReservationDetailByRoomAllocationWithCurrentPackag
 assert.match(proxySource, /'manageReference'\s*=>\s*\$numbers\['bookingReference'\]/, "portal canonicalises lookup to the channel reference required by manage");
 assert.match(proxySource, /function pmsManagedReservationPayload/, "Phoenix-only reservations receive a managed portal view");
 assert.match(proxySource, /function portalCurrentExtras/, "existing Phoenix add-ons are returned to the portal");
+assert.match(proxySource, /function portalAccommodationTotal/, "cancellation fees use accommodation charges without optional extras");
 assert.match(proxySource, /charges already delivered are protected|retain past charges/i, "past add-on charges cannot be removed by the guest");
 assert.match(proxySource, /guestPointConfirmed\(\$cancelResponse\)/, "cancellation requires GuestPoint success confirmation");
-assert.match(proxySource, /\$reservationId = \(int\)\$tokenPayload\['rid'\]/, "cancellation id comes from the signed portal token");
+assert.match(proxySource, /\$reservationId = trim\(\(string\)\$tokenPayload\['rid'\]\)/, "PMS UUID cancellation id remains a string from the signed portal token");
+assert.match(proxySource, /Reservation\/ValidateCancellation/, "Phoenix cancellation is validated before mutation");
+assert.match(proxySource, /Accounts\/CalcBookingValue/, "Phoenix booking value is recalculated before cancellation");
+assert.match(proxySource, /Accounts\/CalcRoomAccountBalance/, "Phoenix room account balance is recalculated before cancellation");
+assert.match(proxySource, /Accounts\/CalculateDepartureValue/, "Phoenix departure value is recalculated before cancellation");
 assert.match(proxySource, /\$freshLogin\['Cancel'\]/, "cancellation rechecks GuestPoint permission immediately before deletion");
 assert.match(proxySource, /GuestPoint has not supplied the payment and refund operations/, "cancellation fails closed when financial settlement is unavailable");
 

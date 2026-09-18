@@ -191,6 +191,7 @@ function cancellationQuote(array $reservation): array {
 
     $arrival = '';
     $oneNight = 0.0;
+    $tariffTotal = 0.0;
     $rules = [];
     foreach ($stays as $stay) {
         if (!is_array($stay)) continue;
@@ -201,7 +202,9 @@ function cancellationQuote(array $reservation): array {
             $d = new DateTimeImmutable((string)($stay['Departure'] ?? ''), new DateTimeZone('Australia/Sydney'));
             $nights = max(1, (int)$a->diff($d)->days);
         } catch (Throwable $e) { $nights = 1; }
-        $oneNight += max(0.0, gpNumber($stay['RoomTotal'] ?? null) ?? 0.0) / $nights;
+        $stayTariff = max(0.0, gpNumber($stay['RoomTotal'] ?? null) ?? 0.0);
+        $tariffTotal += $stayTariff;
+        $oneNight += $stayTariff / $nights;
         foreach (is_array($stay['RateDetails'] ?? null) ? $stay['RateDetails'] : [] as $rate) {
             if (is_array($rate) && is_array($rate['CancelRule'] ?? null)) $rules[] = $rate['CancelRule'];
         }
@@ -213,6 +216,10 @@ function cancellationQuote(array $reservation): array {
         $days = (int)$today->diff($arrivalDate)->format('%r%a');
     } catch (Throwable $e) { $days = -1; }
 
+    // Optional extras are refundable until supplied; cancellation percentages
+    // apply to the accommodation tariff. Fall back to the booking total when
+    // GuestPoint does not return a separate RoomTotal.
+    $policyTotal = $tariffTotal > 0 ? $tariffTotal : $total;
     $fee = 0.0;
     $detail = '';
     $nonRefundable = null;
@@ -220,25 +227,25 @@ function cancellationQuote(array $reservation): array {
         if (strtolower(trim((string)($rule['CancelRule'] ?? ''))) === 'none') { $nonRefundable = $rule; break; }
     }
     if ($nonRefundable !== null) {
-        $fee = $total;
+        $fee = $policyTotal;
         $detail = trim((string)($nonRefundable['CancelRuleText'] ?? '')) ?: 'This rate is non-refundable.';
     } elseif ($rules) {
         $free = $rules[0];
         $periods = max(0, (int)($free['CancelRuleNumPeriods'] ?? 0));
         $period = strtolower(trim((string)($free['CancelRulePeriod'] ?? 'day')));
         $cutoffDays = $period === 'week' ? $periods * 7 : ($period === 'hour' ? (int)ceil($periods / 24) : $periods);
-        $fee = $days >= $cutoffDays ? 0.0 : $total;
+        $fee = $days >= $cutoffDays ? 0.0 : $policyTotal;
         $detail = trim((string)($free['CancelRuleText'] ?? '')) ?: 'The cancellation conditions attached to your booked rate apply.';
     } else {
-        $fee = $days >= 15 ? max($total * 0.1, $oneNight)
-            : ($days >= 8 ? max($total * 0.5, $oneNight) : $total);
+        $fee = $days >= 15 ? max($policyTotal * 0.1, $oneNight)
+            : ($days >= 8 ? max($policyTotal * 0.5, $oneNight) : $policyTotal);
         $detail = $days >= 15
             ? "15 or more days before arrival, the greater of 10% of the tariff or one night's tariff is retained."
             : ($days >= 8
                 ? "8 to 14 days before arrival, the greater of 50% of the tariff or one night's tariff is retained."
                 : 'Within 7 days of arrival, the booking is non-refundable.');
     }
-    $fee = min($total, max(0.0, $fee));
+    $fee = min($policyTotal, max(0.0, $fee));
     return [
         'fee' => round($fee, 2),
         'refund' => round(max(0.0, $paid - $fee), 2),
@@ -312,7 +319,7 @@ function pmsToken(): string {
 }
 
 /** @return array{0:int,1:string,2:string} */
-function pmsCall(string $method, string $path, ?array $payload = null): array {
+function pmsCall(string $method, string $path, array|object|null $payload = null): array {
     global $PMS_UPSTREAM;
     $token = pmsToken();
     if ($token === '') return [503, '', 'Phoenix PMS bridge is not configured.'];
@@ -599,6 +606,20 @@ function portalCurrentExtras(string $roomAllocationId): array {
     return array_values($grouped);
 }
 
+/** Return accommodation charges without optional add-ons. */
+function portalAccommodationTotal(string $roomAllocationId): ?float {
+    global $PROPERTY_ID;
+    [$status, $raw] = pmsCall('GET', 'Reservation/GetRoomAllocationChargesForReservationByRoomAllocationID?propertyID=' . rawurlencode($PROPERTY_ID) . '&roomAllocationID=' . rawurlencode($roomAllocationId));
+    $charges = json_decode($raw, true);
+    if ($status !== 200 || !is_array($charges) || !$charges) return null;
+    $total = 0.0;
+    foreach ($charges as $charge) {
+        if (!is_array($charge)) continue;
+        $total += max(0.0, (float)($charge['Room'] ?? 0) + (float)($charge['ExtraPersons'] ?? 0) - (float)($charge['Discount'] ?? 0));
+    }
+    return round($total, 2);
+}
+
 /** Build a Booking Engine-shaped management response for a Phoenix-only stay. */
 function pmsManagedReservationPayload(array $identity, string $surname, string $email): ?array {
     $core = is_array($identity['reservation'] ?? null) ? $identity['reservation'] : [];
@@ -623,7 +644,8 @@ function pmsManagedReservationPayload(array $identity, string $surname, string $
     $statusMap = [1=>'Modified', 2=>'Checked in', 3=>'Checked out', 4=>'Cancelled', 5=>'No show'];
     $status = $statusMap[$statusCode] ?? 'Booked';
     $outstanding = max(0.0, gpNumber($core['AmountOutstanding'] ?? null) ?? gpNumber($allocation['DepartureBalance'] ?? null) ?? 0.0);
-    $roomTotal = max($outstanding, gpNumber($allocation['DepartureBalance'] ?? null) ?? 0.0);
+    $bookingTotal = max($outstanding, gpNumber($allocation['DepartureBalance'] ?? null) ?? 0.0);
+    $roomTotal = portalAccommodationTotal($roomAllocationId) ?? $bookingTotal;
     $roomType = is_array($allocation['_RoomType'] ?? null) ? $allocation['_RoomType'] : [];
     $roomTypeName = trim((string)($roomType['Name'] ?? $roomType['RoomType'] ?? '')) ?: 'Accommodation booking';
     $ratePlanId = (string)($allocation['PackageID'] ?? '');
@@ -643,7 +665,7 @@ function pmsManagedReservationPayload(array $identity, string $surname, string $
         'ID'=>$reservationId,
         'ConfNum'=>$confNum,
         'Status'=>$status,
-        'ReservationTotalAfterTax'=>$roomTotal,
+        'ReservationTotalAfterTax'=>$bookingTotal,
         'PaymentRequired'=>$outstanding,
         'PayLater'=>$outstanding,
         'Adults'=>(int)($allocation['NumberAdults'] ?? 0),
@@ -1417,10 +1439,65 @@ if ($endpoint === 'portal/cancel') {
         || !$acknowledged) {
         fail(403, 'Your booking session has expired or the cancellation was not accepted. Please look up the booking again.');
     }
-    $reservationId = (int)$tokenPayload['rid'];
+    $reservationId = trim((string)$tokenPayload['rid']);
     $quote = is_array($tokenPayload['cq'] ?? null) ? $tokenPayload['cq'] : null;
     if ($quote === null || !isset($quote['fee'], $quote['refund'], $quote['quotedAt'])) {
         fail(403, 'The cancellation quote is missing or expired. Please look up the booking again.');
+    }
+
+    // Phoenix-only reservations follow the same sequence as the PMS UI:
+    // validate the fresh allocation, recalculate the three account values,
+    // then save and re-read it. They have no Booking Engine manage record, so
+    // this branch must run before the Booking Engine refresh below.
+    if ($PMS_PRIVATE_WRITES) {
+        $identity = portalPmsIdentity($confNum, $tokenPayload);
+        if (($identity['reservationId'] ?? '') === '' || count($identity['allocations'] ?? []) !== 1) fail(409, 'This booking cannot be cancelled automatically.');
+        $roomAllocationId = (string)$identity['allocations'][0]['RoomAllocationId'];
+        [$allocationStatus, $allocationRaw] = pmsCall('GET', 'Reservation/GetRoomAllocation?roomAllocationID=' . rawurlencode($roomAllocationId));
+        $allocation = json_decode($allocationRaw, true);
+        if ($allocationStatus !== 200 || !is_array($allocation) || (int)($allocation['Status'] ?? 0) !== 1) fail(409, 'This booking can no longer be cancelled.');
+
+        [$validationStatus, $validationRaw, $validationError] = pmsCall('POST', 'Reservation/ValidateCancellation', $allocation);
+        if ($validationStatus < 200 || $validationStatus >= 300 || json_decode($validationRaw, true) !== true) {
+            fail(409, 'GuestPoint did not allow this booking to be cancelled. Nothing was changed.', $validationRaw ?: $validationError);
+        }
+
+        $emptyObject = (object)[];
+        [$bookingValueStatus, $bookingValueRaw] = pmsCall('POST', 'Accounts/CalcBookingValue?propertyID=' . rawurlencode($PROPERTY_ID) . '&roomAllocationID=' . rawurlencode($roomAllocationId), $emptyObject);
+        [$accountBalanceStatus, $accountBalanceRaw] = pmsCall('POST', 'Accounts/CalcRoomAccountBalance?propertyID=' . rawurlencode($PROPERTY_ID) . '&roomAllocationID=' . rawurlencode($roomAllocationId), $emptyObject);
+        [$departureValueStatus, $departureValueRaw] = pmsCall('POST', 'Accounts/CalculateDepartureValue?propertyID=' . rawurlencode($PROPERTY_ID) . '&roomAllocationID=' . rawurlencode($roomAllocationId) . '&reservationnID=' . rawurlencode((string)$identity['reservationId']), $emptyObject);
+        $bookingValue = gpNumber(json_decode($bookingValueRaw, true));
+        $accountBalance = gpNumber(json_decode($accountBalanceRaw, true));
+        $departureValue = gpNumber(json_decode($departureValueRaw, true));
+        if ($bookingValueStatus !== 200 || $accountBalanceStatus !== 200 || $departureValueStatus !== 200
+            || $bookingValue === null || $accountBalance === null || $departureValue === null) {
+            fail(502, 'GuestPoint could not calculate the cancellation values. Nothing was changed.');
+        }
+
+        $arrival = substr((string)($allocation['ArrivalDate'] ?? ''), 0, 10);
+        $nights = max(1, (int)($allocation['NumberOfNights'] ?? 1));
+        try { $departure = (new DateTimeImmutable($arrival))->modify('+' . $nights . ' days')->format('Y-m-d'); }
+        catch (Throwable $e) { fail(502, 'GuestPoint returned invalid booking dates. Nothing was changed.'); }
+        $accommodationTotal = portalAccommodationTotal($roomAllocationId) ?? max(0.0, $bookingValue);
+        $quote = cancellationQuote([
+            'ReservationTotalAfterTax'=>max(0.0, $bookingValue),
+            'PaymentRequired'=>max(0.0, $departureValue),
+            'PayLater'=>max(0.0, $departureValue),
+            'RoomStays'=>[['Arrival'=>$arrival,'Departure'=>$departure,'RoomTotal'=>$accommodationTotal,'IsCancelled'=>false]],
+        ]);
+
+        $allocation['CancellationBookingValue'] = round((float)($quote['fee'] ?? 0), 2);
+        $allocation['CancellationReason'] = 'Cancelled by guest through the online portal. Policy fee: $' . number_format((float)($quote['fee'] ?? 0), 2) . '; estimated refund: $' . number_format((float)($quote['refund'] ?? 0), 2) . '.';
+        $allocation['CancelledAppuserID'] = (string)($allocation['UpdatedAppuserID'] ?? $allocation['CreatedAppuserID'] ?? '');
+        $allocation['CancelledDate'] = (new DateTimeImmutable('today', new DateTimeZone('Australia/Sydney')))->format('Y-m-d');
+        $allocation['IsDeleted'] = false;
+        $allocation['Status'] = 4;
+        [$cancelStatus, $cancelResponse, $cancelError] = pmsCall('POST', 'Reservation/SaveRoomAllocationWithVirtualRooms?propertyID=' . rawurlencode($PROPERTY_ID) . '&addChangeLogs=true', $allocation);
+        if ($cancelStatus < 200 || $cancelStatus >= 300) fail(502, 'GuestPoint rejected the cancellation. The booking remains active.', $cancelResponse ?: $cancelError);
+        [$verifyStatus, $verifyRaw] = pmsCall('GET', 'Reservation/GetRoomAllocation?roomAllocationID=' . rawurlencode($roomAllocationId));
+        $verified = json_decode($verifyRaw, true);
+        if ($verifyStatus !== 200 || !is_array($verified) || (int)($verified['Status'] ?? 0) !== 4) fail(502, 'GuestPoint did not verify the cancellation. Please check the booking in GuestPoint.');
+        send(200, ['Cancelled'=>true,'Message'=>'GuestPoint PMS has cancelled the reservation.','PolicyFee'=>$quote['fee'],'EstimatedRefund'=>$quote['refund'],'BookingValue'=>$bookingValue,'AccountBalance'=>$accountBalance,'DepartureValue'=>$departureValue,'GuestPoint'=>$verified], ['Cache-Control'=>'no-store']);
     }
 
     // Re-read the booking immediately before the destructive action. A valid
@@ -1442,7 +1519,7 @@ if ($endpoint === 'portal/cancel') {
     else $freshRoot = $freshPayload;
     $freshReservation = is_array($freshRoot['Reservation'] ?? null) ? $freshRoot['Reservation'] : [];
     $freshLogin = is_array($freshRoot['Login'] ?? null) ? $freshRoot['Login'] : [];
-    if ((int)($freshReservation['ID'] ?? 0) !== $reservationId
+    if (trim((string)($freshReservation['ID'] ?? '')) !== $reservationId
         || !in_array(strtolower((string)($freshReservation['Status'] ?? '')), ['booked', 'modified'], true)) {
         fail(409, 'This booking can no longer be cancelled online. Nothing was changed.');
     }
@@ -1456,27 +1533,6 @@ if ($endpoint === 'portal/cancel') {
         fail(409, 'GuestPoint has not supplied the payment and refund operations needed to settle this cancellation automatically. Nothing was changed.');
     }
     $quote = $freshQuote;
-
-    if ($PMS_PRIVATE_WRITES) {
-        $identity = portalPmsIdentity($confNum, $tokenPayload);
-        if (($identity['reservationId'] ?? '') === '' || count($identity['allocations'] ?? []) !== 1) fail(409, 'This booking cannot be cancelled automatically.');
-        $roomAllocationId = (string)$identity['allocations'][0]['RoomAllocationId'];
-        [$allocationStatus, $allocationRaw] = pmsCall('GET', 'Reservation/GetRoomAllocation?roomAllocationID=' . rawurlencode($roomAllocationId));
-        $allocation = json_decode($allocationRaw, true);
-        if ($allocationStatus !== 200 || !is_array($allocation) || (int)($allocation['Status'] ?? 0) !== 1) fail(409, 'This booking can no longer be cancelled.');
-        $allocation['CancellationBookingValue'] = round((float)($quote['fee'] ?? 0), 2);
-        $allocation['CancellationReason'] = 'Cancelled by guest through the online portal. Policy fee: $' . number_format((float)($quote['fee'] ?? 0), 2) . '; estimated refund: $' . number_format((float)($quote['refund'] ?? 0), 2) . '.';
-        $allocation['CancelledAppuserID'] = (string)($allocation['UpdatedAppuserID'] ?? $allocation['CreatedAppuserID'] ?? '');
-        $allocation['CancelledDate'] = (new DateTimeImmutable('now', new DateTimeZone('Australia/Sydney')))->format('Y-m-d\TH:i:s');
-        $allocation['IsDeleted'] = false;
-        $allocation['Status'] = 4;
-        [$cancelStatus, $cancelResponse, $cancelError] = pmsCall('POST', 'Reservation/SaveRoomAllocationWithVirtualRooms?propertyID=' . rawurlencode($PROPERTY_ID) . '&addChangeLogs=true', $allocation);
-        if ($cancelStatus < 200 || $cancelStatus >= 300) fail(502, 'GuestPoint rejected the cancellation. The booking remains active.', $cancelResponse ?: $cancelError);
-        [$verifyStatus, $verifyRaw] = pmsCall('GET', 'Reservation/GetRoomAllocation?roomAllocationID=' . rawurlencode($roomAllocationId));
-        $verified = json_decode($verifyRaw, true);
-        if ($verifyStatus !== 200 || !is_array($verified) || (int)($verified['Status'] ?? 0) !== 4) fail(502, 'GuestPoint did not verify the cancellation. Please check the booking in GuestPoint.');
-        send(200, ['Cancelled'=>true,'Message'=>'GuestPoint PMS has cancelled the reservation.','PolicyFee'=>$quote['fee'],'EstimatedRefund'=>$quote['refund'],'GuestPoint'=>$verified], ['Cache-Control'=>'no-store']);
-    }
 
     $cancelUrl = $UPSTREAM . '/properties/' . rawurlencode($PROPERTY_ID) . '/reservations/' . rawurlencode((string)$reservationId);
     $cancelBody = json_encode([
