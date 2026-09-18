@@ -322,6 +322,10 @@ class Component extends DCLogic {
     this.setState({ loading: true, error: "", confirm: null });
     try {
       const result = await this.gp.requestPortalOtp({ confNum: r, surname: n, mobile: m });
+      if (result && result.Reservation && result.PortalToken) {
+        this.openBooking(result);
+        return;
+      }
       if (!result || !result.ChallengeId) throw new Error("verification-unavailable");
       this.setState({ loading: false, otpChallenge: result.ChallengeId, otpInput: "", otpMessage: result.Message || "Check the email held on your booking for the verification code.", demoOtp: result.DemoCode || "", error: "" });
     } catch (e) {
@@ -559,7 +563,7 @@ class Component extends DCLogic {
       onMobileChange: e => this.setState({ mobileInput: e.target.value, error: "" }),
       find: () => this.find(),
       findDisabled: s.loading,
-      findLabel: s.loading ? "Sending secure code…" : "Email me a secure code",
+      findLabel: s.loading ? "Checking…" : "Find my booking",
       findButtonStyle: "min-height:62px; border:0; border-radius:14px; background:#1D3730; color:#FCFAF6; font:700 13.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; cursor:" + (s.loading ? "wait" : "pointer") + "; opacity:" + (s.loading ? ".65" : "1"),
       otpValue: s.otpInput,
       onOtpChange: e => this.setState({ otpInput: String(e.target.value || "").replace(/\D/g, "").slice(0, 6), error: "" }),
