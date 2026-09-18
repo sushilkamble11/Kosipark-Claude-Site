@@ -128,13 +128,21 @@
                 <p style="font:400 14px/1.7 Figtree, sans-serif; color:#6C6862; margin:8px 0 14px">{{ extrasMessage }}</p>
                 <div style="display:grid; gap:8px">
                   <sc-for list="{{ extrasList }}" as="extra" hint-placeholder-count="3">
-                    <div style="display:flex; align-items:center; justify-content:space-between; gap:18px; padding:14px 16px; border-radius:12px; background:#F3ECE0"><span><strong style="display:block; font:600 14px/1.4 Figtree, sans-serif; color:#292724">{{ extra.name }}</strong><span style="font:400 13px/1.5 Figtree, sans-serif; color:#6C6862">{{ extra.description }}</span><span style="display:block; margin-top:4px; font:600 13px/1.5 Figtree, sans-serif; color:#1D3730">{{ extra.price }}</span></span><button type="button" onClick="{{ extra.action }}" style="white-space:nowrap; border:1px solid rgba(29,55,48,.2); border-radius:999px; background:#FFFFFF; color:#1D3730; font:700 11px/1 Figtree,sans-serif; letter-spacing:.08em; text-transform:uppercase; padding:12px 15px; cursor:pointer">{{ extra.actionLabel }}</button></div>
+                    <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px; padding:16px; border-radius:12px; background:#F3ECE0">
+                      <span style="flex:1 1 230px"><strong style="display:block; font:600 14px/1.4 Figtree, sans-serif; color:#292724">{{ extra.name }}</strong><span style="font:400 13px/1.5 Figtree, sans-serif; color:#6C6862">{{ extra.description }}</span><span style="display:block; margin-top:4px; font:600 13px/1.5 Figtree, sans-serif; color:#1D3730">{{ extra.price }}</span><span style="display:block; margin-top:6px; font:600 12.5px/1.5 Figtree, sans-serif; color:#74836A">{{ extra.currentText }}</span></span>
+                      <div style="display:grid; gap:7px; min-width:190px">
+                        <sc-for list="{{ extra.controls }}" as="control" hint-placeholder-count="1">
+                          <div style="display:flex; align-items:center; justify-content:flex-end; gap:9px"><span style="margin-right:auto; font:600 11px/1.3 Figtree,sans-serif; color:#56534C">{{ control.label }}</span><button type="button" aria-label="{{ control.decreaseLabel }}" onClick="{{ control.decrease }}" disabled="{{ control.atMin }}" style="width:34px; height:34px; border:1px solid rgba(29,55,48,.2); border-radius:999px; background:#FFFFFF; color:#1D3730; font:600 18px/1 Figtree,sans-serif; cursor:pointer">−</button><strong style="min-width:22px; text-align:center; font:600 14px/1 Figtree,sans-serif; color:#1D3730">{{ control.quantity }}</strong><button type="button" aria-label="{{ control.increaseLabel }}" onClick="{{ control.increase }}" disabled="{{ control.atMax }}" style="width:34px; height:34px; border:1px solid rgba(29,55,48,.2); border-radius:999px; background:#FFFFFF; color:#1D3730; font:600 18px/1 Figtree,sans-serif; cursor:pointer">+</button></div>
+                        </sc-for>
+                        <button type="button" onClick="{{ extra.remove }}" disabled="{{ extra.empty }}" style="justify-self:end; border:0; background:transparent; color:#8C3B2A; font:700 10.5px/1 Figtree,sans-serif; letter-spacing:.08em; text-transform:uppercase; padding:5px; cursor:pointer">Remove</button>
+                      </div>
+                    </div>
                   </sc-for>
                 </div>
                 <div style="{{ extrasReviewStyle }}">
-                  <strong style="font:600 15px/1.5 Figtree,sans-serif; color:#1D3730">Selected extras: {{ extrasTotalLabel }}</strong>
-                  <p style="font:400 13.5px/1.6 Figtree,sans-serif; color:#6C6862; margin:5px 0 0">You can review the exact quantities before payment. Nothing is added until the final confirmation step.</p>
-                  <button type="button" onClick="{{ reviewExtras }}" style="margin-top:12px; border:0; border-radius:12px; background:#1D3730; color:#FCFAF6; font:700 11.5px/1 Figtree,sans-serif; letter-spacing:.08em; text-transform:uppercase; padding:14px 18px; cursor:pointer">Review and continue</button>
+                  <strong style="font:600 15px/1.5 Figtree,sans-serif; color:#1D3730">Selected future extras: {{ extrasTotalLabel }}</strong>
+                  <p style="font:400 13.5px/1.6 Figtree,sans-serif; color:#6C6862; margin:5px 0 0">Review the new quantities. Saving will add, amend or remove future extra charges in GuestPoint; charges already delivered are protected.</p>
+                  <button type="button" onClick="{{ reviewExtras }}" disabled="{{ extrasSaving }}" style="margin-top:12px; border:0; border-radius:12px; background:#1D3730; color:#FCFAF6; font:700 11.5px/1 Figtree,sans-serif; letter-spacing:.08em; text-transform:uppercase; padding:14px 18px; cursor:pointer">{{ extrasSaveLabel }}</button>
                 </div>
               </div>
             </sc-if>
@@ -279,7 +287,7 @@
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{}">
 class Component extends DCLogic {
-  state = { refInput: "", nameInput: "", booking: null, error: "", mode: null, adults: 0, children: 0, infants: 0, note: "", confirm: null, loading: false, saving: false, requestSaving: false, cancelSaving: false, dateQuote: null, dateLoading: false, partyQuote: null, partyLoading: false, guestFirst: "", guestLast: "", guestEmail: "", guestMobile: "", guestSaving: false, eta: "", vehicles: "", travelSaving: false, extras: [], extrasLoading: false, selectedExtras: {}, vehicleField: null, policyAccepted: false, leaveAction: "" };
+  state = { refInput: "", nameInput: "", booking: null, error: "", mode: null, adults: 0, children: 0, infants: 0, note: "", confirm: null, loading: false, saving: false, requestSaving: false, cancelSaving: false, dateQuote: null, dateLoading: false, partyQuote: null, partyLoading: false, guestFirst: "", guestLast: "", guestEmail: "", guestMobile: "", guestSaving: false, eta: "", vehicles: "", travelSaving: false, extras: [], extrasLoading: false, selectedExtras: {}, initialExtras: {}, vehicleField: null, policyAccepted: false, leaveAction: "" };
 
   async componentDidMount() {
     try { this.gp = await import("./guestpoint.js"); }
@@ -325,7 +333,7 @@ class Component extends DCLogic {
     const b = this.gp.normaliseManagedReservation(found);
     if (!b.ref || !b.permissions.ViewReservation) throw new Error("not-viewable");
     const lead = (b.guests || []).find(g => b.bookingContact && g.ID === b.bookingContact.ID) || (b.guests || [])[0] || b.bookingContact || {};
-    this.setState({ booking: b, error: "", mode: null, confirm: null, loading: false, selectedExtras: {}, partyQuote: null, policyAccepted: false,
+    this.setState({ booking: b, error: "", mode: null, confirm: null, loading: false, selectedExtras: {}, initialExtras: {}, partyQuote: null, policyAccepted: false,
       adults: b.adults, children: b.children, infants: b.infants,
       note: "", eta: b.estimatedArrival || "", vehicles: "",
       guestFirst: lead.FirstName || "", guestLast: lead.LastName || "", guestEmail: lead.Email || "", guestMobile: lead.Mobile || lead.Phone || "" });
@@ -497,7 +505,7 @@ class Component extends DCLogic {
 
   async loadExtras() {
     const b = this.state.booking;
-    this.setState({ extrasLoading: true, extras: [], confirm: null });
+    this.setState({ extrasLoading: true, extras: [], selectedExtras: {}, initialExtras: {}, confirm: null });
     try {
       const stays = ((b.raw && b.raw.RoomStays) || []).map(st => ({
         Arrival: st.Arrival, Departure: st.Departure, RoomTypeId: st.RoomTypeId,
@@ -505,7 +513,19 @@ class Component extends DCLogic {
       }));
       const raw = await this.gp.getExtras(stays);
       const extras = this.gp.normaliseExtras(raw, { nights: this.nights(b), adults: b.adults, children: b.children, ratePlanId: b.ratePlanId });
-      this.setState({ extrasLoading: false, extras });
+      const selected = {};
+      const current = Object.fromEntries((b.currentExtras || []).map(x => [String(x.Id || "").toLowerCase(), x]));
+      extras.forEach(extra => {
+        const existing = current[String(extra.id || "").toLowerCase()];
+        if (!existing) return;
+        const counts = {};
+        extra.prices.forEach(pr => {
+          const quantity = /child/i.test(pr.name || "") ? Number(existing.ChildQuantity || 0) : Number(existing.Quantity || 0);
+          if (quantity > 0) counts[pr.id] = quantity;
+        });
+        if (Object.values(counts).some(Number)) selected[extra.id] = counts;
+      });
+      this.setState({ extrasLoading: false, extras, selectedExtras: selected, initialExtras: JSON.parse(JSON.stringify(selected)) });
     } catch (e) {
       this.setState({ extrasLoading: false, extras: [] });
     }
@@ -515,11 +535,16 @@ class Component extends DCLogic {
     const s = this.state;
     const b = s.booking;
     const p = b ? this.policy(b) : null;
-    const status = b ? (/cancel/i.test(b.status) ? b.status : (p.days < 0 ? "Completed" : b.status)) : "";
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const stayEnded = !!(b && b.checkOut && Component.parse(b.checkOut) < today);
+    const status = b ? (/cancel/i.test(b.status) ? b.status : (stayEnded ? "Completed" : b.status)) : "";
     const permissions = b ? (b.permissions || {}) : {};
     const pms = b ? (b.portalCapabilities || {}) : {};
+    const selectionSignature = value => JSON.stringify(Object.keys(value || {}).sort().map(id => [id, Object.keys(value[id] || {}).sort().map(priceId => [priceId, Number(value[id][priceId] || 0)])]));
+    const extrasChanged = selectionSignature(s.selectedExtras) !== selectionSignature(s.initialExtras);
     const activeStatus = b && /^(booked|modified|confirmed|reserved)$/i.test(b.status);
-    const canAct = !!b && activeStatus && p && p.days >= 0;
+    const canAct = !!b && activeStatus && !stayEnded;
+    const beforeArrival = !!p && p.days >= 0;
     // GuestPoint's own guest portal currently exposes these two edits even
     // though its Login capability object returns false for this GPBE booking.
     // Both fields are part of the documented manage PATCH and have been
@@ -572,19 +597,19 @@ class Component extends DCLogic {
         (/cancel/i.test(status) ? "background:#F3E3DE; color:#8C3B2A" : "background:#E9EEE3; color:#4C5C40"),
 
       canAct,
-      canDates: canAct && (!!permissions.UpdateStayDates || !!pms.Amend) && !!p.amendAllowed,
-      canAmend: canAct && (((!!permissions.UpdateStayDates || !!pms.Amend) && !!p.amendAllowed) || !!permissions.Cancel || !!pms.Cancel),
-      canParty: canAct && (!!permissions.UpdateGuestDetails || !!pms.Amend) && !!p.amendAllowed,
+      canDates: canAct && beforeArrival && (!!permissions.UpdateStayDates || !!pms.Amend) && !!p.amendAllowed,
+      canAmend: canAct && beforeArrival && (((!!permissions.UpdateStayDates || !!pms.Amend) && !!p.amendAllowed) || !!permissions.Cancel || !!pms.Cancel),
+      canParty: canAct && beforeArrival && (!!permissions.UpdateGuestDetails || !!pms.Amend) && !!p.amendAllowed,
       canGuests: canEditGuest && Array.isArray(b.guests) && b.guests.length > 0,
       canNote: canAddRequest,
-      canCancel: canAct && (!!permissions.Cancel || !!pms.Cancel),
+      canCancel: canAct && beforeArrival && (!!permissions.Cancel || !!pms.Cancel),
       canPay: canAct && !!permissions.PayNow && b.balance > 0 && !!b.paymentUrl,
       showCapabilityNotice: canAct && unavailable.length > 0,
       capabilityNotice: "Available actions save directly to GuestPoint. " + (unavailable.length ? "GuestPoint has not enabled " + unavailable.join(", ") + " for online completion." : "Dates, guest numbers, extras and cancellation are connected on this test portal."),
-      noticeText: b && p && p.days < 0 ? "This stay has already taken place, so it can no longer be changed online."
+      noticeText: b && stayEnded ? "This stay has already taken place, so it can no longer be changed online."
         : b && !canAct ? "GuestPoint has marked this booking as view-only. Reception can help with anything that still needs attention."
         : "",
-      noticeStyle: b && (!canAct || (p && p.days < 0))
+      noticeStyle: b && (!canAct || stayEnded)
         ? "margin:18px 0 0; font:500 14px/1.7 Figtree, sans-serif; color:#8B877E"
         : "display:none",
 
@@ -726,35 +751,56 @@ class Component extends DCLogic {
       travelSaveLabel: s.travelSaving ? "Saving…" : "Save arrival details",
 
       extrasMessage: s.extrasLoading ? "Checking GuestPoint for eligible extras…"
-        : s.extras.length ? (pms.Extras ? "These are the live extras GuestPoint offers for this room and rate. Confirming adds them directly to the GuestPoint PMS booking." : "These are the live extras GuestPoint offers for this room and rate, but existing-booking posting is not enabled.")
+        : s.extras.length ? (pms.Extras ? "Extras already attached to this booking are labelled below. Use the − and + controls to amend quantities, choose Remove to delete future charges, or add something new." : "These are the live extras GuestPoint offers for this room and rate, but existing-booking posting is not enabled.")
         : "GuestPoint has not returned any eligible extras for this stay.",
       extrasList: s.extras.map(x => {
-        const selected = !!s.selectedExtras[x.id];
+        const counts = s.selectedExtras[x.id] || {};
+        const currentRecord = ((b && b.currentExtras) || []).find(item => String(item.Id || "").toLowerCase() === String(x.id || "").toLowerCase());
+        const quantity = x.prices.reduce((sum, pr) => sum + Math.max(0, Number(counts[pr.id]) || 0), 0);
+        const setCount = (priceId, next) => this.setState(old => {
+          const chosen = JSON.parse(JSON.stringify(old.selectedExtras || {}));
+          const extraCounts = { ...(chosen[x.id] || {}) };
+          if (next > 0) extraCounts[priceId] = next;
+          else delete extraCounts[priceId];
+          if (Object.values(extraCounts).some(value => Number(value) > 0)) chosen[x.id] = extraCounts;
+          else delete chosen[x.id];
+          return { selectedExtras: chosen, confirm: null };
+        });
         return {
         name: x.name,
         description: x.description || x.unitLabel,
         price: x.single ? Component.money(x.unitPrice) + " " + x.unitLabel
           : x.prices.map(pr => (pr.name ? pr.name + " " : "") + Component.money(pr.price)).join(" · "),
-        actionLabel: selected ? "Remove" : "Add",
-        action: () => this.setState(old => {
-          const chosen = { ...old.selectedExtras };
-          if (chosen[x.id]) delete chosen[x.id];
-          else chosen[x.id] = Object.fromEntries(x.prices.map(pr => {
-            const guestCount = /child/i.test(pr.name || "") ? Number(b.children || 0) : Number(b.adults || 0);
-            return [pr.id, Math.max(1, guestCount || pr.suggested || 1)];
-          }));
-          return { selectedExtras: chosen, confirm: null };
-        })
+        currentText: currentRecord
+          ? "Already on booking: " + (Number(currentRecord.Quantity || 0) + Number(currentRecord.ChildQuantity || 0)) + " · " + Component.money(currentRecord.Total)
+          : "Not currently on booking",
+        controls: x.prices.map(pr => {
+          const count = Math.max(0, Number(counts[pr.id]) || 0);
+          return {
+            label: pr.name || "Quantity",
+            decreaseLabel: "Decrease " + x.name + (pr.name ? " " + pr.name : ""),
+            increaseLabel: "Increase " + x.name + (pr.name ? " " + pr.name : ""),
+            quantity: count,
+            atMin: count <= 0,
+            atMax: count >= Number(pr.max || x.max || 1),
+            decrease: () => setCount(pr.id, Math.max(0, count - 1)),
+            increase: () => setCount(pr.id, Math.min(Number(pr.max || x.max || 1), count + 1))
+          };
+        }),
+        empty: quantity < 1,
+        remove: () => this.setState(old => { const chosen = { ...old.selectedExtras }; delete chosen[x.id]; return { selectedExtras: chosen, confirm: null }; })
       }}),
-      extrasTotalLabel: Component.money(this.gp ? this.gp.extrasTotal(s.extras, s.selectedExtras, b ? this.nights(b) : 1) : 0),
-      extrasReviewStyle: Object.keys(s.selectedExtras).length ? "margin-top:14px; background:#E9EEE3; border-radius:14px; padding:18px" : "display:none",
+      extrasTotalLabel: Component.money(this.gp ? this.gp.extrasTotal(s.extras, s.selectedExtras, b ? Math.max(1, Math.round((Component.parse(b.checkOut) - new Date(Math.max(Component.parse(b.checkIn), new Date().setHours(0,0,0,0)))) / 86400000)) : 1) : 0),
+      extrasReviewStyle: extrasChanged ? "margin-top:14px; background:#E9EEE3; border-radius:14px; padding:18px" : "display:none",
+      extrasSaving: s.requestSaving,
+      extrasSaveLabel: s.requestSaving ? "Saving in GuestPoint…" : "Save extra changes",
       reviewExtras: async () => {
         if (b.sample) {
           this.setState({ confirm: { title: "Demo extras selected", body: "Your selected extras are ready for review. No real booking has been changed in demo mode." } });
           return;
         }
         if (!pms.Extras) { this.setState({ confirm: { title: "Extra not added", body: "Existing-booking extras are not enabled for this property." } }); return; }
-        const items = s.extras.filter(x => s.selectedExtras[x.id]).map(x => {
+        const items = s.extras.map(x => {
           const counts = s.selectedExtras[x.id] || {};
           let quantity = 0, childQuantity = 0, rate = 0, childRate = 0;
           x.prices.forEach(pr => { const count = Math.max(0, Number(counts[pr.id]) || 0); if (/child/i.test(pr.name || "")) { childQuantity += count; childRate = Number(pr.price || 0); } else { quantity += count; rate = Number(pr.price || 0); } });
@@ -764,8 +810,8 @@ class Component extends DCLogic {
         try {
           const result = await this.gp.addManagedExtras(b.ref, items, b.portalToken, true);
           if (!result || result.Updated !== true) throw new Error("not-confirmed");
-          this.setState({ requestSaving: false, mode: null, selectedExtras: {}, confirm: { title: "Extras added in GuestPoint", body: "GuestPoint PMS confirmed the selected extras on this room allocation." } });
-        } catch (e) { this.setState({ requestSaving: false, confirm: { title: "Extras not added", body: "GuestPoint did not verify the extras. Nothing has been claimed as complete." } }); }
+          this.setState(x => ({ requestSaving: false, initialExtras: JSON.parse(JSON.stringify(x.selectedExtras)), confirm: { title: "Extras updated in GuestPoint", body: "GuestPoint PMS confirmed the new extra quantities on this room allocation." } }));
+        } catch (e) { this.setState({ requestSaving: false, confirm: { title: "Extras not updated", body: "GuestPoint did not verify the extras. Nothing has been claimed as complete." } }); }
       },
       addStayUrl,
       openAddStayWarning: () => this.setState({ leaveAction: "add-stay" }),
@@ -778,7 +824,7 @@ class Component extends DCLogic {
       closeLeaveWarning: () => this.setState({ leaveAction: "" }),
       continueLeaving: () => {
         if (s.leaveAction === "add-stay") window.location.href = addStayUrl;
-        else if (s.leaveAction === "lookup") this.setState({ booking: null, refInput: "", nameInput: "", mode: null, confirm: null, error: "", dateQuote: null, partyQuote: null, selectedExtras: {}, policyAccepted: false, leaveAction: "" });
+        else if (s.leaveAction === "lookup") this.setState({ booking: null, refInput: "", nameInput: "", mode: null, confirm: null, error: "", dateQuote: null, partyQuote: null, selectedExtras: {}, initialExtras: {}, policyAccepted: false, leaveAction: "" });
       },
       balanceLabel: Component.money(b ? b.balance : 0),
       payButtonStyle: "border:0; border-radius:999px; background:#96592A; color:#FCFAF6; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.06em; padding:14px 18px; cursor:pointer",
@@ -825,7 +871,7 @@ class Component extends DCLogic {
         ? "margin-top:22px; background:#E9EEE3; border-radius:16px; padding:20px; animation:riseIn .2s ease both"
         : "display:none",
 
-      reset: () => this.setState({ booking: null, refInput: "", nameInput: "", mode: null, confirm: null, error: "", dateQuote: null, partyQuote: null, selectedExtras: {}, policyAccepted: false, leaveAction: "" })
+      reset: () => this.setState({ booking: null, refInput: "", nameInput: "", mode: null, confirm: null, error: "", dateQuote: null, partyQuote: null, selectedExtras: {}, initialExtras: {}, policyAccepted: false, leaveAction: "" })
     };
   }
 }
