@@ -518,6 +518,7 @@ class Component extends DCLogic {
       extras.forEach(extra => {
         const existing = current[String(extra.id || "").toLowerCase()];
         if (!existing) return;
+        if (String(existing.Name || "").trim()) extra.name = String(existing.Name).trim();
         const counts = {};
         extra.prices.forEach(pr => {
           const quantity = /child/i.test(pr.name || "") ? Number(existing.ChildQuantity || 0) : Number(existing.Quantity || 0);
