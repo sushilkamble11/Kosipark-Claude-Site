@@ -569,11 +569,25 @@ function portalCurrentExtras(string $roomAllocationId): array {
     [$status, $raw] = pmsCall('GET', 'Reservation/GetRoomAllocationAddons?propertyID=' . rawurlencode($PROPERTY_ID) . '&roomAllocationID=' . rawurlencode($roomAllocationId));
     $rows = json_decode($raw, true);
     if ($status !== 200 || !is_array($rows)) return [];
+    // Allocation rows contain only the AddonID. Resolve the guest-facing PMS
+    // name from the add-on master so the portal does not have to display the
+    // Booking Engine's generic fallback such as "Optional extra".
+    $addonNames = [];
+    [$catalogStatus, $catalogRaw] = pmsCall('GET', 'Rates/GetAddons?propertyID=' . rawurlencode($PROPERTY_ID));
+    $catalog = json_decode($catalogRaw, true);
+    if ($catalogStatus === 200 && is_array($catalog)) {
+        foreach ($catalog as $addon) {
+            if (!is_array($addon)) continue;
+            $addonId = strtolower(trim((string)($addon['AddonID'] ?? '')));
+            $addonName = trim((string)($addon['Name'] ?? ''));
+            if ($addonId !== '' && $addonName !== '') $addonNames[$addonId] = $addonName;
+        }
+    }
     $grouped = [];
     foreach ($rows as $row) {
         if (!is_array($row) || empty($row['AddonID'])) continue;
         $id = strtolower((string)$row['AddonID']);
-        if (!isset($grouped[$id])) $grouped[$id] = ['Id'=>(string)$row['AddonID'],'Quantity'=>0,'ChildQuantity'=>0,'Total'=>0.0,'Dates'=>[]];
+        if (!isset($grouped[$id])) $grouped[$id] = ['Id'=>(string)$row['AddonID'],'Name'=>$addonNames[$id] ?? '','Quantity'=>0,'ChildQuantity'=>0,'Total'=>0.0,'Dates'=>[]];
         // Repeating extras have one row per applicable date. The editable
         // quantity is the largest per-date count, not the sum across nights.
         $grouped[$id]['Quantity'] = max($grouped[$id]['Quantity'], (int)($row['Quantity'] ?? 0));

@@ -62,8 +62,9 @@ await page.getByText("Booking reference: 1").waitFor({ timeout: 5000 });
 
 await page.getByRole("button", { name: "View extras" }).click();
 await page.getByText("Drying room access").waitFor({ timeout: 5000 });
+pass(await page.getByText("PMS firewood", { exact: true }).isVisible(), "the attached PMS extra name replaces a generic catalogue label");
 pass(await page.getByText(/Already on booking: 2 · \$40/).isVisible(), "existing GuestPoint extras and quantities are shown");
-await page.getByRole("button", { name: /Increase Premium seasoned firewood/i }).click();
+await page.getByRole("button", { name: /Increase PMS firewood/i }).click();
 await page.getByText(/Selected future extras: \$/).waitFor({ timeout: 3000 });
 pass(await page.getByText(/Selected future extras: \$/).isVisible(), "amended extras show a calculated total");
 await page.getByRole("button", { name: "Remove", exact: true }).nth(1).click();
