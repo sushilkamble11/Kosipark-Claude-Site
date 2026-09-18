@@ -39,7 +39,6 @@ $OTP_FROM_EMAIL = trim((string)($config['otp_from_email'] ?? $SMTP_USERNAME));
 $OTP_FROM_NAME = trim((string)($config['otp_from_name'] ?? 'Kosciuszko Tourist Park'));
 $OTP_TTL = max(300, min(900, (int)($config['otp_ttl'] ?? 600)));
 $OTP_MAX_ATTEMPTS = max(3, min(8, (int)($config['otp_max_attempts'] ?? 5)));
-$OTP_REQUIRED = (bool)($config['portal_otp_required'] ?? false);
 $DEBUG       = (bool)($config['debug'] ?? false);
 
 $CACHE_DIR = (string)($config['cache_dir'] ?? '');
@@ -63,14 +62,12 @@ const ROUTES = [
     // Booking — validate (PATCH) and create (POST). Never cached.
     'reservations'          => ['PATCH,POST',         0],
     // Portal writes go through a signed, short-lived booking session. Never
-    // expose reservations/manage directly: confirmation details are not the
-    // portal's authentication boundary; the email OTP is.
+    // expose reservations/manage directly: confirmation details are resolved
+    // and checked by the server-side portal lookup.
     'portal/update'         => ['POST',               0],
     'portal/cancel'         => ['POST',               0],
-    // Kosipark login is deliberately two-step. The booking is never returned
-    // until a short-lived code sent to GuestPoint's stored email is verified.
-    'portal/otp/request'    => ['POST',               0],
-    'portal/otp/verify'     => ['POST',               0],
+    // Guest access uses the reference and surname held by GuestPoint.
+    'portal/lookup'         => ['POST',               0],
 ];
 
 const MAX_BODY_BYTES      = 256 * 1024;   // a reservation is a few KB
@@ -382,8 +379,8 @@ function allowOtpRequest(string $identity): bool {
     return @file_put_contents($path, json_encode($record), LOCK_EX) !== false;
 }
 
-/** Return the stored primary email only when all three booking details match. */
-function resolvePortalEmail(string $confNum, string $surname, string $mobile): string {
+/** Return the stored primary email only when the reference and surname match. */
+function resolvePortalEmail(string $confNum, string $surname): string {
     global $CORE_UPSTREAM, $CORE_KEY, $PROPERTY_ID;
     if ($CORE_UPSTREAM === '' || $CORE_KEY === '') return '';
     $search = $CORE_UPSTREAM . '/v1/reservations?' . http_build_query([
@@ -393,18 +390,22 @@ function resolvePortalEmail(string $confNum, string $surname, string $mobile): s
     [$status, $response] = upstreamCall('GET', $search, $CORE_KEY);
     if ($status !== 200) return '';
     $payload = json_decode($response, true);
-    $rows = is_array($payload) ? ($payload['Data'] ?? $payload['data'] ?? []) : [];
+    $rows = [];
+    if (is_array($payload)) {
+        if (isset($payload['ReservationNumber'])) $rows = [$payload];
+        else $rows = $payload['Data'] ?? $payload['data'] ?? [];
+    }
     if (!is_array($rows)) return '';
     foreach ($rows as $reservation) {
         if (!is_array($reservation)) continue;
-        $rowRef = strtoupper(trim((string)($reservation['ReservationNumber'] ?? '')));
         $rowProperty = strtolower(trim((string)($reservation['PropertyId'] ?? '')));
-        if (!hash_equals($confNum, $rowRef) || !hash_equals(strtolower($PROPERTY_ID), $rowProperty)) continue;
+        // GuestPoint accepts either its reservation number or the booking
+        // engine/channel reference in the bookingReference search parameter.
+        if (!hash_equals(strtolower($PROPERTY_ID), $rowProperty)) continue;
         foreach (($reservation['Allocations'] ?? []) as $allocation) {
             if (!is_array($allocation) || empty($allocation['IsPrimary'])) continue;
             $rowSurname = strtolower(trim((string)($allocation['GuestLastName'] ?? '')));
-            $rowMobile = normaliseMobile((string)($allocation['GuestPhone'] ?? ''));
-            if (!hash_equals(strtolower($surname), $rowSurname) || !hash_equals($mobile, $rowMobile)) continue;
+            if (!hash_equals(strtolower($surname), $rowSurname)) continue;
             $email = trim((string)($allocation['GuestEmail'] ?? ''));
             if (filter_var($email, FILTER_VALIDATE_EMAIL)) return $email;
         }
@@ -572,58 +573,24 @@ if ($method !== 'GET') {
     }
 }
 
-// Step 1: verify the entered details against GuestPoint Core, then send a code
-// to the email already stored on the booking. The response is deliberately the
-// same for matched and unmatched details to prevent booking enumeration.
-if ($endpoint === 'portal/otp/request') {
+// Verify reference and surname against GuestPoint Core, then use the stored
+// email server-side to request GuestPoint's complete management view.
+if ($endpoint === 'portal/lookup') {
     $input = is_array($decodedBody) ? $decodedBody : [];
     $confNum = strtoupper(trim((string)($input['ConfNum'] ?? '')));
     $surname = trim((string)($input['Surname'] ?? ''));
-    $mobile = normaliseMobile((string)($input['Mobile'] ?? ''));
-    $identity = strtolower($confNum . '|' . $surname . '|' . $mobile);
+    $identity = strtolower($confNum . '|' . $surname);
     if (!allowOtpRequest($identity)) {
         fail(429, 'Please wait before requesting another code.');
     }
 
     $validInput = preg_match('/^[A-Z0-9._-]{1,64}$/', $confNum)
-        && $surname !== '' && strlen($surname) <= 80
-        && ((strlen($mobile) >= 10 && strlen($mobile) <= 15) || ($confNum === '1' && $surname === '1' && $mobile === '1'));
-    $email = $validInput ? resolvePortalEmail($confNum, $surname, $mobile) : '';
-    if (!$OTP_REQUIRED) {
-        if ($email === '') fail(403, 'We could not verify those booking details. Check them and try again.');
-        [$status, $payload, $detail] = loadManagedReservation($confNum, $surname, $email);
-        if (!is_array($payload)) fail(502, 'The booking system is not responding. Please try again shortly.', (string)$detail);
-        send($status, $payload, ['Cache-Control' => 'no-store']);
-    }
-    $code = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-    $sent = false;
-    if ($email !== '') {
-        $minutes = (int)ceil($OTP_TTL / 60);
-        $sent = smtpSendText(
-            $email,
-            'Your Kosciuszko Tourist Park verification code',
-            "Your verification code is: {$code}\n\nIt expires in {$minutes} minutes. If you did not request this code, you can ignore this email.\n\nKosciuszko Tourist Park\n02 6456 2224"
-        );
-    }
-
-    $challengeId = bin2hex(random_bytes(24));
-    $challenge = [
-        'code_hash' => password_hash($code, PASSWORD_DEFAULT),
-        'conf_num' => $confNum,
-        'surname' => $surname,
-        'email' => $sent ? $email : '',
-        'matched' => $sent,
-        'expires' => time() + $OTP_TTL,
-        'attempts' => 0,
-    ];
-    if (@file_put_contents(otpChallengePath($challengeId), json_encode($challenge), LOCK_EX) === false) {
-        fail(503, 'Verification is temporarily unavailable. Please try again shortly.');
-    }
-    send(200, [
-        'ChallengeId' => $challengeId,
-        'ExpiresIn' => $OTP_TTL,
-        'Message' => 'If those details match a booking, a verification code has been sent to the email held on it.',
-    ], ['Cache-Control' => 'no-store']);
+        && $surname !== '' && strlen($surname) <= 80;
+    $email = $validInput ? resolvePortalEmail($confNum, $surname) : '';
+    if ($email === '') fail(403, 'We could not verify those booking details. Check them and try again.');
+    [$status, $payload, $detail] = loadManagedReservation($confNum, $surname, $email);
+    if (!is_array($payload)) fail(502, 'The booking system is not responding. Please try again shortly.', (string)$detail);
+    send($status, $payload, ['Cache-Control' => 'no-store']);
 }
 
 // Step 2: atomically count attempts and return the booking only after the code
