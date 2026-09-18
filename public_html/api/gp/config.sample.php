@@ -26,6 +26,15 @@ return [
     'core_upstream' => getenv('GP_CORE_UPSTREAM') ?: '',
     'core_api_key'  => getenv('GP_CORE_API_KEY') ?: (getenv('GP_API_KEY') ?: 'REPLACE_WITH_API_KEY'),
 
+    // Phoenix PMS bridge used by the TEST manage-booking portal. These calls
+    // use the same private WebAPI as the signed-in Phoenix application. Keep
+    // disabled in production until GuestPoint formally approves this access.
+    'pms_private_writes' => filter_var(getenv('GP_PMS_PRIVATE_WRITES') ?: 'false', FILTER_VALIDATE_BOOLEAN),
+    'pms_upstream' => getenv('GP_PMS_UPSTREAM') ?: 'https://dev.guestpoint.com/WebAPI',
+    'pms_serial'   => getenv('GP_PMS_SERIAL') ?: '',
+    'pms_username' => getenv('GP_PMS_USERNAME') ?: '',
+    'pms_password' => getenv('GP_PMS_PASSWORD') ?: '',
+
     // Short guest-request notifications from the manage-booking portal.
     // Confirm this address before production if the park uses .com.au instead.
     'notification_email' => getenv('GP_NOTIFICATION_EMAIL') ?: 'stay@kosipark.com',

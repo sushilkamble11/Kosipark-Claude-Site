@@ -501,6 +501,7 @@ export function normaliseManagedReservation(payload) {
     guests: Array.isArray(r.Guests) ? r.Guests : [],
     bookingContact: r.BookingContact || null,
     permissions: { ViewReservation: true, ...(root.Login || {}) },
+    portalCapabilities: root.PortalCapabilities || {},
     paymentDetails: root.PaymentDetails || null,
     paymentUrl: root.PaymentDetails && root.PaymentDetails.Session ? (root.PaymentDetails.Session.PayUrl || "") : "",
     sample: isUnconfigured(),
@@ -580,6 +581,20 @@ export async function quoteManagedStayChange(booking, proposal) {
 export function modifyReservation(confNum, changes, portalToken, notify = false) {
   return request("POST", "/portal/update", {
     body: { ConfNum: confNum, Changes: changes, PortalToken: portalToken, Notify: !!notify }
+  });
+}
+
+/** Apply a verified date and/or occupancy amendment through the PMS bridge. */
+export function amendManagedReservation(confNum, proposal, portalToken, acknowledged) {
+  return request("POST", "/portal/amend", {
+    body: { ConfNum: confNum, Proposal: proposal, PortalToken: portalToken, Acknowledged: acknowledged === true }
+  });
+}
+
+/** Add the guest's selected live extras to the existing PMS room allocation. */
+export function addManagedExtras(confNum, items, portalToken, acknowledged = true) {
+  return request("POST", "/portal/extras", {
+    body: { ConfNum: confNum, Items: items, PortalToken: portalToken, Acknowledged: acknowledged === true }
   });
 }
 
