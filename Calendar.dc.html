@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <base href="/">
-<link rel="icon" type="image/svg+xml" href="/assets/kosipark-favicon-skier.svg?v=20260910">
-<link rel="apple-touch-icon" href="/assets/kosipark-logo.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png?v=20260909">
+<link rel="icon" type="image/png" sizes="192x192" href="/assets/favicon-192.png?v=20260909">
+<link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png?v=20260909">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="/booking-config.js"></script>
 <script src="/vendor-map.js"></script>
 <script src="./support.js"></script>
 <script src="/site.js" defer></script>
@@ -26,30 +26,12 @@
 </helmet>
 
 <div style="background:#FCFAF6; color:#292724; font-family:Figtree, system-ui, sans-serif; min-height:100vh">
-  <dc-import name="SiteNav" active="availability" book-href="/#book" sticky-book-bar="{{ false }}" hint-size="100%,84px"></dc-import>
+  <dc-import name="SiteNav" active="stay" book-href="/book" sticky-book-bar="{{ false }}" hint-size="100%,84px"></dc-import>
 
   <section data-screen-label="Calendar" style="max-width:1320px; margin:0 auto; padding:clamp(26px,3.6vw,50px) clamp(20px,5vw,56px) clamp(38px,5.2vw,70px)">
     <p style="font:700 11px/1 Figtree, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#74836A; margin:0">Availability &amp; rates</p>
     <h1 style="font:300 clamp(26px,3.8vw,42px)/1.06 Petrona, Georgia, serif; letter-spacing:-0.02em; color:#1D3730; margin:12px 0 0; max-width:24ch">See what's free, night by night</h1>
     <p style="font:400 clamp(14px,1.4vw,16px)/1.7 Figtree, sans-serif; color:#56534C; margin:14px 0 0; max-width:56ch">Pick an accommodation type to see nightly rates and which dates are already taken. Tap a start date, then an end date, to check that stay.</p>
-    <div role="status" style="{{ sourceStyle }}"><span style="{{ sourceDotStyle }}"></span>{{ sourceLabel }}</div>
-    <div style="{{ errorStyle }}">{{ errorText }}</div>
-
-    <div style="display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center; margin-top:20px; max-width:920px; padding:14px 16px; background:#F3ECE0; border-radius:14px">
-      <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.15em; text-transform:uppercase; color:#74836A; margin-right:auto">Price for your group</span>
-      <span style="display:flex; align-items:center; gap:8px">
-        <span style="font:500 13px/1 Figtree, sans-serif; color:#56534C">Adults</span>
-        <button type="button" onClick="{{ adultDown }}" style="{{ guestButtonStyle }}" aria-label="Remove adult">−</button>
-        <strong style="font:600 14px/1 Figtree, sans-serif; color:#1D3730; min-width:18px; text-align:center">{{ adults }}</strong>
-        <button type="button" onClick="{{ adultUp }}" style="{{ guestButtonStyle }}" aria-label="Add adult">+</button>
-      </span>
-      <span style="display:flex; align-items:center; gap:8px">
-        <span style="font:500 13px/1 Figtree, sans-serif; color:#56534C">Children</span>
-        <button type="button" onClick="{{ childDown }}" style="{{ guestButtonStyle }}" aria-label="Remove child">−</button>
-        <strong style="font:600 14px/1 Figtree, sans-serif; color:#1D3730; min-width:18px; text-align:center">{{ children }}</strong>
-        <button type="button" onClick="{{ childUp }}" style="{{ guestButtonStyle }}" aria-label="Add child">+</button>
-      </span>
-    </div>
 
     <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:22px; max-width:920px">
       <sc-for list="{{ types }}" as="t" hint-placeholder-count="8">
@@ -65,8 +47,8 @@
       </div>
       <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:center">
         <span style="display:flex; align-items:center; gap:7px; font:500 12px/1 Figtree, sans-serif; color:#56534C"><span style="width:12px; height:12px; border-radius:4px; background:#E9EEE3"></span>Available</span>
-        <span style="display:flex; align-items:center; gap:7px; font:500 12px/1 Figtree, sans-serif; color:#56534C"><span style="width:12px; height:12px; border-radius:4px; background:#F6DED7; box-shadow:inset 0 0 0 1px rgba(140,59,42,0.28)"></span>Sold out</span>
-        <span style="font:500 12px/1.4 Figtree, sans-serif; color:#74836A">Each available date shows the nightly price and quantity left.</span>
+        <span style="display:flex; align-items:center; gap:7px; font:500 12px/1 Figtree, sans-serif; color:#56534C"><span style="width:12px; height:12px; border-radius:4px; background:#EFEDE7; box-shadow:inset 0 0 0 1px rgba(29,55,48,0.12)"></span>Sold out</span>
+        <span style="display:flex; align-items:center; gap:7px; font:500 12px/1 Figtree, sans-serif; color:#56534C"><span style="width:12px; height:12px; border-radius:4px; background:#F7E7E1; box-shadow:inset 0 0 0 1px rgba(140,59,42,0.35)"></span>Restricted — tap to see why</span>
         <span style="display:flex; align-items:center; gap:7px; font:500 12px/1 Figtree, sans-serif; color:#56534C"><span style="width:12px; height:12px; border-radius:4px; background:#1D3730"></span>Your dates</span>
       </div>
     </div>
@@ -91,7 +73,6 @@
                 <button type="button" disabled="{{ d.disabled }}" onClick="{{ d.pick }}" style="{{ d.style }}">
                   <span style="{{ d.numStyle }}">{{ d.num }}</span>
                   <span style="{{ d.rateStyle }}">{{ d.rate }}</span>
-                  <span style="{{ d.quantityStyle }}">{{ d.quantity }}</span>
                 </button>
               </sc-for>
             </div>
@@ -121,21 +102,11 @@
         <p style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#A9B995; margin:0">{{ selectionEyebrow }}</p>
         <p style="font:400 clamp(17px,1.9vw,21px)/1.3 Petrona, Georgia, serif; color:#FCFAF6; margin:9px 0 0">{{ selectionText }}</p>
         <p style="font:400 13px/1.5 Figtree, sans-serif; color:rgba(237,228,212,0.78); margin:6px 0 0">{{ selectionNote }}</p>
-        <div style="{{ smartStyle }}">
-          <span style="font:700 9.5px/1 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#A9B995">{{ smartLead }}</span>
-          <sc-for list="{{ smartOptions }}" as="option" hint-placeholder-count="2">
-            <button type="button" onClick="{{ option.apply }}" style="border:1px solid rgba(237,228,212,0.32); background:rgba(252,250,246,0.08); color:#FCFAF6; font:600 11.5px/1 Figtree, sans-serif; border-radius:999px; padding:11px 14px; cursor:pointer; white-space:nowrap">{{ option.label }}</button>
-          </sc-for>
-        </div>
-        <div style="{{ extrasStyle }}">
-          <span style="font:700 9.5px/1 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#A9B995">Available at the secure booking step</span>
-          <span style="font:400 12px/1.45 Figtree, sans-serif; color:rgba(237,228,212,0.82)">{{ extrasText }}</span>
-        </div>
       </div>
       <span style="display:flex; flex-wrap:wrap; gap:8px; align-items:center">
         <span style="{{ blockStyle }}">{{ blockText }}</span>
         <button type="button" onClick="{{ clear }}" style="border:1px solid rgba(237,228,212,0.35); background:transparent; color:#EDE4D4; font:600 12px/1 Figtree, sans-serif; letter-spacing:.08em; text-transform:uppercase; padding:15px 18px; border-radius:999px; cursor:pointer">Clear</button>
-        <button type="button" disabled="{{ bookDisabled }}" onClick="{{ book }}" style="{{ bookStyle }}">{{ bookLabel }}</button>
+        <button type="button" onClick="{{ book }}" style="border:0; background:#96592A; color:#FCFAF6; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:16px 24px; border-radius:999px; cursor:pointer; white-space:nowrap">Check this stay</button>
       </span>
     </div>
 
@@ -159,7 +130,7 @@ const TYPES = [
 ];
 
 class Component extends DCLogic {
-  state = { slug: "", types: TYPES, days: {}, loading: true, offset: 0, from: "", to: "", adults: 2, children: 0, quote: null, quoteLoading: false, extras: [], explain: null, source: "connecting", error: "", wide: typeof window !== "undefined" ? window.innerWidth >= 820 : true };
+  state = { slug: "", days: {}, loading: true, offset: 0, from: "", to: "", explain: null, wide: typeof window !== "undefined" ? window.innerWidth >= 820 : true };
 
   static iso(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
   static today() { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }
@@ -168,49 +139,11 @@ class Component extends DCLogic {
     this._onResize = () => this.setState({ wide: window.innerWidth >= 820 });
     window.addEventListener("resize", this._onResize);
     const q = new URLSearchParams(window.location.search);
+    const slug = q.get("room") || TYPES[2].slug;
     this.gp = await import("./guestpoint.js");
-    const requested = q.get("room") || "";
-    const adults = Math.max(1, Math.min(8, Number(q.get("numAdults")) || 2));
-    const children = Math.max(0, Math.min(8, Number(q.get("numChildren")) || 0));
-    this.setState({ adults, children });
-    try {
-      const start = Component.today();
-      const tomorrow = new Date(start); tomorrow.setDate(tomorrow.getDate() + 1);
-      const data = await this.gp.searchAvailability({
-        arrivalDate: Component.iso(start), departureDate: Component.iso(tomorrow),
-        numAdults: adults, numChildren: children, calendarMode: true
-      });
-      const rows = this.gp.flattenAvailability(data);
-      // GuestPoint's development property contains placeholder room types that
-      // do not correspond to Kosipark's real accommodation. In the local
-      // preview, use one category only to prove the calendar interaction
-      // without making the test inventory look like production inventory.
-      const configuredLimit = Number(window.KOSIPARK_V2 && window.KOSIPARK_V2.testCategoryLimit) || 0;
-      const visibleRows = configuredLimit > 0 && !this.gp.isUnconfigured() ? rows.slice(0, configuredLimit) : rows;
-      const discovered = visibleRows.map(r => ({ slug: r.slug, label: r.name || r.slug }));
-      const types = discovered.length ? discovered : TYPES;
-      const slug = types.some(t => t.slug === requested) ? requested : types[0].slug;
-      this.setState({ types, slug, source: this.gp.isUnconfigured() ? "sample" : this.gp.isSnapshot() ? "snapshot" : "live" }, () => this.load());
-    } catch (e) {
-      const slug = TYPES.some(t => t.slug === requested) ? requested : TYPES[2].slug;
-      this.setState({ slug, error: "GuestPoint categories could not be loaded. Retrying the selected category…" }, () => this.load());
-    }
+    this.setState({ slug }, () => this.load());
   }
-  componentWillUnmount() {
-    window.removeEventListener("resize", this._onResize);
-    clearTimeout(this._explainTimer);
-  }
-
-  showExplain(explain) {
-    clearTimeout(this._explainTimer);
-    this.setState({ explain });
-    this._explainTimer = setTimeout(() => this.setState({ explain: null }), 5200);
-  }
-
-  dismissExplain() {
-    clearTimeout(this._explainTimer);
-    this.setState({ explain: null });
-  }
+  componentWillUnmount() { window.removeEventListener("resize", this._onResize); }
 
   monthStart(offset) {
     const d = Component.today();
@@ -219,7 +152,7 @@ class Component extends DCLogic {
 
   async load() {
     if (!this.gp) return;
-    this.setState({ loading: true, source: "connecting", error: "" });
+    this.setState({ loading: true });
     const start = this.monthStart(this.state.offset);
     const end = new Date(start.getFullYear(), start.getMonth() + (this.state.wide ? 2 : 1), 0);
     try {
@@ -227,108 +160,11 @@ class Component extends DCLogic {
       const days = await this.gp.availabilityCalendar({
         room: this.state.slug,
         fromDate: Component.iso(start), toDate: Component.iso(end),
-        numAdults: Number(this.state.adults) || 2,
-        numChildren: Number(this.state.children) || 0
+        numAdults: Number(this.state.adults) || 2
       });
-      const empty = Object.keys(days).length === 0;
-      const sample = this.gp.isUnconfigured();
-      this.setState({
-        days,
-        loading: false,
-        source: sample ? "sample" : empty ? "error" : this.gp.isSnapshot() ? "snapshot" : "live",
-        error: !sample && empty ? "GuestPoint is connected, but this category has no calendar data. Check its room-type mapping in GuestPoint." : ""
-      });
+      this.setState({ days, loading: false });
     } catch (e) {
-      this.setState({ days: {}, loading: false, source: "error", error: "Live availability could not be loaded. Please try again or call 02 6456 2224." });
-    }
-  }
-
-  bumpGuest(key, amount) {
-    const min = key === "adults" ? 1 : 0;
-    const max = 8;
-    const next = Math.max(min, Math.min(max, Number(this.state[key] || 0) + amount));
-    if (next === this.state[key]) return;
-    this.setState({ [key]: next, from: "", to: "", quote: null, extras: [], explain: null }, () => this.load());
-  }
-
-  selectDeparture(to) {
-    this.setState({ to, explain: null, quote: null, extras: [] }, () => this.quoteSelection());
-  }
-
-  async quoteSelection() {
-    const s = this.state;
-    if (!s.from || !s.to || !this.gp) return;
-    const requestId = (this._quoteRequestId || 0) + 1;
-    this._quoteRequestId = requestId;
-    this.setState({ quoteLoading: true, quote: null, extras: [] });
-    try {
-      const data = await this.gp.searchAvailability({
-        arrivalDate: s.from,
-        departureDate: s.to,
-        numAdults: s.adults,
-        numChildren: s.children,
-        roomTypes: s.slug,
-        // GuestPoint's ordinary availability search omits a category when the
-        // checkout date itself has zero inventory. A checkout does not consume
-        // that night, so request the complete series and apply stay semantics
-        // ourselves, exactly as the calendar does.
-        calendarMode: true
-      });
-      if (requestId !== this._quoteRequestId) return;
-      const rows = this.gp.flattenAvailability(data);
-      let quote = rows.find(row => row.slug === s.slug || row.roomTypeId === s.slug) || rows[0];
-      const plan = quote && (quote.plans || []).find(item => item.ratePlanId === quote.ratePlanId);
-      const occupiedRates = plan ? (plan.nightly || []).filter(item => item.date >= s.from && item.date < s.to) : [];
-      const occupiedTotal = occupiedRates.reduce((sum, item) => sum + Number(item.rate || 0), 0);
-      const occupiedCounts = [];
-      for (let date = s.from; date < s.to; date = (() => { const d = new Date(date); d.setDate(d.getDate() + 1); return Component.iso(d); })()) {
-        const count = s.days[date] && s.days[date].count;
-        if (typeof count === "number") occupiedCounts.push(count);
-      }
-      if (quote && occupiedTotal > 0) quote = {
-        ...quote,
-        total: occupiedTotal,
-        // GuestPoint's calendar response includes the departure day, but that
-        // morning consumes no inventory. Scarcity is the tightest stayed night.
-        roomsLeft: occupiedCounts.length ? Math.min(...occupiedCounts) : quote.roomsLeft
-      };
-      if (!quote || !quote.available || !quote.ratePlanId || !quote.total || occupiedRates.length === 0) {
-        this.setState({ quoteLoading: false, quote: null, extras: [] });
-        this.showExplain({
-          date: "Live stay check",
-          title: (quote && quote.restriction && quote.restriction.message) || "These dates are not currently bookable",
-          detail: "The nightly calendar changed or the selected stay does not meet GuestPoint's booking rules. Choose another date combination.",
-          fixes: []
-        });
-        return;
-      }
-
-      let extras = [];
-      try {
-        const rawExtras = await this.gp.getExtras([{
-          Arrival: s.from,
-          Departure: s.to,
-          RoomTypeId: quote.gpRoomTypeId,
-          RatePlanId: quote.ratePlanId
-        }]);
-        extras = this.gp.normaliseExtras(rawExtras || [], {
-          nights: Math.round((new Date(s.to) - new Date(s.from)) / 86400000),
-          adults: s.adults,
-          children: s.children,
-          ratePlanId: quote.ratePlanId
-        }).slice(0, 3);
-      } catch (e) { /* Extras are optional; a valid room quote still stands. */ }
-
-      if (requestId === this._quoteRequestId) this.setState({ quoteLoading: false, quote, extras });
-    } catch (e) {
-      if (requestId !== this._quoteRequestId) return;
-      this.setState({ quoteLoading: false, quote: null, extras: [] });
-      this.showExplain({
-        date: "Live stay check",
-        title: "We couldn't confirm that stay just now",
-        detail: "Your dates are still selected. Try again, or call reception on 02 6456 2224 for help.",
-        fixes: [{ label: "Try again", apply: () => { this.setState({ explain: null }); this.quoteSelection(); } }]
-      });
+      this.setState({ days: {}, loading: false });
     }
   }
 
@@ -338,33 +174,17 @@ class Component extends DCLogic {
     const fmt = v => { const p = (v || "").split("-"); return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" }); };
     const shift = (v, n) => { const d = new Date(v); d.setDate(d.getDate() + n); return Component.iso(d); };
 
-    if (picking === "in" && info.soldOut) {
-      const before = shift(iso, -1);
-      const after = shift(iso, 1);
-      const fixes = [];
-      if (s.days[before] && !s.days[before].soldOut && !s.days[before].closedToArrival) fixes.push({ label: "Arrive " + fmt(before), apply: () => this.setState({ from: before, to: "", explain: null }) });
-      if (s.days[after] && !s.days[after].soldOut && !s.days[after].closedToArrival) fixes.push({ label: "Arrive " + fmt(after), apply: () => this.setState({ from: after, to: "", explain: null }) });
-      this.showExplain({
-          date: fmt(iso),
-          title: "Sold out for this night",
-          detail: "GuestPoint is showing no " + ((info.count === 0) ? "rooms" : "availability") + " left for this category. Choose a nearby green date to continue.",
-          fixes
-      });
-      return;
-    }
-
     if (picking === "in" && info.closedToArrival) {
       const alt = shift(iso, -1);
-      const isSaturday = new Date(iso + "T12:00:00").getDay() === 6;
-      this.showExplain({
+      this.setState({
+        explain: {
           date: fmt(iso),
-          title: isSaturday ? "No Saturday check-ins in winter" : "Check-in is closed on this day",
-          detail: isSaturday
-            ? "The night is available for guests already staying, but new arrivals cannot check in on Saturday during winter. Choose Friday or Sunday instead."
-            : "GuestPoint allows an existing stay to continue through this date, but a new stay cannot begin on it.",
+          title: "No arrivals on this day in snow season",
+          detail: "Saturday changeovers are closed through the snow season so the park can turn sites over between weekly stays. Arriving the day before works.",
           fixes: (s.days[alt] && !s.days[alt].soldOut && !s.days[alt].closedToArrival)
             ? [{ label: "Arrive " + fmt(alt) + " instead", apply: () => this.setState({ from: alt, to: "", explain: null }) }]
             : []
+        }
       });
       return;
     }
@@ -374,91 +194,75 @@ class Component extends DCLogic {
     const maxStay = fromInfo.maxStay || 0;
     const nightsIfChosen = Math.round((new Date(iso) - new Date(s.from)) / 86400000);
 
+    if (nightsIfChosen > 0 && nightsIfChosen < minStay) {
+      const fix = shift(s.from, minStay);
+      this.setState({
+        explain: {
+          date: fmt(iso),
+          title: minStay + " night minimum from " + fmt(s.from),
+          detail: "Winter weekends need two nights and the Christmas period needs three, so the park isn't left with single unbookable nights.",
+          fixes: [{ label: "Extend to " + minStay + " nights", apply: () => this.setState({ to: fix, explain: null }) }]
+        }
+      });
+      return;
+    }
+
     if (nightsIfChosen <= 0) {
-      this.showExplain({
+      this.setState({
+        explain: {
           date: fmt(iso),
           title: "This is on or before your arrival",
           detail: "Check-out has to come after check-in. Pick a later date, or start again from a different arrival day.",
           fixes: [{ label: "Arrive " + fmt(iso) + " instead", apply: () => this.setState({ from: iso, to: "", explain: null }) }]
+        }
+      });
+      return;
+    }
+
+    if (maxStay && nightsIfChosen > maxStay) {
+      this.setState({
+        explain: {
+          date: fmt(iso),
+          title: "Maximum " + maxStay + " nights per booking",
+          detail: "Longer stays inside the national park need to be split into two bookings. Reception can arrange back-to-back stays on the same site where possible.",
+          fixes: [
+            { label: "Cap at " + maxStay + " nights", apply: () => this.setState({ to: shift(s.from, maxStay), explain: null }) },
+            { label: "Call the park", apply: () => { window.location.href = "tel:0264562224"; } }
+          ]
+        }
       });
       return;
     }
 
     if (info.closedToDeparture) {
       const alt = shift(iso, 1);
-      const isSaturday = new Date(iso + "T12:00:00").getDay() === 6;
-      this.showExplain({
+      this.setState({
+        explain: {
           date: fmt(iso),
-          title: isSaturday ? "No Saturday check-outs in winter" : "Check-out is closed on this day",
-          detail: isSaturday
-            ? "You can stay on Saturday, but departures are not available that day during winter. Choose Sunday as your check-out instead."
-            : "You may stay through this date, but GuestPoint does not allow the booking to end on it.",
+          title: "No departures on this day",
+          detail: "This date sits mid-block over the Christmas period, when stays run in fixed lengths. Leaving the following day is available.",
           fixes: (s.days[alt] && !s.days[alt].closedToDeparture)
-            ? [{ label: "Leave " + fmt(alt) + " instead", apply: () => this.selectDeparture(alt) }]
+            ? [{ label: "Leave " + fmt(alt) + " instead", apply: () => this.setState({ to: alt, explain: null }) }]
             : []
+        }
       });
       return;
     }
 
-    if (nightsIfChosen > 0 && nightsIfChosen < minStay) {
-      const fix = shift(s.from, minStay);
-      this.showExplain({
-          date: fmt(iso),
-          title: minStay + " night minimum from " + fmt(s.from),
-          detail: "The minimum stay belongs to your check-in date. Choose a check-out date at least " + minStay + " nights later.",
-          fixes: [{ label: "Extend to " + minStay + " nights", apply: () => this.selectDeparture(fix) }]
-      });
-      return;
-    }
-
-    if (maxStay && nightsIfChosen > maxStay) {
-      this.showExplain({
-          date: fmt(iso),
-          title: "Maximum " + maxStay + " nights per booking",
-          detail: "Longer stays inside the national park need to be split into two bookings. Reception can arrange back-to-back stays on the same site where possible.",
-          fixes: [
-            { label: "Cap at " + maxStay + " nights", apply: () => this.selectDeparture(shift(s.from, maxStay)) },
-            { label: "Call the park", apply: () => { window.location.href = "tel:0264562224"; } }
-          ]
-      });
-      return;
-    }
-
-    // Inventory is consumed by nights stayed, not by the checkout morning.
-    // Check every date from arrival up to (but never including) departure.
-    // This deliberately allows a guest to leave on a date whose inventory is
-    // zero, provided that date is not closed to departure.
-    for (let i = 0; i < nightsIfChosen; i++) {
-      const night = shift(s.from, i);
-      const nightInfo = s.days[night];
-      if (nightInfo && nightInfo.soldOut) {
-        this.showExplain({
-            date: fmt(night),
-            title: "This stay crosses a sold-out night",
-            detail: "The room is unavailable on " + fmt(night) + ". You can check out that morning, but you cannot stay that night.",
-            fixes: i >= minStay && !(s.days[night] || {}).closedToDeparture
-              ? [{ label: "Check out " + fmt(night), apply: () => this.selectDeparture(night) }]
-              : []
-        });
-        return;
-      }
-    }
-
-    this.showExplain({
+    this.setState({
+      explain: {
         date: fmt(iso),
         title: "Not available as a check-out date",
         detail: "Check-out has to fall after your arrival and on a day the park allows departures. Pick a later date, or start again from a different arrival.",
         fixes: [{ label: "Start again", apply: () => this.setState({ from: "", to: "", explain: null }) }]
+      }
     });
   }
 
   pickDay(iso) {
     const s = this.state;
-    clearTimeout(this._explainTimer);
-    if (!s.from || (s.from && s.to) || iso <= s.from) {
-      this._quoteRequestId = (this._quoteRequestId || 0) + 1;
-      this.setState({ from: iso, to: "", quote: null, quoteLoading: false, extras: [], explain: null });
-    } else this.selectDeparture(iso);
+    if (!s.from || (s.from && s.to) || iso <= s.from) this.setState({ from: iso, to: "" });
+    else this.setState({ to: iso });
   }
 
   buildMonth(base) {
@@ -468,69 +272,55 @@ class Component extends DCLogic {
     const lead = (first.getDay() + 6) % 7;
     const count = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate();
     const days = [];
-    const cellBase = "display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; border:0; border-radius:9px; padding:6px 1px; min-height:58px; cursor:pointer; ";
-    for (let i = 0; i < lead; i++) days.push({ num: "", rate: "", quantity: "", disabled: true, style: "visibility:hidden", numStyle: "", rateStyle: "", quantityStyle: "", pick: () => {} });
+    const cellBase = "display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; border:0; border-radius:9px; padding:7px 2px; min-height:52px; cursor:pointer; ";
+    for (let i = 0; i < lead; i++) days.push({ num: "", rate: "", disabled: true, style: "visibility:hidden", numStyle: "", rateStyle: "", pick: () => {} });
     for (let n = 1; n <= count; n++) {
       const date = new Date(base.getFullYear(), base.getMonth(), n);
       const iso = Component.iso(date);
       const info = s.days[iso] || {};
-      const hasData = Object.prototype.hasOwnProperty.call(s.days, iso);
       const past = date < today;
       const soldOut = info.soldOut === true;
       // picking an arrival vs a departure changes which rules apply
       const picking = s.from && !s.to ? "out" : "in";
-      let selectionBlocked = false;
+      let restricted = false;
       let outOfRange = false;
-      if (!past) {
-        if (picking === "in") selectionBlocked = !!info.closedToArrival || soldOut;
+      if (!past && !soldOut) {
+        if (picking === "in") restricted = !!info.closedToArrival;
         else {
           const nightsIfChosen = Math.round((date - new Date(s.from)) / 86400000);
           const fromInfo = s.days[s.from] || {};
           const minStay = fromInfo.minStay || 1;
           const maxStay = fromInfo.maxStay || 0;
-          let crossesSoldOut = false;
-          for (let i = 0; i < nightsIfChosen; i++) {
-            const nightDate = new Date(s.from);
-            nightDate.setDate(nightDate.getDate() + i);
-            const night = Component.iso(nightDate);
-            if ((s.days[night] || {}).soldOut) { crossesSoldOut = true; break; }
-          }
           // near-misses are worth flagging; out-of-range dates just stay ordinary
-          selectionBlocked = nightsIfChosen > 0 && (
+          restricted = nightsIfChosen > 0 && (
             !!info.closedToDeparture ||
             nightsIfChosen < minStay ||
-            (maxStay && nightsIfChosen === maxStay + 1) ||
-            crossesSoldOut
+            (maxStay && nightsIfChosen === maxStay + 1)
           );
           outOfRange = nightsIfChosen <= 0 || (maxStay && nightsIfChosen > maxStay);
         }
       }
-      // A full date cannot be an arrival/night stayed, but it can be the
-      // departure morning. CTA applies only to arrivals; CTD only to exits.
+      const closed = soldOut;
+      const disabled = past || soldOut;
       const selected = iso === s.from || iso === s.to;
-      const checkoutOnFull = soldOut && ((picking === "out" && iso > s.from) || iso === s.to);
-      const disabled = past || !hasData;
       const inRange = s.from && s.to && iso > s.from && iso < s.to;
       let style = cellBase;
       if (past) style += "background:transparent; cursor:default";
-      else if (!hasData) style += "background:transparent; box-shadow:inset 0 0 0 1px rgba(29,55,48,0.06); cursor:not-allowed";
-      else if (selected) style += "background:#1D3730";
+      else if (soldOut) style += "background:#EFEDE7; box-shadow:inset 0 0 0 1px rgba(29,55,48,0.10); cursor:not-allowed";
+      else if (restricted) style += "background:#F7E7E1; box-shadow:inset 0 0 0 1px rgba(140,59,42,0.3)";
       else if (outOfRange) style += "background:#F3ECE0; box-shadow:inset 0 0 0 1px rgba(29,55,48,0.07)";
-      else if (checkoutOnFull) style += "background:#EFEDE7; box-shadow:inset 0 0 0 1px rgba(29,55,48,0.34)";
-      else if (soldOut) style += "background:#F6DED7; box-shadow:inset 0 0 0 1px rgba(140,59,42,0.28)";
+      else if (selected) style += "background:#1D3730";
       else if (inRange) style += "background:#DCE5D2";
       else style += "background:#E9EEE3";
       const light = selected;
       days.push({
         num: String(n),
-        rate: past ? "" : !hasData ? "—" : checkoutOnFull ? "Checkout OK" : soldOut ? "Sold out" : (info.rate ? "$" + Math.round(info.rate) : "—"),
-        quantity: past || !hasData || checkoutOnFull ? "" : soldOut ? "Checkout only" : typeof info.count === "number" ? info.count + " left" : "",
+        rate: past ? "" : soldOut ? "Sold out" : restricted ? "Why?" : (info.rate ? "$" + Math.round(info.rate) : "—"),
         disabled,
         style,
-        numStyle: "font:600 13px/1 Figtree, sans-serif; color:" + (light ? "#FCFAF6" : past ? "#C7C3B9" : soldOut ? "#8C3B2A" : outOfRange ? "#8B877E" : "#1D3730"),
-        rateStyle: "font:500 9.5px/1 Figtree, sans-serif; color:" + (light ? "rgba(237,228,212,0.9)" : checkoutOnFull ? "#315B3B" : soldOut ? "#8C3B2A" : outOfRange ? "#A6A29A" : "#74836A"),
-        quantityStyle: "font:600 8px/1 Figtree, sans-serif; color:" + (light ? "rgba(237,228,212,0.78)" : soldOut ? "#8C3B2A" : "#577052"),
-        pick: disabled ? () => {} : ((selectionBlocked || outOfRange) ? () => this.explainDay(iso, picking) : () => this.pickDay(iso))
+        numStyle: "font:600 13px/1 Figtree, sans-serif; color:" + (light ? "#FCFAF6" : past ? "#C7C3B9" : restricted ? "#8C3B2A" : outOfRange ? "#8B877E" : "#1D3730"),
+        rateStyle: "font:500 10px/1 Figtree, sans-serif; color:" + (light ? "rgba(237,228,212,0.9)" : soldOut ? "#A6A29A" : restricted ? "#8C3B2A" : outOfRange ? "#A6A29A" : "#74836A"),
+        pick: disabled ? () => {} : ((restricted || outOfRange) ? () => this.explainDay(iso, picking) : () => this.pickDay(iso))
       });
     }
     return { title: base.toLocaleDateString("en-AU", { month: "long", year: "numeric" }), days };
@@ -552,35 +342,8 @@ class Component extends DCLogic {
         if (info && info.rate) total += info.rate;
       }
     }
-    const quoted = !!(s.quote && s.quote.available && s.quote.total);
-    if (quoted) total = Number(s.quote.total) || total;
-    const shift = (v, n) => { const d = new Date(v); d.setDate(d.getDate() + n); return Component.iso(d); };
-    const smartOptions = [];
-    if (quoted && s.from && s.to) {
-      const before = shift(s.from, -1);
-      const beforeInfo = s.days[before];
-      if (beforeInfo && !beforeInfo.soldOut && !beforeInfo.closedToArrival && typeof beforeInfo.rate === "number") {
-        smartOptions.push({
-          label: "Add the night before · +$" + Math.round(beforeInfo.rate),
-          apply: () => this.setState({ from: before, quote: null, extras: [] }, () => this.quoteSelection())
-        });
-      }
-      const afterInfo = s.days[s.to];
-      const nextCheckout = shift(s.to, 1);
-      const nextCheckoutInfo = s.days[nextCheckout] || {};
-      if (afterInfo && !afterInfo.soldOut && !nextCheckoutInfo.closedToDeparture && typeof afterInfo.rate === "number") {
-        smartOptions.push({
-          label: "Add one more night · +$" + Math.round(afterInfo.rate),
-          apply: () => this.setState({ to: nextCheckout, quote: null, extras: [] }, () => this.quoteSelection())
-        });
-      }
-    }
-    const extrasText = (s.extras || []).map(extra => {
-      const first = extra.prices && extra.prices[0];
-      return extra.name + (first && first.price ? " from $" + Math.round(first.price) : "");
-    }).join(" · ");
     const fmt = v => { const p = (v || "").split("-"); return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString("en-AU", { day: "numeric", month: "short" }); };
-    const label = s.types.find(t => t.slug === s.slug);
+    const label = TYPES.find(t => t.slug === s.slug);
     const fromInfo = s.days[s.from] || {};
     const minStay = fromInfo.minStay || 1;
     let blockText = "";
@@ -588,34 +351,13 @@ class Component extends DCLogic {
     else if (s.from && !s.to) blockText = "Pick a check-out date to continue.";
 
     return {
-      sourceLabel: s.source === "live" ? "Live GuestPoint availability"
-        : s.source === "snapshot" ? "GuestPoint HAR test data"
-        : s.source === "sample" ? "Sample preview — GuestPoint is not connected on this server"
-        : s.source === "error" ? "Availability connection problem"
-        : "Connecting to GuestPoint…",
-      sourceStyle: "display:inline-flex; align-items:center; gap:8px; margin-top:16px; border-radius:999px; padding:9px 12px; font:600 11.5px/1 Figtree, sans-serif; letter-spacing:.025em; " +
-        (s.source === "live" ? "background:#E3EFE0; color:#315B3B" : s.source === "snapshot" ? "background:#E8EEF3; color:#31546B" : s.source === "error" ? "background:#F7E7E1; color:#8C3B2A" : "background:#F3ECE0; color:#665F54"),
-      sourceDotStyle: "width:8px; height:8px; border-radius:999px; flex:0 0 auto; background:" +
-        (s.source === "live" ? "#3A7748" : s.source === "snapshot" ? "#3E6F8C" : s.source === "error" ? "#A94632" : "#B68A56"),
-      errorStyle: s.error ? "max-width:920px; margin-top:14px; border-radius:12px; background:#F7E7E1; color:#8C3B2A; padding:14px 16px; font:500 13px/1.55 Figtree, sans-serif" : "display:none",
-      errorText: s.error,
-      adults: s.adults,
-      children: s.children,
-      guestButtonStyle: "width:34px; height:34px; border-radius:999px; border:1px solid rgba(29,55,48,0.18); background:#FCFAF6; color:#1D3730; font:500 18px/1 Figtree, sans-serif; cursor:pointer",
-      adultDown: () => this.bumpGuest("adults", -1),
-      adultUp: () => this.bumpGuest("adults", 1),
-      childDown: () => this.bumpGuest("children", -1),
-      childUp: () => this.bumpGuest("children", 1),
-      types: s.types.map(t => ({
+      types: TYPES.map(t => ({
         label: t.label,
         style: "border:1px solid " + (t.slug === s.slug ? "rgba(29,55,48,0.5)" : "rgba(29,55,48,0.14)") +
           "; background:" + (t.slug === s.slug ? "#1D3730" : "transparent") +
           "; color:" + (t.slug === s.slug ? "#FCFAF6" : "#56534C") +
           "; font:600 12px/1 Figtree, sans-serif; letter-spacing:.04em; border-radius:999px; padding:13px 16px; cursor:pointer",
-        pick: () => {
-          this._quoteRequestId = (this._quoteRequestId || 0) + 1;
-          this.setState({ slug: t.slug, from: "", to: "", quote: null, quoteLoading: false, extras: [], explain: null }, () => this.load());
-        }
+        pick: () => this.setState({ slug: t.slug, from: "", to: "" }, () => this.load())
       })),
       loading: s.loading,
       ready: !s.loading,
@@ -628,26 +370,15 @@ class Component extends DCLogic {
       next: () => { if (s.offset < 11) this.setState({ offset: s.offset + 1 }, () => this.load()); },
       prevStyle: "width:42px; height:42px; border-radius:999px; border:1px solid rgba(29,55,48,0.16); background:transparent; font:400 17px/1 Figtree, sans-serif; cursor:" +
         (s.offset > 0 ? "pointer" : "not-allowed") + "; color:" + (s.offset > 0 ? "#1D3730" : "#C7C3B9"),
-      barStyle: s.from
-        ? "position:" + (s.wide ? "sticky" : "relative") + "; z-index:" + (s.wide ? "195" : "1") + "; bottom:" + (s.wide ? "14px" : "auto") + "; margin-top:22px; max-width:920px; display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between; background:#1D3730; border-radius:14px; padding:18px 20px; box-shadow:0 22px 44px -26px rgba(18,39,32,0.6); animation:riseIn .2s ease both"
-        : "display:none",
+      barStyle: (s.from ? "" : "display:none; ") +
+        "position:sticky; z-index:195; bottom:14px; margin-top:22px; max-width:920px; display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between; background:#1D3730; border-radius:14px; padding:18px 20px; box-shadow:0 22px 44px -26px rgba(18,39,32,0.6); animation:riseIn .2s ease both",
       selectionEyebrow: label ? label.label : "Selected",
       selectionText: s.from && s.to
         ? fmt(s.from) + " → " + fmt(s.to) + " · " + nights + (nights === 1 ? " night" : " nights")
-        : (s.from ? "Arriving " + fmt(s.from) : ""),
+        : "Arriving " + fmt(s.from),
       selectionNote: s.from && s.to
-        ? s.quoteLoading
-          ? "Confirming the exact stay with GuestPoint…"
-          : quoted
-            ? "$" + Math.round(total) + " total · " + (s.quote.ratePlanName || "best available rate") +
-              (typeof s.quote.roomsLeft === "number" ? " · " + s.quote.roomsLeft + " left" : "")
-            : "Select different dates or try the live check again"
+        ? (total ? "About $" + Math.round(total) + " for the stay, before extras" : "Rates confirmed at the next step")
         : "Now pick your check-out date",
-      smartOptions,
-      smartLead: nights >= 4 ? "Stay a little longer" : "Smart options",
-      smartStyle: smartOptions.length ? "display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:12px" : "display:none",
-      extrasText,
-      extrasStyle: extrasText ? "display:flex; flex-direction:column; gap:6px; margin-top:12px" : "display:none",
       explainStyle: s.explain
         ? "margin-top:18px; max-width:920px; background:#F7E7E1; border-radius:14px; padding:20px 22px; animation:riseIn .18s ease both"
         : "display:none",
@@ -655,41 +386,18 @@ class Component extends DCLogic {
       explainTitle: s.explain ? s.explain.title : "",
       explainDetail: s.explain ? s.explain.detail : "",
       explainFixes: s.explain ? s.explain.fixes : [],
-      closeExplain: () => this.dismissExplain(),
+      closeExplain: () => this.setState({ explain: null }),
       blockText: blockText,
       blockStyle: blockText
         ? "font:500 12.5px/1.4 Figtree, sans-serif; color:#EDE4D4; max-width:26ch"
         : "display:none",
-      clear: () => {
-        this._quoteRequestId = (this._quoteRequestId || 0) + 1;
-        this.setState({ from: "", to: "", quote: null, quoteLoading: false, extras: [], explain: null });
-      },
-      bookDisabled: !quoted || s.quoteLoading,
-      bookLabel: s.quoteLoading ? "Checking…" : quoted ? "Continue to secure booking" : "Check your dates",
-      bookStyle: "border:0; color:#FCFAF6; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:16px 24px; border-radius:999px; white-space:nowrap; " +
-        (quoted && !s.quoteLoading ? "background:#96592A; cursor:pointer" : "background:#6F746D; cursor:not-allowed"),
+      clear: () => this.setState({ from: "", to: "", explain: null }),
       book: () => {
-        if (!quoted || s.quoteLoading || !s.from) return;
+        if (!s.from) return;
         if (s.to && nights < minStay) { this.setState({ to: "" }); return; }
         const out = s.to || (() => { const d = new Date(s.from); d.setDate(d.getDate() + 2); return Component.iso(d); })();
-        const bookingBase = window.KOSIPARK_V2 && window.KOSIPARK_V2.secureBookingUrl;
-        if (!bookingBase) {
-          this.setState({
-            explain: {
-              date: "Secure Online Booking",
-              title: "The booking link is ready to connect",
-              detail: "GuestPoint has not supplied Kosipark's hosted booking address yet. Your selected dates remain here; please call reception on 02 6456 2224 for booking assistance.",
-              fixes: []
-            }
-          });
-          return;
-        }
-        const url = new URL(bookingBase, window.location.href);
-        url.searchParams.set("startDate", s.from);
-        url.searchParams.set("numAdults", String(s.adults));
-        url.searchParams.set("numChildren", String(s.children));
-        url.searchParams.set("numNights", String(Math.max(1, Math.round((new Date(out) - new Date(s.from)) / 86400000))));
-        window.location.href = url.toString();
+        const q = new URLSearchParams({ arrival: s.from, departure: out, adults: "2", children: "0", infants: "0", room: s.slug });
+        window.location.href = "/book?" + q.toString();
       }
     };
   }

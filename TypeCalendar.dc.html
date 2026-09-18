@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="/booking-config.js"></script>
 <script src="/vendor-map.js"></script>
 <script src="./support.js"></script>
 </head>
@@ -23,7 +22,6 @@
       <p style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#74836A; margin:0">Availability</p>
       <p style="font:400 clamp(17px,1.9vw,21px)/1.25 Petrona, Georgia, serif; color:#1D3730; margin:8px 0 0">{{ heading }}</p>
     </div>
-    <div role="status" style="{{ sourceStyle }}"><span style="{{ sourceDotStyle }}"></span>{{ sourceLabel }}</div>
     <div style="display:flex; align-items:center; gap:8px">
       <button type="button" onClick="{{ prev }}" style="{{ prevStyle }}">‹</button>
       <span style="font:500 12.5px/1 Figtree, sans-serif; color:#56534C; min-width:9ch; text-align:center">{{ rangeLabel }}</span>
@@ -61,6 +59,8 @@
       </sc-for>
     </div>
 
+    <p style="{{ addedStyle }}">{{ addedText }}</p>
+
     <div style="{{ reasonStyle }}">
       <p style="font:500 13.5px/1.5 Figtree, sans-serif; color:#8C3B2A; margin:0">{{ reasonTitle }}</p>
       <p style="font:400 13px/1.6 Figtree, sans-serif; color:#56534C; margin:6px 0 0">{{ reasonDetail }}</p>
@@ -84,6 +84,7 @@
       </div>
       <span style="display:flex; flex-wrap:wrap; gap:8px; align-items:center">
         <button type="button" onClick="{{ clear }}" style="{{ clearStyle }}">Reset</button>
+        <button type="button" onClick="{{ addMore }}" style="{{ addMoreStyle }}">Add &amp; pick another</button>
         <button type="button" disabled="{{ bookDisabled }}" onClick="{{ book }}" style="{{ bookStyle }}">{{ bookLabel }}</button>
       </span>
     </div>
@@ -93,7 +94,7 @@
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:720,&quot;height&quot;:520},&quot;room&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;three-bedroom-chalet&quot;,&quot;two-bedroom-chalet-upgraded&quot;,&quot;two-bedroom-chalet&quot;,&quot;cedar-cabin&quot;,&quot;caravan-site&quot;,&quot;camper-trailer-site&quot;,&quot;motorhome-site&quot;,&quot;unpowered-site&quot;],&quot;default&quot;:&quot;two-bedroom-chalet&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;label&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Choose your nights&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;months&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:null,&quot;min&quot;:1,&quot;max&quot;:2,&quot;tsType&quot;:&quot;number&quot;},&quot;adults&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:2,&quot;min&quot;:1,&quot;max&quot;:8,&quot;tsType&quot;:&quot;number&quot;}}">
 class Component extends DCLogic {
-  state = { days: {}, loading: true, offset: 0, from: "", to: "", reason: null, ratesFailed: false, source: "connecting", wide: typeof window !== "undefined" ? window.innerWidth >= 900 : true };
+  state = { days: {}, loading: true, offset: 0, from: "", to: "", reason: null, added: "", cartCount: 0, ratesFailed: false, wide: typeof window !== "undefined" ? window.innerWidth >= 900 : true };
 
   money(n) { return this.gp ? this.gp.money(n) : "$" + Math.round(Number(n) || 0); }
 
@@ -107,6 +108,7 @@ class Component extends DCLogic {
     };
     window.addEventListener("resize", this._onResize);
     this.gp = await import("./guestpoint.js");
+    this.setState({ cartCount: this.gp.readCart().length });
     this.load();
   }
   componentWillUnmount() { window.removeEventListener("resize", this._onResize); }
@@ -119,7 +121,7 @@ class Component extends DCLogic {
     const room = this.props.room || "two-bedroom-chalet";
     const start = this.monthStart(this.state.offset);
     const end = new Date(start.getFullYear(), start.getMonth() + this.monthCount(), 0);
-    this.setState({ loading: true, source: "connecting" });
+    this.setState({ loading: true });
     try {
       // Per-category counts: /availabilities carries ForSale per night for
       // this room type, which /bestavailablerates does not.
@@ -127,9 +129,9 @@ class Component extends DCLogic {
         room, fromDate: Component.iso(start), toDate: Component.iso(end),
         numAdults: Number(this.props.adults) || 2
       });
-      this.setState({ days, loading: false, ratesFailed: Object.keys(days).length === 0, source: this.gp.isUnconfigured() ? "sample" : this.gp.isSnapshot() ? "snapshot" : "live" });
+      this.setState({ days, loading: false, ratesFailed: Object.keys(days).length === 0 });
     } catch (e) {
-      this.setState({ days: {}, loading: false, ratesFailed: true, source: "error" });
+      this.setState({ days: {}, loading: false, ratesFailed: true });
     }
   }
 
@@ -138,30 +140,14 @@ class Component extends DCLogic {
 
   pickDay(iso) {
     const s = this.state;
-    if (!s.from || s.to || iso <= s.from) {
-      if ((s.days[iso] || {}).soldOut) {
-        this.setState({ reason: { title: this.fmt(iso) + " is sold out", detail: "GuestPoint is showing no availability left for this category. Choose a nearby green date instead.", fixes: [] } });
-        return;
-      }
-      if ((s.days[iso] || {}).closedToArrival) {
-        const saturday = new Date(iso + "T12:00:00").getDay() === 6;
-        this.setState({ reason: { title: saturday ? "No Saturday check-ins in winter" : "Check-in is closed on " + this.fmt(iso), detail: saturday ? "The night is available for guests already staying, but new arrivals cannot check in on Saturday during winter." : "An existing stay may continue through this date, but GuestPoint does not allow a new stay to begin on it.", fixes: [] } });
-        return;
-      }
-      this.setState({ from: iso, to: "", reason: null }); return;
-    }
-    if ((s.days[iso] || {}).closedToDeparture) {
-      const saturday = new Date(iso + "T12:00:00").getDay() === 6;
-      this.setState({ reason: { title: saturday ? "No Saturday check-outs in winter" : "Check-out is closed on " + this.fmt(iso), detail: saturday ? "You can stay on Saturday, but departures are not available that day during winter. Choose Sunday instead." : "You may stay through this date, but GuestPoint does not allow the booking to end on it.", fixes: [] } });
-      return;
-    }
+    if (!s.from || s.to || iso <= s.from) { this.setState({ from: iso, to: "", reason: null }); return; }
     const minStay = (s.days[s.from] || {}).minStay || 1;
     const nights = Math.round((new Date(iso) - new Date(s.from)) / 86400000);
     if (nights < minStay) {
       this.setState({
         reason: {
           title: minStay + " night minimum from " + this.fmt(s.from),
-          detail: "The minimum stay belongs to your check-in date. Choose a check-out date at least " + minStay + " nights later.",
+          detail: "Winter weekends need two nights and the Christmas period three, so single nights aren't left stranded.",
           fixes: [{ label: "Extend to " + minStay + " nights", apply: () => this.setState({ to: this.shift(s.from, minStay), reason: null }) }]
         }
       });
@@ -184,6 +170,22 @@ class Component extends DCLogic {
     this.setState({ to: iso, reason: null });
   }
 
+  stay(nights, total) {
+    return {
+      id: this.gp.newCartItemId(),
+      roomTypeId: this.props.room || "two-bedroom-chalet",
+      name: this.props.label || "Stay",
+      ratePlanId: "standard",
+      arrival: this.state.from,
+      departure: this.state.to,
+      nights,
+      adults: this.props.adults || 2,
+      children: 0,
+      infants: 0,
+      total: Math.round(total)
+    };
+  }
+
   buildMonth(base) {
     const s = this.state;
     const today = Component.today();
@@ -199,43 +201,34 @@ class Component extends DCLogic {
       const iso = Component.iso(date);
       const info = s.days[iso] || {};
       const past = date < today;
-      const fullInventory = info.soldOut === true || info.count === 0;
-      const missingRate = typeof info.rate !== "number";
-      const soldOut = fullInventory || missingRate;
+      const soldOut = info.soldOut === true || info.count === 0 || typeof info.rate !== "number";
       const left = typeof info.count === "number" ? info.count : null;
       const isIn = iso === s.from, isOut = iso === s.to;
       const inRange = s.from && s.to && iso > s.from && iso < s.to;
       const selected = isIn || isOut;
-      const pickingOut = !!(s.from && !s.to);
-      const nightsIfChosen = pickingOut ? Math.round((date - new Date(s.from)) / 86400000) : 0;
-      const minStay = pickingOut ? ((s.days[s.from] || {}).minStay || 1) : 1;
-      const checkoutOnFull = fullInventory && ((pickingOut && iso > s.from) || isOut);
-      const disabled = past;
 
       let style = cell;
       if (past) style += "background:transparent; cursor:default";
-      else if (selected) style += "background:#1D3730; cursor:pointer";
-      else if (checkoutOnFull) style += "background:#EFEDE7; box-shadow:inset 0 0 0 1px rgba(29,55,48,0.34); cursor:pointer";
       else if (soldOut) style += "background:#F6DED7; box-shadow:inset 0 0 0 1px rgba(140,59,42,0.28); cursor:not-allowed";
+      else if (selected) style += "background:#1D3730; cursor:pointer";
       else if (inRange) style += "background:#BFD6B7; cursor:pointer";
       else style += "background:#DCEBD6; box-shadow:inset 0 0 0 1px rgba(58,110,72,0.28); cursor:pointer";
 
       let note = "";
       if (past) note = "";
-      else if (checkoutOnFull) note = "Checkout OK";
       else if (soldOut) note = "Full";
-      else if (left !== null) note = left === 1 ? "1 left" : left + " left";
+      else if (left !== null && left <= 2) note = left === 1 ? "1 left" : left + " left";
       else if (info.rate) note = "$" + Math.round(info.rate);
 
       days.push({
         num: String(n),
         note,
-        disabled,
+        disabled: past || soldOut,
         style,
         numStyle: "font:600 12.5px/1 Figtree, sans-serif; color:" + (selected ? "#FCFAF6" : past ? "#C7C3B9" : soldOut ? "#8C3B2A" : "#1D3730"),
         noteStyle: "font:600 9px/1 Figtree, sans-serif; color:" +
           (selected ? "rgba(237,228,212,0.9)" : soldOut ? "rgba(140,59,42,0.75)" : (left !== null && left <= 2) ? "#96592A" : "#5F7A56"),
-        pick: disabled ? () => {} : () => this.pickDay(iso)
+        pick: (past || soldOut) ? () => {} : () => this.pickDay(iso)
       });
     }
     return { title: base.toLocaleDateString("en-AU", { month: "long", year: "numeric" }), days };
@@ -259,7 +252,7 @@ class Component extends DCLogic {
     const lastMonth = new Date(start.getFullYear(), start.getMonth() + this.monthCount() - 1, 1);
 
     /* Adding a night is the biggest single thing a guest can do for the park's
-       take, and until now the only place to do it was the next booking step —
+       take, and until now the only place to do it was step two of checkout —
        long after they had settled on their dates. The rates for the nights on
        either side are already in s.days from the same call that drew the grid,
        so this costs no request: it just names the price and extends the
@@ -292,15 +285,6 @@ class Component extends DCLogic {
 
     return {
       heading: this.props.label || "Choose your nights",
-      sourceLabel: s.source === "live" ? "Live GuestPoint"
-        : s.source === "snapshot" ? "GuestPoint HAR test"
-        : s.source === "sample" ? "Sample preview"
-        : s.source === "error" ? "Connection problem"
-        : "Connecting…",
-      sourceStyle: "display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:8px 10px; font:600 10.5px/1 Figtree, sans-serif; white-space:nowrap; " +
-        (s.source === "live" ? "background:#E3EFE0; color:#315B3B" : s.source === "snapshot" ? "background:#E8EEF3; color:#31546B" : s.source === "error" ? "background:#F7E7E1; color:#8C3B2A" : "background:#F3ECE0; color:#665F54"),
-      sourceDotStyle: "width:7px; height:7px; border-radius:999px; background:" +
-        (s.source === "live" ? "#3A7748" : s.source === "snapshot" ? "#3E6F8C" : s.source === "error" ? "#A94632" : "#B68A56"),
       loading: s.loading,
       ready,
       months,
@@ -336,28 +320,27 @@ class Component extends DCLogic {
         : "display:none",
       extendLead: nights >= 4 ? "Make it longer:" : "Add a night:",
       bookDisabled: !canBook,
-      bookLabel: canBook ? "Continue to secure booking" : "Pick your dates",
+      bookLabel: canBook ? "Book these nights" : "Pick your dates",
       bookStyle: "border:0; border-radius:999px; font:700 12px/1 Figtree, sans-serif; letter-spacing:.09em; text-transform:uppercase; padding:17px 24px; " +
         (canBook ? "background:#96592A; color:#FCFAF6; cursor:pointer" : "background:#EFEDE7; color:#A6A29A; cursor:not-allowed"),
+      addMoreStyle: (canBook ? "" : "display:none; ") +
+        "border:1px solid rgba(29,55,48,0.2); border-radius:999px; background:transparent; color:#1D3730; font:600 12px/1 Figtree, sans-serif; letter-spacing:.06em; padding:16px 18px; cursor:pointer",
+      addedText: s.added,
+      addedStyle: s.added
+        ? "margin:14px 0 0; font:500 13px/1.5 Figtree, sans-serif; color:#4C5C40; background:#E9EEE3; border-radius:11px; padding:12px 14px; animation:riseIn .18s ease both"
+        : "display:none",
+      addMore: () => {
+        if (!canBook || !this.gp) return;
+        const items = this.gp.addToCart(this.stay(nights, total));
+        this.setState({
+          from: "", to: "", reason: null, cartCount: items.length,
+          added: (this.props.label || "That stay") + " added — " + items.length + (items.length === 1 ? " stay" : " stays") + " in your booking. Pick dates for the next one, or head to checkout."
+        });
+      },
       book: () => {
-        if (!canBook) return;
-        const bookingBase = window.KOSIPARK_V2 && window.KOSIPARK_V2.secureBookingUrl;
-        if (!bookingBase) {
-          this.setState({
-            reason: {
-              title: "Secure Online Booking is ready to connect",
-              detail: "GuestPoint has not supplied Kosipark's hosted booking address yet. Your selected dates remain here in this local preview.",
-              fixes: []
-            }
-          });
-          return;
-        }
-        const url = new URL(bookingBase, window.location.href);
-        url.searchParams.set("startDate", s.from);
-        url.searchParams.set("numAdults", String(this.props.adults || 2));
-        url.searchParams.set("numChildren", "0");
-        url.searchParams.set("numNights", String(nights));
-        window.location.href = url.toString();
+        if (!canBook || !this.gp) return;
+        this.gp.addToCart(this.stay(nights, total));
+        window.location.href = "/book/checkout";
       }
     };
   }

@@ -25,10 +25,9 @@
 function autoMock() {
   if (typeof window === "undefined") return true;
   if (typeof window.KOSIPARK_MOCK === "boolean") return window.KOSIPARK_MOCK;
-  // The local preview server has the same private /api/gp bridge as production.
-  // It returns an explicit Unconfigured marker when no credentials are present,
-  // so localhost can try real data safely and still fall back to labelled samples.
-  return location.protocol === "file:";
+  const h = location.hostname;
+  return location.protocol === "file:" || h === "localhost" || h === "127.0.0.1" ||
+         h === "[::1]" || h.endsWith(".local") || h.endsWith(".test");
 }
 
 export const CONFIG = {
@@ -66,7 +65,7 @@ const CACHE_TTL = {
 };
 
 const memory = new Map();
-const LS_PREFIX = "gp:v2-restrictions:";
+const LS_PREFIX = "gp:";
 
 function cacheGet(key, ttl) {
   const live = e => Date.now() - e.ts < (e.sample ? Math.min(ttl, SAMPLE_TTL) : ttl);
@@ -136,10 +135,7 @@ async function request(method, path, { params, body, cacheKind } = {}) {
 
   if (key && ttl) {
     const cached = cacheGet(key, ttl);
-    if (cached) {
-      noteDataSource(cached);
-      return cached;
-    }
+    if (cached) return cached;
   }
 
   if (CONFIG.mock) {
@@ -149,7 +145,7 @@ async function request(method, path, { params, body, cacheKind } = {}) {
     return mocked;
   }
 
-  if (notConfigured && mayUseSamples()) { // local preview already learned there are no credentials
+  if (notConfigured) {                     // already learned there are no credentials
     const mocked = await mockResponse(method, path, params, body);
     if (key && ttl) cacheSet(key, mocked);
     return mocked;
@@ -176,15 +172,10 @@ async function request(method, path, { params, body, cacheKind } = {}) {
       notConfigured = true;
       console.info("[guestpoint] booking service not configured yet — showing sample data");
     }
-    if (mayUseSamples()) {
-      announceSample();
-      const mocked = await mockResponse(method, path, params, body);
-      if (key && ttl) cacheSet(key, mocked);
-      return mocked;
-    }
-    const err = new Error("GuestPoint is not configured on this server.");
-    err.status = 503;
-    throw err;
+    announceSample();
+    const mocked = await mockResponse(method, path, params, body);
+    if (key && ttl) cacheSet(key, mocked);
+    return mocked;
   }
 
   if (!res.ok) {
@@ -193,12 +184,14 @@ async function request(method, path, { params, body, cacheKind } = {}) {
     err.payload = payload;
     throw err;
   }
+  if (payload && payload.success === false) {
+    const err = new Error(payload.message || "GuestPoint rejected the request");
+    err.status = res.status;
+    err.payload = payload;
+    throw err;
+  }
 
   const data = payload && payload.data !== undefined ? payload.data : payload;
-  noteDataSource(data);
-  try {
-    window.dispatchEvent(new CustomEvent(snapshotMode ? "kosipark:snapshot-data" : "kosipark:live-data"));
-  } catch (e) {}
   if (key && ttl) cacheSet(key, data);
   return data;
 }
@@ -217,19 +210,8 @@ async function request(method, path, { params, body, cacheKind } = {}) {
  * the one thing this must never do.
  */
 let notConfigured = false;
-let snapshotMode = false;
 let announced = false;
 export function isUnconfigured() { return notConfigured || CONFIG.mock; }
-export function isSnapshot() { return snapshotMode; }
-
-function mayUseSamples() {
-  if (typeof window === "undefined") return true;
-  return CONFIG.mock || /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-}
-
-function noteDataSource(data) {
-  if (data && data.DataSource === "guestpoint-har-snapshot") snapshotMode = true;
-}
 
 function announceSample() {
   if (announced) return;
@@ -488,8 +470,9 @@ export function normaliseManagedReservation(payload) {
   const stays = activeStays.length ? activeStays : allStays;
   const arrivals = stays.map(x => x.Arrival).filter(Boolean).sort();
   const departures = stays.map(x => x.Departure).filter(Boolean).sort();
-  const total = Number(r.ReservationTotalAfterTax || r.ReservationTotal || 0);
-  const balance = Number(r.PaymentRequired || r.PayLater || 0);
+  const numberOrNull = value => value === null || value === undefined || value === "" || !Number.isFinite(Number(value)) ? null : Number(value);
+  const total = numberOrNull(r.ReservationTotalAfterTax) ?? numberOrNull(r.ReservationTotal) ?? 0;
+  const balance = Math.min(total, Math.max(0, numberOrNull(r.PaymentRequired) ?? 0, numberOrNull(r.PayLater) ?? 0));
   const rooms = [...new Set(stays.map(x => x.RoomTypeName).filter(Boolean))];
   const rateNames = [...new Set(stays.flatMap(x => (x.RateDetails || []).map(y => y.RatePlanName)).filter(Boolean))];
   const firstStay = stays[0] || {};
@@ -501,9 +484,9 @@ export function normaliseManagedReservation(payload) {
     room: rooms.join(" + ") || "Accommodation booking",
     checkIn: arrivals[0] || "",
     checkOut: departures[departures.length - 1] || "",
-    adults: Number(r.Adults || stays.reduce((n, x) => n + Number(x.Adults || 0), 0)),
-    children: Number(r.Children || stays.reduce((n, x) => n + Number(x.Children || 0), 0)),
-    infants: Number(r.Infants || stays.reduce((n, x) => n + Number(x.Infants || 0), 0)),
+    adults: numberOrNull(r.Adults) ?? stays.reduce((n, x) => n + Number(x.Adults || 0), 0),
+    children: numberOrNull(r.Children) ?? stays.reduce((n, x) => n + Number(x.Children || 0), 0),
+    infants: numberOrNull(r.Infants) ?? stays.reduce((n, x) => n + Number(x.Infants || 0), 0),
     total,
     balance,
     paid: Math.max(0, total - balance),
@@ -513,6 +496,8 @@ export function normaliseManagedReservation(payload) {
     stayCount: stays.length,
     rate: rateNames.join(" + ") || "Booked rate",
     policyText: stays.map(x => x.PolicyText).filter(Boolean).join(" "),
+    cancelRule: firstRate.CancelRule || null,
+    cancellationQuote: root.CancellationQuote || null,
     specialRequest: r.ExtraInfo || "",
     estimatedArrival: r.EstimatedArrival || "",
     channel: r.ChannelCode || r.SalesChannelCode || "",
@@ -602,13 +587,17 @@ export function modifyReservation(confNum, changes, portalToken, notify = false)
 }
 
 /**
- * 10. DELETE /reservations/{reservationId} — cancel. Takes the internal integer
- * id from the lookup, and the ConfNum must match it. Only works while the
- * reservation is Booked or Modified.
+ * 10. Cancel through the authenticated portal. The server takes the internal
+ * reservation id and accepted fee/refund quote only from the signed OTP session;
+ * the browser cannot choose either. Only works while the booking is actionable.
  */
-export function cancelReservation(reservationId, confNum) {
-  return request("DELETE", "/reservations/" + encodeURIComponent(reservationId), {
-    body: { PropertyId: CONFIG.propertyId, ConfNum: confNum }
+export function cancelReservation(confNum, portalToken, acknowledged) {
+  return request("POST", "/portal/cancel", {
+    body: {
+      ConfNum: confNum,
+      PortalToken: portalToken,
+      Acknowledged: acknowledged === true
+    }
   });
 }
 
@@ -632,17 +621,6 @@ export const CART_TTL = 24 * 60 * 60 * 1000;
 
 /** Rates move. Past this, checkout re-quotes rather than trusting what's stored. */
 export const CART_PRICE_TTL = 30 * 60 * 1000;
-
-/** The checkout and header use one window for an active, bookable quote. */
-export const CHECKOUT_QUOTE_TTL = 15 * 60 * 1000;
-
-/** Time left before the oldest quoted stay must be searched again. */
-export function cartQuoteExpiresIn() {
-  const items = readCart();
-  if (!items.length) return 0;
-  const oldestQuote = Math.min.apply(null, items.map(i => i.pricedAt || i.addedAt || 0));
-  return Math.max(0, CHECKOUT_QUOTE_TTL - (Date.now() - oldestQuote));
-}
 
 /** Time until the next item lapses — the honest answer to "when does this go?". */
 export function cartExpiresIn() {
@@ -757,7 +735,7 @@ export function flattenAvailability(data) {
     // Availabilities carries one entry per night of the requested stay.
     const nights = Array.isArray(rt.Availabilities) ? rt.Availabilities : [];
     const counts = nights
-      .map(n => (n.ForSale !== undefined && n.ForSale !== null && n.ForSale !== "" ? num(n.ForSale) : null))
+      .map(n => (typeof n.ForSale === "number" ? n.ForSale : null))
       .filter(n => n !== null);
     // The stay can only be sold as many times as its tightest night allows.
     const roomsLeft = counts.length ? Math.min(...counts)
@@ -792,8 +770,8 @@ export function flattenAvailability(data) {
         sortOrder: typeof p.WebSortOrder === "number" ? p.WebSortOrder : 999,
         // Restrictions are per-date on the rate, not per room type.
         closed: rates.length ? rates.some(r => r.Closed === true) : false,
-        closedToArrival: first.ClosedToArrival === true || first.Cta === true || first.CTA === true,
-        closedToDeparture: last.ClosedToDeparture === true || last.Ctd === true || last.CTD === true,
+        closedToArrival: first.ClosedToArrival === true,
+        closedToDeparture: last.ClosedToDeparture === true,
         closedDueToCriteria: rates.some(r => r.ClosedDueToCriteria === true),
         minStayArrival: num(first.MinStayArrival) || 0
       };
@@ -999,8 +977,7 @@ export async function availabilityCalendar({ room, fromDate, toDate, numAdults =
   // Counts and closures, per night.
   (rt.Availabilities || []).forEach(a => {
     if (!a || !a.Date) return;
-    const forSale = a.ForSale !== undefined && a.ForSale !== null && a.ForSale !== ""
-      ? num(a.ForSale) : null;
+    const forSale = typeof a.ForSale === "number" ? a.ForSale : null;
     out[a.Date] = {
       rate: null, strikeRate: null, discountReason: "",
       count: forSale,
@@ -1027,9 +1004,9 @@ export async function availabilityCalendar({ room, fromDate, toDate, numAdults =
     day.rate = sell > 0 ? sell : null;
     day.strikeRate = r.StrikeOutRate !== undefined ? num(r.StrikeOutRate) : null;
     day.discountReason = r.DiscountReason || "";
-    day.minStay = num(r.MinStayArrival || r.MinimumStay || r.MinStay) || day.minStay || null;
-    day.closedToArrival = r.ClosedToArrival === true || r.Cta === true || r.CTA === true;
-    day.closedToDeparture = r.ClosedToDeparture === true || r.Ctd === true || r.CTD === true;
+    day.minStay = num(r.MinStayArrival) || day.minStay || null;
+    day.closedToArrival = r.ClosedToArrival === true;
+    day.closedToDeparture = r.ClosedToDeparture === true;
     if (r.Closed === true) { day.soldOut = true; day.closed = true; }
   });
 
@@ -1440,6 +1417,15 @@ async function mockResponse(method, path, params, body) {
 
   if (path === "/portal/update") {
     return { Updated: true, NotificationSent: body && body.Notify ? true : null, GuestPoint: { Success: true } };
+  }
+
+  if (path === "/portal/cancel") {
+    if (!body || !body.PortalToken || !body.Acknowledged) {
+      const err = new Error("The cancellation was not authorised.");
+      err.status = 403;
+      throw err;
+    }
+    return { Cancelled: true, Message: "GuestPoint has cancelled the reservation.", GuestPoint: { Success: true } };
   }
 
   if (path === "/availabilities") {
