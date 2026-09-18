@@ -622,6 +622,7 @@ function portalAccommodationTotal(string $roomAllocationId): ?float {
 
 /** Build a Booking Engine-shaped management response for a Phoenix-only stay. */
 function pmsManagedReservationPayload(array $identity, string $surname, string $email): ?array {
+    global $PROPERTY_ID;
     $core = is_array($identity['reservation'] ?? null) ? $identity['reservation'] : [];
     $allocations = array_values(array_filter($core['Allocations'] ?? [], fn($a) => is_array($a) && !empty($a['RoomAllocationId'])));
     if (count($allocations) !== 1) return null;
@@ -632,8 +633,15 @@ function pmsManagedReservationPayload(array $identity, string $surname, string $
 
     [$detailsStatus, $detailsRaw] = pmsCall('GET', 'Reservation/GetRoomAllocationDetail2sByReservation?reservationID=' . rawurlencode($reservationId));
     $details = json_decode($detailsRaw, true);
-    if ($detailsStatus !== 200 || !is_array($details) || count($details) !== 1 || !is_array($details[0])) return null;
-    $allocation = $details[0];
+    $allocation = ($detailsStatus === 200 && is_array($details) && count($details) === 1 && is_array($details[0])) ? $details[0] : null;
+    // Phoenix excludes cancelled allocations from its editable-detail endpoint.
+    // Fall back to the read-only allocation so cancelled bookings remain
+    // available for status checks and future receipt downloads.
+    if (!is_array($allocation)) {
+        [$allocationStatus, $allocationRaw] = pmsCall('GET', 'Reservation/GetRoomAllocation?roomAllocationID=' . rawurlencode($roomAllocationId));
+        $allocation = json_decode($allocationRaw, true);
+        if ($allocationStatus !== 200 || !is_array($allocation)) return null;
+    }
     if ((string)($allocation['RoomAllocationID'] ?? '') !== $roomAllocationId) return null;
 
     $arrival = substr((string)($allocation['ArrivalDate'] ?? ''), 0, 10);
@@ -644,10 +652,27 @@ function pmsManagedReservationPayload(array $identity, string $surname, string $
     $statusMap = [1=>'Modified', 2=>'Checked in', 3=>'Checked out', 4=>'Cancelled', 5=>'No show'];
     $status = $statusMap[$statusCode] ?? 'Booked';
     $outstanding = max(0.0, gpNumber($core['AmountOutstanding'] ?? null) ?? gpNumber($allocation['DepartureBalance'] ?? null) ?? 0.0);
-    $bookingTotal = max($outstanding, gpNumber($allocation['DepartureBalance'] ?? null) ?? 0.0);
-    $roomTotal = portalAccommodationTotal($roomAllocationId) ?? $bookingTotal;
+    $departureBalance = max(0.0, gpNumber($allocation['DepartureBalance'] ?? null) ?? 0.0);
+    $accommodationTotal = portalAccommodationTotal($roomAllocationId);
+    $currentExtras = portalCurrentExtras($roomAllocationId);
+    $extrasTotal = array_sum(array_map(fn($extra) => max(0.0, (float)($extra['Total'] ?? 0)), $currentExtras));
+    $bookingTotal = max($outstanding, $departureBalance, $accommodationTotal !== null ? $accommodationTotal + $extrasTotal : 0.0);
+    $roomTotal = $accommodationTotal ?? $bookingTotal;
     $roomType = is_array($allocation['_RoomType'] ?? null) ? $allocation['_RoomType'] : [];
-    $roomTypeName = trim((string)($roomType['Name'] ?? $roomType['RoomType'] ?? '')) ?: 'Accommodation booking';
+    $roomTypeName = trim((string)($roomType['Name'] ?? $roomType['RoomType'] ?? ''));
+    if ($roomTypeName === '') {
+        [$roomTypesStatus, $roomTypesRaw] = pmsCall('GET', 'Property/GetRoomTypes?propertyID=' . rawurlencode($PROPERTY_ID));
+        $roomTypes = json_decode($roomTypesRaw, true);
+        if ($roomTypesStatus === 200 && is_array($roomTypes)) {
+            foreach ($roomTypes as $candidate) {
+                if (is_array($candidate) && (string)($candidate['RoomTypeID'] ?? '') === (string)($allocation['RoomTypeID'] ?? '')) {
+                    $roomTypeName = trim((string)($candidate['Name'] ?? ''));
+                    break;
+                }
+            }
+        }
+    }
+    if ($roomTypeName === '') $roomTypeName = 'Accommodation booking';
     $ratePlanId = (string)($allocation['PackageID'] ?? '');
     $bookingReference = strtoupper(trim((string)($identity['manageReference'] ?? '')));
     $reservationNumber = strtoupper(trim((string)($identity['reservationNumber'] ?? $core['ReservationNumber'] ?? '')));
@@ -695,7 +720,7 @@ function pmsManagedReservationPayload(array $identity, string $surname, string $
     return [
         'Reservation'=>$reservation,
         'Login'=>['ViewReservation'=>true,'UpdateGuestDetails'=>false,'SpecialRequests'=>false,'PayNow'=>false,'Cancel'=>false,'UpdateStayDates'=>false],
-        'CurrentExtras'=>portalCurrentExtras($roomAllocationId),
+        'CurrentExtras'=>$currentExtras,
         'PortalCapabilities'=>['Amend'=>true,'Extras'=>true,'Cancel'=>true],
         'PortalToken'=>issuePortalToken($confNum, $reservationId, $surname, $email, $quote),
         'CancellationQuote'=>$quote,
