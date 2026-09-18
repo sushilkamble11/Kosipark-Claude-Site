@@ -553,7 +553,12 @@ export async function quoteManagedStayChange(booking, proposal) {
     return { available: false, code: "RATE_UNAVAILABLE", message: "The accommodation is available, but your original rate plan is not available for those dates." };
   }
 
-  const newTotal = Number(plan.total || 0);
+  // GuestPoint includes the departure date in some availability responses.
+  // A stay is charged for arrival <= night < departure, never for checkout.
+  const quotedNights = (plan.nightly || []).filter(x => x.date >= proposal.checkIn && x.date < proposal.checkOut);
+  const newTotal = quotedNights.length
+    ? quotedNights.reduce((sum, night) => sum + Number(night.rate || 0), 0)
+    : Number(plan.total || 0);
   const difference = newTotal - Number(booking.total || 0);
   return {
     available: true,
@@ -563,7 +568,7 @@ export async function quoteManagedStayChange(booking, proposal) {
     difference,
     maxOccupancy: room.maxOccupancy,
     roomsLeft: room.roomsLeft,
-    message: "Live availability is confirmed, but the booking has not been changed because GuestPoint's documented management API does not accept new stay dates. " + (difference < 0
+    message: "Live availability and the revised price are confirmed. Nothing changes until you accept the terms and press the final confirmation button. " + (difference < 0
       ? "The original cancellation terms still apply to the reduction."
       : difference > 0
         ? "The additional amount would need to be paid before the change is completed."

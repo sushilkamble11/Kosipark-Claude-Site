@@ -79,7 +79,11 @@ const ROUTES = [
 
 const MAX_BODY_BYTES      = 256 * 1024;   // a reservation is a few KB
 const UPSTREAM_TIMEOUT    = 20;           // seconds
-const RESERVATION_LIMIT   = 12;           // per IP
+// A lookup, quote and final mutation are separate requests. Twelve requests
+// made normal use look like abuse (and is especially harsh behind hotel/NAT
+// networks), so retain the five-minute window but allow several complete
+// booking-management flows.
+const RESERVATION_LIMIT   = 60;           // per IP
 const RESERVATION_WINDOW  = 300;          // seconds
 
 // ----------------------------------------------------------- small utils ----
@@ -719,6 +723,125 @@ function requirePortalSession(array $input): array {
     return [$confNum, $tokenPayload, $identity];
 }
 
+/** Unwrap GuestPoint's optional data/Data envelope. */
+function managedRoot(array $payload): array {
+    if (isset($payload['data']) && is_array($payload['data'])) return $payload['data'];
+    if (isset($payload['Data']) && is_array($payload['Data'])) return $payload['Data'];
+    return $payload;
+}
+
+/**
+ * Re-price a proposed stay against GuestPoint's live Booking Engine response.
+ * The browser's displayed total is never trusted: room type, original rate
+ * plan, capacity, closures and nightly prices are all resolved server-side.
+ */
+function portalStayQuote(string $confNum, array $tokenPayload, string $arrival, string $departure, int $adults, int $children, bool $requireInventory): array {
+    global $UPSTREAM, $PROPERTY_ID, $API_KEY;
+    [$manageStatus, $managePayload] = loadManagedReservation(
+        $confNum,
+        (string)($tokenPayload['sn'] ?? ''),
+        (string)($tokenPayload['em'] ?? ''),
+        false
+    );
+    if ($manageStatus < 200 || $manageStatus >= 300 || !is_array($managePayload)) {
+        fail(502, 'GuestPoint could not load the original room and rate. Nothing was changed.');
+    }
+    $root = managedRoot($managePayload);
+    $reservation = is_array($root['Reservation'] ?? null) ? $root['Reservation'] : [];
+    $stays = array_values(array_filter($reservation['RoomStays'] ?? [], fn($s) => is_array($s) && empty($s['IsCancelled'])));
+    if (count($stays) !== 1) fail(409, 'This portal can only re-price a booking with one accommodation. Nothing was changed.');
+    $stay = $stays[0];
+    $roomTypeId = (string)($stay['RoomTypeId'] ?? '');
+    $roomTypeName = strtolower(trim((string)($stay['RoomTypeName'] ?? '')));
+    $rate = is_array(($stay['RateDetails'] ?? [])[0] ?? null) ? $stay['RateDetails'][0] : [];
+    $ratePlanId = (string)($rate['RatePlanId'] ?? '');
+    $ratePlanName = strtolower(trim((string)($rate['RatePlanName'] ?? '')));
+    if ($roomTypeId === '') fail(502, 'GuestPoint did not return the booked room type. Nothing was changed.');
+
+    $url = $UPSTREAM . '/properties/' . rawurlencode($PROPERTY_ID) . '/availabilities?' . http_build_query([
+        'arrivalDate' => $arrival,
+        'departureDate' => $departure,
+        'numAdults' => $adults,
+        'numChildren' => $children,
+        'roomTypes' => $roomTypeId,
+    ], '', '&', PHP_QUERY_RFC3986);
+    [$status, $raw, $error] = upstreamCall('GET', $url, $API_KEY);
+    $availability = json_decode($raw, true);
+    if ($status !== 200 || !is_array($availability)) fail(502, 'GuestPoint could not confirm live availability and pricing. Nothing was changed.', $error ?: $raw);
+    $availability = managedRoot($availability);
+    $properties = is_array($availability['Properties'] ?? null) ? $availability['Properties'] : [];
+    $roomTypes = is_array(($properties[0]['RoomTypes'] ?? null)) ? $properties[0]['RoomTypes'] : [];
+    $room = null;
+    foreach ($roomTypes as $candidate) {
+        if (!is_array($candidate)) continue;
+        $candidateId = (string)($candidate['Id'] ?? $candidate['RoomTypeId'] ?? '');
+        $candidateName = strtolower(trim((string)($candidate['Name'] ?? '')));
+        if (($candidateId !== '' && hash_equals($roomTypeId, $candidateId)) || ($roomTypeName !== '' && $candidateName === $roomTypeName)) { $room = $candidate; break; }
+    }
+    if (!is_array($room)) fail(409, 'Your booked accommodation is not available for those dates. Nothing was changed.');
+    $maxGuests = (int)($room['MaxGuests'] ?? $room['MaxOccupancy'] ?? 0);
+    if ($maxGuests > 0 && $adults + $children > $maxGuests) fail(409, 'This accommodation allows a maximum of ' . $maxGuests . ' guests.');
+
+    $from = new DateTimeImmutable($arrival);
+    $to = new DateTimeImmutable($departure);
+    $nights = (int)$from->diff($to)->format('%r%a');
+    $availabilityNights = array_values(array_filter($room['Availabilities'] ?? [], function($day) use ($arrival, $departure) {
+        $date = substr((string)($day['Date'] ?? ''), 0, 10);
+        return is_array($day) && $date >= $arrival && $date < $departure;
+    }));
+    if ($requireInventory && (count($availabilityNights) !== $nights || array_filter($availabilityNights, fn($day) => !empty($day['Closed']) || (isset($day['ForSale']) && (int)$day['ForSale'] < 1)))) {
+        fail(409, 'Your booked accommodation is not available for every selected night. Nothing was changed.');
+    }
+
+    $plan = null;
+    foreach (($room['RatePlans'] ?? []) as $candidate) {
+        if (!is_array($candidate)) continue;
+        $candidateId = (string)($candidate['Id'] ?? $candidate['RatePlanId'] ?? '');
+        $candidateName = strtolower(trim((string)($candidate['Name'] ?? '')));
+        if (($ratePlanId !== '' && $candidateId !== '' && hash_equals($ratePlanId, $candidateId)) || ($ratePlanName !== '' && $candidateName === $ratePlanName)) { $plan = $candidate; break; }
+    }
+    if (!is_array($plan)) fail(409, 'Your original rate plan is not available for those dates. Nothing was changed.');
+    $nightly = [];
+    foreach (($plan['Rates'] ?? []) as $day) {
+        if (!is_array($day)) continue;
+        $date = substr((string)($day['Date'] ?? ''), 0, 10);
+        if ($date < $arrival || $date >= $departure) continue;
+        if (!empty($day['Closed']) || !empty($day['ClosedDueToCriteria'])) fail(409, 'Your original rate is closed for one or more selected nights. Nothing was changed.');
+        $nightly[] = ['date'=>$date, 'rate'=>round((float)($day['SellRate'] ?? 0), 2)];
+    }
+    usort($nightly, fn($a, $b) => strcmp($a['date'], $b['date']));
+    if (count($nightly) !== $nights || array_filter($nightly, fn($day) => $day['rate'] <= 0)) fail(409, 'GuestPoint did not return a complete nightly price. Nothing was changed.');
+    return ['nightly'=>$nightly, 'total'=>round(array_sum(array_column($nightly, 'rate')), 2), 'maxGuests'=>$maxGuests];
+}
+
+/** Save authoritative nightly prices and zero obsolete rows after shortening. */
+function savePortalNightlyCharges(string $roomAllocationId, array $nightly): void {
+    global $PROPERTY_ID;
+    [$status, $raw] = pmsCall('GET', 'Reservation/GetRoomAllocationChargesForReservationByRoomAllocationID?propertyID=' . rawurlencode($PROPERTY_ID) . '&roomAllocationID=' . rawurlencode($roomAllocationId));
+    $charges = json_decode($raw, true);
+    if ($status !== 200 || !is_array($charges) || !$charges) fail(502, 'GuestPoint could not load the nightly charges. Nothing was changed.');
+    usort($charges, fn($a, $b) => strcmp((string)($a['Date'] ?? ''), (string)($b['Date'] ?? '')));
+    $template = $charges[0];
+    foreach ($nightly as $i => $day) {
+        if (!isset($charges[$i])) {
+            $charges[$i] = $template;
+            $charges[$i]['RoomAllocationChargeID'] = uuidV4();
+            unset($charges[$i]['Version'], $charges[$i]['UpdatedServerDate']);
+        }
+        $charges[$i]['Date'] = $day['date'] . 'T00:00:00';
+        $charges[$i]['Room'] = $day['rate'];
+        $charges[$i]['ExtraPersons'] = 0;
+        $charges[$i]['Discount'] = 0;
+    }
+    for ($i = count($nightly); $i < count($charges); $i++) {
+        $charges[$i]['Room'] = 0;
+        $charges[$i]['ExtraPersons'] = 0;
+        $charges[$i]['Discount'] = 0;
+    }
+    [$saveStatus, $saveRaw] = pmsCall('POST', 'Reservation/SaveRoomAllocationCharges?propertyID=' . rawurlencode($PROPERTY_ID), $charges);
+    if ($saveStatus < 200 || $saveStatus >= 300 || !is_array(json_decode($saveRaw, true))) fail(502, 'GuestPoint rejected the revised nightly prices. Please check the booking in GuestPoint.', $saveRaw);
+}
+
 // Test-site amendment bridge. Phoenix itself performs the final optimistic
 // concurrency check; we re-read the allocation after saving before claiming
 // success to the guest.
@@ -742,6 +865,9 @@ if ($endpoint === 'portal/amend') {
     if ($adults < 1 || $children < 0 || $infants < 0 || $adults > 12 || $children > 12 || $infants > 12 || ($maxGuests > 0 && $adults + $children + $infants > $maxGuests)) {
         fail(409, $maxGuests > 0 ? 'This accommodation allows a maximum of ' . $maxGuests . ' guests.' : 'Those guest numbers are not valid.');
     }
+    $currentArrival = substr((string)($allocation['ArrivalDate'] ?? ''), 0, 10);
+    $currentNights = max(1, (int)($allocation['NumberOfNights'] ?? 1));
+    $currentDeparture = (new DateTimeImmutable($currentArrival))->modify('+' . $currentNights . ' days')->format('Y-m-d');
     $allocation['NumberAdults'] = $adults; $allocation['NumberChildren'] = $children; $allocation['NumberInfants'] = $infants;
 
     $arrival = trim((string)($proposal['checkIn'] ?? ''));
@@ -764,8 +890,20 @@ if ($endpoint === 'portal/amend') {
             unset($addon);
         }
     }
+    $targetArrival = $arrival !== '' ? $arrival : $currentArrival;
+    $targetDeparture = $departure !== '' ? $departure : $currentDeparture;
+    $priceQuote = portalStayQuote($confNum, $tokenPayload, $targetArrival, $targetDeparture, $adults, $children, $targetArrival !== $currentArrival || $targetDeparture !== $currentDeparture);
     [$saveStatus, $saveRaw] = pmsCall('POST', 'Reservation/SaveRoomAllocationDetail2sWithVirtualRooms?propertyID=' . rawurlencode($PROPERTY_ID), $details);
     if ($saveStatus < 200 || $saveStatus >= 300) fail(502, 'GuestPoint rejected the amendment. Nothing was changed.', $saveRaw);
+    savePortalNightlyCharges($roomAllocationId, $priceQuote['nightly']);
+    // Phoenix recalculates booking/departure balances when the allocation is
+    // saved, so re-read the current versions after saving charge rows and save
+    // once more. This is the same sequence used by its reservation screen.
+    [$recalcReadStatus, $recalcRaw] = pmsCall('GET', 'Reservation/GetRoomAllocationDetail2sByReservation?reservationID=' . rawurlencode($reservationId));
+    $recalcDetails = json_decode($recalcRaw, true);
+    if ($recalcReadStatus !== 200 || !is_array($recalcDetails)) fail(502, 'GuestPoint saved the dates but could not recalculate the balance. Please check the booking in GuestPoint.');
+    [$recalcStatus, $recalcResponse] = pmsCall('POST', 'Reservation/SaveRoomAllocationDetail2sWithVirtualRooms?propertyID=' . rawurlencode($PROPERTY_ID), $recalcDetails);
+    if ($recalcStatus < 200 || $recalcStatus >= 300) fail(502, 'GuestPoint saved the dates but rejected the revised balance. Please check the booking in GuestPoint.', $recalcResponse);
     [$verifyStatus, $verifyRaw] = pmsCall('GET', 'Reservation/GetRoomAllocation?roomAllocationID=' . rawurlencode($roomAllocationId));
     $verified = json_decode($verifyRaw, true);
     if ($verifyStatus !== 200 || !is_array($verified)
@@ -775,7 +913,7 @@ if ($endpoint === 'portal/amend') {
         || ($arrival !== '' && substr((string)($verified['ArrivalDate'] ?? ''), 0, 10) !== $arrival)) {
         fail(502, 'GuestPoint did not verify the amendment. Please check the booking in GuestPoint.');
     }
-    send(200, ['Updated'=>true,'ConfNum'=>$confNum,'ArrivalDate'=>$verified['ArrivalDate'] ?? null,'NumberOfNights'=>$verified['NumberOfNights'] ?? null,'Adults'=>$adults,'Children'=>$children,'Infants'=>$infants,'DepartureBalance'=>$verified['DepartureBalance'] ?? null], ['Cache-Control'=>'no-store']);
+    send(200, ['Updated'=>true,'ConfNum'=>$confNum,'ArrivalDate'=>$verified['ArrivalDate'] ?? null,'NumberOfNights'=>$verified['NumberOfNights'] ?? null,'Adults'=>$adults,'Children'=>$children,'Infants'=>$infants,'AccommodationTotal'=>$priceQuote['total'],'DepartureBalance'=>$verified['DepartureBalance'] ?? null], ['Cache-Control'=>'no-store']);
 }
 
 if ($endpoint === 'portal/extras') {
