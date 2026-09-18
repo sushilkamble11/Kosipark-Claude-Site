@@ -862,7 +862,7 @@ class Component extends DCLogic {
             booking: { ...x.booking, status: "Cancelled", permissions: { ...x.booking.permissions, Cancel: false, UpdateStayDates: false, UpdateGuestDetails: false, SpecialRequests: false, PayNow: false } },
             confirm: { title: "Booking cancelled in GuestPoint", body: "GuestPoint PMS confirmed the cancellation and recorded the policy fee and estimated refund in the cancellation record." } }));
         } catch (e) {
-          this.setState({ cancelSaving: false, confirm: { title: "Booking not cancelled", body: "GuestPoint did not confirm the cancellation. The reservation remains unchanged. Please try again or contact reception." } });
+          this.setState({ cancelSaving: false, confirm: { title: "Booking not cancelled", body: (e && e.message ? e.message + " " : "GuestPoint did not confirm the cancellation. ") + "The reservation remains unchanged." } });
         }
       },
 
