@@ -582,9 +582,16 @@ export function modifyReservation(confNum, changes, portalToken, notify = false)
  * id from the lookup, and the ConfNum must match it. Only works while the
  * reservation is Booked or Modified.
  */
-export function cancelReservation(reservationId, confNum) {
-  return request("DELETE", "/reservations/" + encodeURIComponent(reservationId), {
-    body: { PropertyId: CONFIG.propertyId, ConfNum: confNum }
+export function cancelReservation(reservationId, confNum, portalToken, quote = {}) {
+  return request("POST", "/portal/cancel", {
+    body: {
+      ReservationId: reservationId,
+      ConfNum: confNum,
+      PortalToken: portalToken,
+      Acknowledged: true,
+      PolicyFee: Math.max(0, Number(quote.policyFee || 0)),
+      EstimatedRefund: Math.max(0, Number(quote.estimatedRefund || 0))
+    }
   });
 }
 
@@ -1404,6 +1411,15 @@ async function mockResponse(method, path, params, body) {
 
   if (path === "/portal/update") {
     return { Updated: true, NotificationSent: body && body.Notify ? true : null, GuestPoint: { Success: true } };
+  }
+
+  if (path === "/portal/cancel") {
+    if (!body || !body.PortalToken || !body.Acknowledged) {
+      const err = new Error("The cancellation was not authorised.");
+      err.status = 403;
+      throw err;
+    }
+    return { Cancelled: true, Message: "GuestPoint has cancelled the reservation.", GuestPoint: { Success: true } };
   }
 
   if (path === "/availabilities") {

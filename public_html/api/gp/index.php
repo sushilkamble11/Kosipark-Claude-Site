@@ -69,7 +69,7 @@ const ROUTES = [
     // Portal writes go through a signed, short-lived booking session. Never
     // expose manage/{confNum} directly: a confirmation number is not auth.
     'portal/update'         => ['POST',               0],
-    'reservations/*'        => ['DELETE',             0],
+    'portal/cancel'         => ['POST',               0],
     // Kosipark login is deliberately two-step. The booking is never returned
     // until a short-lived code sent to GuestPoint's stored email is verified.
     'portal/otp/request'    => ['POST',               0],
@@ -599,6 +599,49 @@ if ($endpoint === 'portal/update') {
         'Updated' => true,
         'NotificationSent' => $notificationSent,
         'GuestPoint' => json_decode($updateResponse, true),
+    ], ['Cache-Control' => 'no-store']);
+}
+
+// Cancellation is intentionally available only through the authenticated
+// portal wrapper. A reservation id and confirmation number on their own are
+// not proof that the caller owns the booking.
+if ($endpoint === 'portal/cancel') {
+    $input = is_array($decodedBody) ? $decodedBody : [];
+    $confNum = strtoupper(trim((string)($input['ConfNum'] ?? '')));
+    $token = (string)($input['PortalToken'] ?? '');
+    $reservationId = (int)($input['ReservationId'] ?? 0);
+    $acknowledged = ($input['Acknowledged'] ?? false) === true;
+    if (!preg_match('/^[A-Z0-9._-]{3,64}$/', $confNum)
+        || !verifyPortalToken($token, $confNum)
+        || $reservationId < 1
+        || !$acknowledged) {
+        fail(403, 'Your booking session has expired or the cancellation was not accepted. Please look up the booking again.');
+    }
+
+    $cancelUrl = $UPSTREAM . '/properties/' . rawurlencode($PROPERTY_ID) . '/reservations/' . rawurlencode((string)$reservationId);
+    $cancelBody = json_encode([
+        'PropertyId' => $PROPERTY_ID,
+        'ConfNum' => $confNum,
+    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    [$cancelStatus, $cancelResponse, $cancelError] = upstreamCall('DELETE', $cancelUrl, $API_KEY, $cancelBody);
+    if ($cancelStatus === 0) fail(502, 'The booking system is not responding. Your booking has not been cancelled.', $cancelError);
+    if ($cancelStatus < 200 || $cancelStatus >= 300) send($cancelStatus, $cancelResponse, ['Cache-Control' => 'no-store']);
+
+    $audit = [
+        'time' => gmdate('c'),
+        'event' => 'portal.booking_cancelled',
+        'confirmation' => $confNum,
+        'reservation_id' => $reservationId,
+        'policy_fee_shown' => max(0, (float)($input['PolicyFee'] ?? 0)),
+        'estimated_refund_shown' => max(0, (float)($input['EstimatedRefund'] ?? 0)),
+        'ip_hash' => hash('sha256', clientIp()),
+    ];
+    @file_put_contents($CACHE_DIR . '/portal-audit.jsonl', json_encode($audit, JSON_UNESCAPED_SLASHES) . "\n", FILE_APPEND | LOCK_EX);
+
+    send(200, [
+        'Cancelled' => true,
+        'GuestPoint' => json_decode($cancelResponse, true),
+        'Message' => 'GuestPoint has cancelled the reservation.',
     ], ['Cache-Control' => 'no-store']);
 }
 

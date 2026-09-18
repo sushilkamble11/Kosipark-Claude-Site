@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { normaliseMobile, normaliseManagedReservation, quoteManagedStayChange, modifyReservation, requestPortalOtp, verifyPortalOtp } from "../public_html/guestpoint.js";
+import { readFile } from "node:fs/promises";
+import { cancelReservation, normaliseMobile, normaliseManagedReservation, quoteManagedStayChange, modifyReservation, requestPortalOtp, verifyPortalOtp } from "../public_html/guestpoint.js";
 
 assert.equal(normaliseMobile("0412 345 678"), "61412345678");
 assert.equal(normaliseMobile("+61 412 345 678"), "61412345678");
@@ -63,6 +64,13 @@ assert.ok(quote.newTotal > 0);
 const updated = await modifyReservation("ABC123", { EstimatedArrival: "18:30" }, "signed-test-token", true);
 assert.equal(updated.Updated, true);
 assert.equal(updated.NotificationSent, true);
+
+const cancellation = await cancelReservation(42, "ABC123", "signed-test-token", { policyFee: 90, estimatedRefund: 510 });
+assert.equal(cancellation.Cancelled, true);
+
+const proxySource = await readFile(new URL("../public_html/api/gp/index.php", import.meta.url), "utf8");
+assert.match(proxySource, /'portal\/cancel'\s*=>\s*\['POST'/, "authenticated portal cancellation route is allow-listed");
+assert.doesNotMatch(proxySource, /'reservations\/\*'\s*=>\s*\['DELETE'/, "direct unauthenticated cancellation route is not exposed");
 
 const multi = normaliseManagedReservation({
   Reservation: {
