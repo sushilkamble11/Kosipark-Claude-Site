@@ -25,7 +25,7 @@ pass((await page.locator("body").innerText()).includes("Manage your booking"), "
 await page.getByPlaceholder("KTP-48213").fill("1");
 await page.getByPlaceholder("Nguyen").fill("1");
 await page.getByPlaceholder("0412 345 678").fill("1");
-await page.getByRole("button", { name: "Email me a secure code" }).click();
+await page.getByRole("button", { name: "Find my booking" }).click();
 await page.getByText("Demo verification code: 123456").waitFor({ timeout: 5000 });
 pass(await page.getByText("Demo verification code: 123456").isVisible(), "demo mode shows the test-only verification code");
 await page.screenshot({ path: "/tmp/kosipark-manage-email-otp.png", fullPage: false });
@@ -64,7 +64,7 @@ await page.getByRole("button", { name: "Continue" }).click();
 await page.getByPlaceholder("KTP-48213").fill("1");
 await page.getByPlaceholder("Nguyen").fill("1");
 await page.getByPlaceholder("0412 345 678").fill("1");
-await page.getByRole("button", { name: "Email me a secure code" }).click();
+await page.getByRole("button", { name: "Find my booking" }).click();
 await page.getByLabel("Six-digit email code").fill("123456");
 await page.getByRole("button", { name: "Verify and view booking" }).click();
 await page.getByText("Booking reference: 1").waitFor({ timeout: 5000 });
@@ -101,7 +101,7 @@ pass(pageErrors.length === 0, "portal interactions have no page errors");
 
 await page.getByRole("button", { name: "Look up another booking" }).click();
 await page.getByRole("button", { name: "Continue" }).click();
-pass(await page.getByRole("button", { name: "Email me a secure code" }).isVisible(), "Continue returns to the booking lookup form");
+pass(await page.getByRole("button", { name: "Find my booking" }).isVisible(), "Continue returns to the booking lookup form");
 
 await browser.close();
 server.kill();
