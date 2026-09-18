@@ -76,6 +76,8 @@ assert.match(proxySource, /'portal\/lookup'\s*=>\s*\['POST'/, "portal lookup acc
 assert.match(proxySource, /isset\(\$payload\['ReservationNumber'\]\)/, "single-reservation Core responses are supported");
 assert.match(proxySource, /guestPointConfirmed\(\$cancelResponse\)/, "cancellation requires GuestPoint success confirmation");
 assert.match(proxySource, /\$reservationId = \(int\)\$tokenPayload\['rid'\]/, "cancellation id comes from the signed portal token");
+assert.match(proxySource, /\$freshLogin\['Cancel'\]/, "cancellation rechecks GuestPoint permission immediately before deletion");
+assert.match(proxySource, /GuestPoint has not supplied the payment and refund operations/, "cancellation fails closed when financial settlement is unavailable");
 
 const unpaid = normaliseManagedReservation({
   Reservation: {

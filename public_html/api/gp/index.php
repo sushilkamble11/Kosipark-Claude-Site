@@ -738,6 +738,40 @@ if ($endpoint === 'portal/cancel') {
         fail(403, 'The cancellation quote is missing or expired. Please look up the booking again.');
     }
 
+    // Re-read the booking immediately before the destructive action. A valid
+    // portal token proves access to the booking, but it must never override a
+    // later status/permission change in GuestPoint. GuestPoint's own portal
+    // currently marks cancellation and its required financial steps as
+    // unavailable for this property.
+    [$freshStatus, $freshPayload] = loadManagedReservation(
+        $confNum,
+        (string)($tokenPayload['sn'] ?? ''),
+        (string)($tokenPayload['em'] ?? ''),
+        false
+    );
+    if ($freshStatus < 200 || $freshStatus >= 300 || !is_array($freshPayload)) {
+        fail(502, 'The booking could not be refreshed. Your booking has not been cancelled.');
+    }
+    if (isset($freshPayload['data']) && is_array($freshPayload['data'])) $freshRoot = $freshPayload['data'];
+    elseif (isset($freshPayload['Data']) && is_array($freshPayload['Data'])) $freshRoot = $freshPayload['Data'];
+    else $freshRoot = $freshPayload;
+    $freshReservation = is_array($freshRoot['Reservation'] ?? null) ? $freshRoot['Reservation'] : [];
+    $freshLogin = is_array($freshRoot['Login'] ?? null) ? $freshRoot['Login'] : [];
+    if ((int)($freshReservation['ID'] ?? 0) !== $reservationId
+        || !in_array(strtolower((string)($freshReservation['Status'] ?? '')), ['booked', 'modified'], true)) {
+        fail(409, 'This booking can no longer be cancelled online. Nothing was changed.');
+    }
+    if (($freshLogin['Cancel'] ?? false) !== true) {
+        fail(409, 'GuestPoint has not enabled online cancellation for this booking. Nothing was changed.');
+    }
+    $freshQuote = cancellationQuote($freshReservation);
+    if ((float)($freshQuote['fee'] ?? 0) > 0
+        || (float)($freshQuote['refund'] ?? 0) > 0
+        || (float)($freshQuote['amountDue'] ?? 0) > 0) {
+        fail(409, 'GuestPoint has not supplied the payment and refund operations needed to settle this cancellation automatically. Nothing was changed.');
+    }
+    $quote = $freshQuote;
+
     $cancelUrl = $UPSTREAM . '/properties/' . rawurlencode($PROPERTY_ID) . '/reservations/' . rawurlencode((string)$reservationId);
     $cancelBody = json_encode([
         'PropertyId' => $PROPERTY_ID,
