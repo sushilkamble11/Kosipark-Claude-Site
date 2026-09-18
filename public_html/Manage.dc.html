@@ -335,7 +335,7 @@ class Component extends DCLogic {
     const lead = (b.guests || []).find(g => b.bookingContact && g.ID === b.bookingContact.ID) || (b.guests || [])[0] || b.bookingContact || {};
     this.setState({ booking: b, error: "", mode: null, confirm: null, loading: false, verifying: false, otpChallenge: "", otpInput: "", otpMessage: "", demoOtp: "", selectedExtras: {}, partyQuote: null, policyAccepted: false,
       adults: b.adults, children: b.children, infants: b.infants,
-      note: Component.withoutVehicleLine(b.specialRequest || ""), eta: b.estimatedArrival || "", vehicles: Component.vehicleLine(b.specialRequest || ""),
+      note: "", eta: b.estimatedArrival || "", vehicles: "",
       guestFirst: lead.FirstName || "", guestLast: lead.LastName || "", guestEmail: lead.Email || "", guestMobile: lead.Mobile || lead.Phone || "" });
   }
 
@@ -366,14 +366,15 @@ class Component extends DCLogic {
   policy(b) {
     const d = this.daysUntil(b);
     const oneNight = b.nightly;
-    const promo = /(promotional|non-refundable|advance|stay.and.save)/i.test(b.rate + " " + b.policyText);
+    const structuredRule = b.cancelRule && String(b.cancelRule.CancelRule || "").toLowerCase();
+    const promo = structuredRule === "none" || /(promotional|non-refundable|advance|stay.and.save)/i.test(b.rate + " " + b.policyText);
     const snow = this.snowSeason(b);
     const transfer = Math.max(50, b.total * 0.1, oneNight);
     let cancelHeadline, cancelDetail, amendText, amendAllowed = true;
 
     if (promo) {
       cancelHeadline = "This rate is non-refundable.";
-      cancelDetail = "Promotional, discounted and Stay-and-Save rates require full payment at booking and cannot be refunded or amended under any circumstances. You may still send us a request and we will reply, but no refund applies.";
+      cancelDetail = (b.cancelRule && b.cancelRule.CancelRuleText) || "Promotional, discounted and Stay-and-Save rates require full payment at booking and cannot be refunded or amended under any circumstances. You may still send us a request and we will reply, but no refund applies.";
       amendText = "Promotional rates cannot be amended. Contact reception if your circumstances have changed.";
       amendAllowed = false;
     } else if (d >= 15) {
@@ -388,20 +389,32 @@ class Component extends DCLogic {
       cancelHeadline = "Cancelling now retains " + Component.money(keep) + " of your " + Component.money(b.total) + " booking.";
       cancelDetail = "8 to 14 days before arrival we retain the greater of 50% of the total or one full night's tariff. The balance is refunded within 7 business days.";
       amendText = "8 to 14 days out, a change carries a transfer fee of " + Component.money(transfer) + " — the greater of $50, 10% of the tariff or one full night.";
-      if (snow && d < 14) { amendText = "Snow season changes are not permitted within 14 days of arrival."; amendAllowed = false; }
+      if (snow && d <= 14) { amendText = "Snow season changes are not permitted within 14 days of arrival."; amendAllowed = false; }
     } else {
       cancelHeadline = "Within 7 days of arrival this booking is 100% non-refundable.";
       cancelDetail = "No refund applies. You are welcome to send a request and we will reply, but the full tariff is retained.";
       amendText = "Changes are not permitted within 7 days of arrival.";
       amendAllowed = false;
     }
-    const fee = promo ? b.total
+    let fee = promo ? b.total
       : d >= 15 ? Math.max(b.total * 0.1, oneNight)
       : d >= 8 ? Math.max(b.total * 0.5, oneNight)
       : b.total;
-    const refund = Math.max(0, b.paid - fee);
+    let refund = Math.max(0, b.paid - fee);
+    let amountDue = Math.max(0, fee - b.paid);
+    if (b.cancellationQuote) {
+      fee = Number(b.cancellationQuote.fee || 0);
+      refund = Number(b.cancellationQuote.refund || 0);
+      amountDue = Number(b.cancellationQuote.amountDue || 0);
+      if (b.cancellationQuote.detail) cancelDetail = b.cancellationQuote.detail;
+      cancelHeadline = amountDue > 0
+        ? "Cancelling now retains " + Component.money(fee) + "; " + Component.money(amountDue) + " would still be payable."
+        : refund > 0
+          ? "Estimated refund after cancellation: " + Component.money(refund) + "."
+          : "No refund is estimated for this cancellation.";
+    }
     const amendFee = promo || !amendAllowed ? 0 : ((snow || (d >= 8 && d < 15)) ? transfer : 0);
-    return { cancelHeadline, cancelDetail, amendText, amendAllowed, days: d, snow, fee, refund, amendFee };
+    return { cancelHeadline, cancelDetail, amendText, amendAllowed, days: d, snow, fee, refund, amountDue, amendFee };
   }
 
   tab(active) {
@@ -412,12 +425,12 @@ class Component extends DCLogic {
 
   async saveNote() {
     const requestText = this.state.note.trim();
-    const note = this.state.vehicleField ? requestText : Component.withVehicleLine(requestText, this.state.vehicles);
     if (!requestText) { this.setState({ confirm: { title: "Nothing to save", body: "Add your request first, then save it." } }); return; }
     this.setState({ saving: true, confirm: null });
     try {
-      const result = await this.gp.modifyReservation(this.state.booking.ref, { ExtraInfo: note }, this.state.booking.portalToken, true);
-      this.setState(s => ({ saving: false, mode: null, booking: { ...s.booking, specialRequest: note },
+      const result = await this.gp.modifyReservation(this.state.booking.ref, { AppendExtraInfo: requestText }, this.state.booking.portalToken, true);
+      if (!result || result.Updated !== true) throw new Error("not-confirmed");
+      this.setState(s => ({ saving: false, mode: null, note: "",
         confirm: result && result.NotificationSent === false
           ? { title: "Request saved", body: "The request is attached to the GuestPoint reservation, but the reception email could not be sent. It remains visible to staff in GuestPoint." }
           : { title: "Request saved", body: "The request is attached to the GuestPoint reservation and a short notification has been sent to reception." } }));
@@ -429,15 +442,13 @@ class Component extends DCLogic {
   async saveManagedRequest(title, lines) {
     const b = this.state.booking;
     if (!b || !b.portalToken || this.state.requestSaving) return;
-    const existing = String(b.specialRequest || "").trim();
     const stamp = new Date().toLocaleString("en-AU", { timeZone: "Australia/Sydney" });
     const request = "Online portal request — " + title + " (" + stamp + ")\n" + lines.filter(Boolean).join("\n");
-    const next = (existing ? existing + "\n\n" : "") + request;
     this.setState({ requestSaving: true, confirm: null });
     try {
-      await this.gp.modifyReservation(b.ref, { ExtraInfo: next.slice(0, 4000) }, b.portalToken, true);
+      const result = await this.gp.modifyReservation(b.ref, { AppendExtraInfo: request.slice(0, 1800) }, b.portalToken, true);
+      if (!result || result.Updated !== true) throw new Error("not-confirmed");
       this.setState(x => ({ requestSaving: false, mode: null,
-        booking: { ...x.booking, specialRequest: next.slice(0, 4000) },
         confirm: { title: "Request saved in GuestPoint", body: "Reception can see this request on the reservation. The original dates, price and extras remain unchanged until GuestPoint confirms the amendment." } }));
     } catch (e) {
       this.setState({ requestSaving: false, confirm: { title: "Request not saved", body: "Nothing was changed. Please try again or contact reception." } });
@@ -460,7 +471,8 @@ class Component extends DCLogic {
       .map(st => ({ GuestId: st.GuestId, GuestName: changed.FirstName + " " + changed.LastName }));
     this.setState({ guestSaving: true, confirm: null });
     try {
-      await this.gp.modifyReservation(s.booking.ref, { Guests: updatedGuests, ...(roomStays.length ? { RoomStays: roomStays } : {}) }, s.booking.portalToken);
+      const result = await this.gp.modifyReservation(s.booking.ref, { Guests: updatedGuests, ...(roomStays.length ? { RoomStays: roomStays } : {}) }, s.booking.portalToken);
+      if (!result || result.Updated !== true) throw new Error("not-confirmed");
       this.setState(x => ({ guestSaving: false, mode: null,
         booking: { ...x.booking, guests: updatedGuests },
         confirm: { title: "Guest details saved", body: "The lead guest details have been updated directly in GuestPoint." } }));
@@ -492,13 +504,14 @@ class Component extends DCLogic {
       const existing = Array.isArray(s.booking.raw.ProfileFields) ? s.booking.raw.ProfileFields : [];
       changes.ProfileFields = existing.filter(f => String(f.Id || f.ExternalId) !== String(id)).concat([{ Id: id, Name: s.vehicleField.Name, Type: s.vehicleField.FieldType, Value: vehicles }]);
     } else {
-      changes.ExtraInfo = Component.withVehicleLine(s.note, vehicles);
+      if (vehicles) changes.AppendExtraInfo = "Vehicle registrations: " + vehicles;
     }
     this.setState({ travelSaving: true, confirm: null });
     try {
-      await this.gp.modifyReservation(s.booking.ref, changes, s.booking.portalToken);
+      const result = await this.gp.modifyReservation(s.booking.ref, changes, s.booking.portalToken);
+      if (!result || result.Updated !== true) throw new Error("not-confirmed");
       this.setState(x => ({ travelSaving: false, mode: null, vehicles,
-        booking: { ...x.booking, estimatedArrival: changes.EstimatedArrival, specialRequest: changes.ExtraInfo || x.booking.specialRequest },
+        booking: { ...x.booking, estimatedArrival: changes.EstimatedArrival },
         confirm: { title: "Arrival details saved", body: "The ETA and vehicle registrations have been updated directly in GuestPoint." } }));
     } catch (e) {
       this.setState({ travelSaving: false, confirm: { title: "Arrival details not saved", body: "Nothing was changed. Please try again." } });
@@ -525,7 +538,7 @@ class Component extends DCLogic {
     const s = this.state;
     const b = s.booking;
     const p = b ? this.policy(b) : null;
-    const status = b ? (p.days < 0 ? "Completed" : b.status) : "";
+    const status = b ? (/cancel/i.test(b.status) ? b.status : (p.days < 0 ? "Completed" : b.status)) : "";
     const permissions = b ? (b.permissions || {}) : {};
     const activeStatus = b && /^(booked|modified|confirmed|reserved)$/i.test(b.status);
     const canAct = !!b && activeStatus && p && p.days >= 0;
@@ -678,9 +691,9 @@ class Component extends DCLogic {
       },
 
       partyFields: [
-        { label: "Adults", min: 1, max: 12, value: s.adults, change: e => this.setState({ adults: Math.max(1, Number(e.target.value) || 1), partyQuote: null, policyAccepted: false }) },
-        { label: "Children", min: 0, max: 12, value: s.children, change: e => this.setState({ children: Math.max(0, Number(e.target.value) || 0), partyQuote: null, policyAccepted: false }) },
-        { label: "Infants", min: 0, max: 12, value: s.infants, change: e => this.setState({ infants: Math.max(0, Number(e.target.value) || 0), partyQuote: null, policyAccepted: false }) }
+        { label: "Adults", min: 1, max: 12, value: s.adults, change: e => this.setState({ adults: Math.min(12, Math.max(1, Number(e.target.value) || 1)), partyQuote: null, policyAccepted: false }) },
+        { label: "Children", min: 0, max: 12, value: s.children, change: e => this.setState({ children: Math.min(12, Math.max(0, Number(e.target.value) || 0)), partyQuote: null, policyAccepted: false }) },
+        { label: "Infants", min: 0, max: 12, value: s.infants, change: e => this.setState({ infants: Math.min(12, Math.max(0, Number(e.target.value) || 0)), partyQuote: null, policyAccepted: false }) }
       ],
       partyLoading: s.partyLoading,
       partyQuoteLabel: s.partyLoading ? "Checking GuestPoint…" : "Check capacity and price",
@@ -795,14 +808,16 @@ class Component extends DCLogic {
       cancellationRows: p ? [
         { k: "Paid so far", v: Component.money(b.paid) },
         { k: "Estimated amount retained", v: Component.money(p.fee) },
-        { k: "Estimated refund", v: Component.money(p.refund) }
+        { k: "Estimated refund", v: Component.money(p.refund) },
+        ...(p.amountDue > 0 ? [{ k: "Balance still payable", v: Component.money(p.amountDue) }] : [])
       ] : [],
       cancelButtonLabel: s.cancelSaving ? "Cancelling in GuestPoint…" : "Confirm cancellation",
       submitCancel: async () => {
         if (!s.policyAccepted || s.cancelSaving || !b || !b.id || !b.portalToken) return;
         this.setState({ cancelSaving: true, confirm: null });
         try {
-          await this.gp.cancelReservation(b.id, b.ref, b.portalToken, { policyFee: p.fee, estimatedRefund: p.refund });
+          const result = await this.gp.cancelReservation(b.ref, b.portalToken, s.policyAccepted);
+          if (!result || result.Cancelled !== true) throw new Error("not-confirmed");
           this.setState(x => ({ cancelSaving: false, mode: null, policyAccepted: false,
             booking: { ...x.booking, status: "Cancelled", permissions: { ...x.booking.permissions, Cancel: false, UpdateStayDates: false, UpdateGuestDetails: false, SpecialRequests: false, PayNow: false } },
             confirm: { title: "Booking cancelled", body: "GuestPoint has cancelled the reservation. The refund shown was an estimate; any refund or retained cancellation charge must still be processed and reconciled through GuestPoint Pay or reception." } }));

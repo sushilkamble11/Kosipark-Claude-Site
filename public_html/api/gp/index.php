@@ -61,13 +61,9 @@ const ROUTES = [
     'beprofilefields'       => ['GET',      24 * 60 * 60],
     // Booking — validate (PATCH) and create (POST). Never cached.
     'reservations'          => ['PATCH,POST',         0],
-    // Self-service management. 'manage' looks a reservation up from confirmation
-    // number + email + surname; 'manage/{confNum}' applies a partial update;
-    // DELETE on the numeric reservation id cancels. Never cached: these are a
-    // guest's own booking, and a cached copy is a booking shown to the wrong person.
-    'reservations/manage'   => ['POST',               0],
     // Portal writes go through a signed, short-lived booking session. Never
-    // expose manage/{confNum} directly: a confirmation number is not auth.
+    // expose reservations/manage directly: confirmation details are not the
+    // portal's authentication boundary; the email OTP is.
     'portal/update'         => ['POST',               0],
     'portal/cancel'         => ['POST',               0],
     // Kosipark login is deliberately two-step. The booking is never returned
@@ -131,23 +127,130 @@ function portalSecret(): string {
     return hash('sha256', $API_KEY . '|' . $CORE_KEY . '|' . $PROPERTY_ID, true);
 }
 
-function issuePortalToken(string $confNum): string {
-    $payload = json_encode(['ref' => $confNum, 'exp' => time() + 30 * 60], JSON_UNESCAPED_SLASHES);
+function issuePortalToken(string $confNum, int $reservationId, string $surname, string $email, array $quote): string {
+    $payload = json_encode([
+        'ref' => $confNum,
+        'rid' => $reservationId,
+        'sn' => $surname,
+        'em' => $email,
+        'cq' => $quote,
+        'exp' => time() + 30 * 60,
+    ], JSON_UNESCAPED_SLASHES);
     $encoded = b64urlEncode((string)$payload);
     return $encoded . '.' . b64urlEncode(hash_hmac('sha256', $encoded, portalSecret(), true));
 }
 
-function verifyPortalToken(string $token, string $confNum): bool {
+function portalTokenPayload(string $token, string $confNum): ?array {
     $parts = explode('.', $token);
-    if (count($parts) !== 2) return false;
+    if (count($parts) !== 2) return null;
     [$encoded, $signature] = $parts;
     $expected = b64urlEncode(hash_hmac('sha256', $encoded, portalSecret(), true));
-    if (!hash_equals($expected, $signature)) return false;
+    if (!hash_equals($expected, $signature)) return null;
     $json = b64urlDecode($encoded);
     $payload = $json === false ? null : json_decode($json, true);
-    return is_array($payload)
-        && hash_equals($confNum, strtoupper(trim((string)($payload['ref'] ?? ''))))
-        && (int)($payload['exp'] ?? 0) >= time();
+    if (!is_array($payload)
+        || !hash_equals($confNum, strtoupper(trim((string)($payload['ref'] ?? ''))))
+        || (int)($payload['exp'] ?? 0) < time()
+        || (int)($payload['rid'] ?? 0) < 1) return null;
+    return $payload;
+}
+
+function verifyPortalToken(string $token, string $confNum): bool {
+    return portalTokenPayload($token, $confNum) !== null;
+}
+
+function gpNumber($value): ?float {
+    if ($value === null || $value === '' || !is_numeric($value)) return null;
+    return (float)$value;
+}
+
+/** Calculate the figures the guest will accept, server-side in Sydney time. */
+function cancellationQuote(array $reservation): array {
+    $total = gpNumber($reservation['ReservationTotalAfterTax'] ?? null)
+        ?? gpNumber($reservation['ReservationTotal'] ?? null) ?? 0.0;
+    $required = max(0.0, gpNumber($reservation['PaymentRequired'] ?? null) ?? 0.0);
+    $later = max(0.0, gpNumber($reservation['PayLater'] ?? null) ?? 0.0);
+    // GuestPoint examples use PaymentRequired=0 with the whole outstanding
+    // amount in PayLater. Taking the larger value avoids calling that paid.
+    $balance = min($total, max($required, $later));
+    $paid = max(0.0, $total - $balance);
+    $stays = array_values(array_filter(
+        is_array($reservation['RoomStays'] ?? null) ? $reservation['RoomStays'] : [],
+        fn($stay) => is_array($stay) && empty($stay['IsCancelled'])
+    ));
+    if (!$stays) $stays = is_array($reservation['RoomStays'] ?? null) ? $reservation['RoomStays'] : [];
+
+    $arrival = '';
+    $oneNight = 0.0;
+    $rules = [];
+    foreach ($stays as $stay) {
+        if (!is_array($stay)) continue;
+        $stayArrival = trim((string)($stay['Arrival'] ?? ''));
+        if ($stayArrival !== '' && ($arrival === '' || $stayArrival < $arrival)) $arrival = $stayArrival;
+        try {
+            $a = new DateTimeImmutable($stayArrival, new DateTimeZone('Australia/Sydney'));
+            $d = new DateTimeImmutable((string)($stay['Departure'] ?? ''), new DateTimeZone('Australia/Sydney'));
+            $nights = max(1, (int)$a->diff($d)->days);
+        } catch (Throwable $e) { $nights = 1; }
+        $oneNight += max(0.0, gpNumber($stay['RoomTotal'] ?? null) ?? 0.0) / $nights;
+        foreach (is_array($stay['RateDetails'] ?? null) ? $stay['RateDetails'] : [] as $rate) {
+            if (is_array($rate) && is_array($rate['CancelRule'] ?? null)) $rules[] = $rate['CancelRule'];
+        }
+    }
+
+    try {
+        $today = new DateTimeImmutable('today', new DateTimeZone('Australia/Sydney'));
+        $arrivalDate = new DateTimeImmutable($arrival, new DateTimeZone('Australia/Sydney'));
+        $days = (int)$today->diff($arrivalDate)->format('%r%a');
+    } catch (Throwable $e) { $days = -1; }
+
+    $fee = 0.0;
+    $detail = '';
+    $nonRefundable = null;
+    foreach ($rules as $rule) {
+        if (strtolower(trim((string)($rule['CancelRule'] ?? ''))) === 'none') { $nonRefundable = $rule; break; }
+    }
+    if ($nonRefundable !== null) {
+        $fee = $total;
+        $detail = trim((string)($nonRefundable['CancelRuleText'] ?? '')) ?: 'This rate is non-refundable.';
+    } elseif ($rules) {
+        $free = $rules[0];
+        $periods = max(0, (int)($free['CancelRuleNumPeriods'] ?? 0));
+        $period = strtolower(trim((string)($free['CancelRulePeriod'] ?? 'day')));
+        $cutoffDays = $period === 'week' ? $periods * 7 : ($period === 'hour' ? (int)ceil($periods / 24) : $periods);
+        $fee = $days >= $cutoffDays ? 0.0 : $total;
+        $detail = trim((string)($free['CancelRuleText'] ?? '')) ?: 'The cancellation conditions attached to your booked rate apply.';
+    } else {
+        $fee = $days >= 15 ? max($total * 0.1, $oneNight)
+            : ($days >= 8 ? max($total * 0.5, $oneNight) : $total);
+        $detail = $days >= 15
+            ? "15 or more days before arrival, the greater of 10% of the tariff or one night's tariff is retained."
+            : ($days >= 8
+                ? "8 to 14 days before arrival, the greater of 50% of the tariff or one night's tariff is retained."
+                : 'Within 7 days of arrival, the booking is non-refundable.');
+    }
+    $fee = min($total, max(0.0, $fee));
+    return [
+        'fee' => round($fee, 2),
+        'refund' => round(max(0.0, $paid - $fee), 2),
+        'amountDue' => round(max(0.0, $fee - $paid), 2),
+        'paid' => round($paid, 2),
+        'balance' => round($balance, 2),
+        'days' => $days,
+        'detail' => $detail,
+        'quotedAt' => gmdate('c'),
+    ];
+}
+
+function managedReservationFromPayload(array $payload): array {
+    $root = isset($payload['data']) && is_array($payload['data']) ? $payload['data']
+        : (isset($payload['Data']) && is_array($payload['Data']) ? $payload['Data'] : $payload);
+    return is_array($root['Reservation'] ?? null) ? $root['Reservation'] : [];
+}
+
+function guestPointConfirmed(string $response): bool {
+    $decoded = json_decode($response, true);
+    return is_array($decoded) && (($decoded['success'] ?? null) === true);
 }
 
 /** @return array{0:int,1:string,2:string} */
@@ -309,7 +412,7 @@ function resolvePortalEmail(string $confNum, string $surname, string $mobile): s
 }
 
 /** Use the verified identity to fetch GuestPoint's complete management view. */
-function loadManagedReservation(string $confNum, string $surname, string $email): array {
+function loadManagedReservation(string $confNum, string $surname, string $email, bool $decorate = true): array {
     global $UPSTREAM, $PROPERTY_ID, $API_KEY;
     $manageBody = json_encode([
         'ConfNum' => $confNum,
@@ -320,14 +423,23 @@ function loadManagedReservation(string $confNum, string $surname, string $email)
     [$status, $response, $error] = upstreamCall('POST', $url, $API_KEY, $manageBody);
     if ($status === 0) return [502, null, $error];
     $payload = json_decode($response, true);
-    if ($status < 200 || $status >= 300 || !is_array($payload)) return [$status ?: 502, null, $response];
-    if (isset($payload['data']) && is_array($payload['data'])) {
-        $payload['data']['PortalToken'] = issuePortalToken($confNum);
-    } elseif (isset($payload['Data']) && is_array($payload['Data'])) {
-        $payload['Data']['PortalToken'] = issuePortalToken($confNum);
-    } else {
-        $payload['PortalToken'] = issuePortalToken($confNum);
+    if ($status < 200 || $status >= 300 || !is_array($payload) || (($payload['success'] ?? true) === false)) {
+        return [$status >= 200 && $status < 300 ? 502 : ($status ?: 502), null, $response];
     }
+    if (!$decorate) return [$status, $payload, null];
+
+    if (isset($payload['data']) && is_array($payload['data'])) $root =& $payload['data'];
+    elseif (isset($payload['Data']) && is_array($payload['Data'])) $root =& $payload['Data'];
+    else $root =& $payload;
+    $reservation = is_array($root['Reservation'] ?? null) ? $root['Reservation'] : [];
+    $reservationId = (int)($reservation['ID'] ?? 0);
+    if ($reservationId < 1) return [502, null, 'GuestPoint returned a reservation without an id.'];
+    $quote = cancellationQuote($reservation);
+    $root['PortalToken'] = issuePortalToken($confNum, $reservationId, $surname, $email, $quote);
+    $root['CancellationQuote'] = $quote;
+    // ExtraInfo is an internal reception note. Guests may append a new request,
+    // but must never read or replace staff notes already on the reservation.
+    if (isset($root['Reservation']) && is_array($root['Reservation'])) unset($root['Reservation']['ExtraInfo']);
     return [$status, $payload, null];
 }
 
@@ -352,7 +464,8 @@ if ($method === 'OPTIONS') {
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 if ($origin !== '') {
     $allowed = $config['allow_origins'] ?? [];
-    $sameHost = parse_url($origin, PHP_URL_HOST) === ($_SERVER['HTTP_HOST'] ?? '');
+    $requestHost = parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST);
+    $sameHost = parse_url($origin, PHP_URL_HOST) === $requestHost;
     if (!$sameHost && !in_array($origin, $allowed, true)) {
         fail(403, 'Origin not allowed.');
     }
@@ -384,8 +497,9 @@ if (!preg_match('#^/properties/([^/]+)/(.+)$#', $pathInfo, $m)) {
     fail(404, 'Unknown endpoint.');
 }
 [$_, $reqPropertyId, $endpoint] = $m;
+$reqPropertyId = rawurldecode($reqPropertyId);
 
-if (!hash_equals($PROPERTY_ID, rawurldecode($reqPropertyId))) {
+if ($reqPropertyId !== 'self' && !hash_equals($PROPERTY_ID, $reqPropertyId)) {
     fail(403, 'Unknown property.');
 }
 
@@ -561,14 +675,15 @@ if ($endpoint === 'portal/update') {
     $confNum = strtoupper(trim((string)($input['ConfNum'] ?? '')));
     $token = (string)($input['PortalToken'] ?? '');
     $changes = $input['Changes'] ?? null;
-    if (!preg_match('/^[A-Z0-9._-]{3,64}$/', $confNum) || !verifyPortalToken($token, $confNum) || !is_array($changes)) {
+    $tokenPayload = portalTokenPayload($token, $confNum);
+    if (!preg_match('/^[A-Z0-9._-]{3,64}$/', $confNum) || $tokenPayload === null || !is_array($changes)) {
         fail(403, 'Your booking session has expired. Please look up the booking again.');
     }
-    $allowed = ['EstimatedArrival', 'ExtraInfo', 'Guests', 'RoomStays', 'ProfileFields'];
+    $allowed = ['EstimatedArrival', 'AppendExtraInfo', 'Guests', 'RoomStays', 'ProfileFields'];
     foreach (array_keys($changes) as $key) {
         if (!in_array($key, $allowed, true)) fail(400, 'That booking detail cannot be changed online.');
     }
-    if (isset($changes['ExtraInfo']) && (!is_string($changes['ExtraInfo']) || strlen($changes['ExtraInfo']) > 4000)) {
+    if (isset($changes['AppendExtraInfo']) && (!is_string($changes['AppendExtraInfo']) || strlen($changes['AppendExtraInfo']) > 1800)) {
         fail(400, 'The request is too long.');
     }
     if (isset($changes['EstimatedArrival']) && !preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', (string)$changes['EstimatedArrival'])) {
@@ -578,19 +693,51 @@ if ($endpoint === 'portal/update') {
         fail(400, 'Guest details are invalid.');
     }
 
+    $notificationText = '';
+    if (isset($changes['AppendExtraInfo'])) {
+        $notificationText = trim(strip_tags((string)$changes['AppendExtraInfo']));
+        unset($changes['AppendExtraInfo']);
+        if ($notificationText === '') fail(400, 'Enter a request before saving.');
+        [$lookupStatus, $lookupPayload] = loadManagedReservation(
+            $confNum,
+            (string)($tokenPayload['sn'] ?? ''),
+            (string)($tokenPayload['em'] ?? ''),
+            false
+        );
+        if ($lookupStatus < 200 || $lookupStatus >= 300 || !is_array($lookupPayload)) {
+            fail(502, 'The booking could not be refreshed. Nothing was changed.');
+        }
+        $currentReservation = managedReservationFromPayload($lookupPayload);
+        if ((int)($currentReservation['ID'] ?? 0) !== (int)$tokenPayload['rid']) {
+            fail(403, 'The booking no longer matches this session. Please look it up again.');
+        }
+        if (!in_array(strtolower((string)($currentReservation['Status'] ?? '')), ['booked', 'modified'], true)) {
+            fail(409, 'This booking can no longer be changed online.');
+        }
+        $existing = trim((string)($currentReservation['ExtraInfo'] ?? ''));
+        $stamp = (new DateTimeImmutable('now', new DateTimeZone('Australia/Sydney')))->format('d/m/Y H:i');
+        $entry = 'Guest request (' . $stamp . '): ' . $notificationText;
+        $changes['ExtraInfo'] = substr(($existing !== '' ? $existing . "\n\n" : '') . $entry, 0, 4000);
+    }
+    if (!$changes) fail(400, 'No supported booking changes were supplied.');
+
     $updateUrl = $UPSTREAM . '/properties/' . rawurlencode($PROPERTY_ID) . '/reservations/manage/' . rawurlencode($confNum);
     $updateBody = json_encode($changes, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     [$updateStatus, $updateResponse, $updateError] = upstreamCall('PATCH', $updateUrl, $API_KEY, $updateBody);
     if ($updateStatus === 0) fail(502, 'The booking system is not responding. Please try again shortly.', $updateError);
-    if ($updateStatus < 200 || $updateStatus >= 300) send($updateStatus, $updateResponse, ['Cache-Control' => 'no-store']);
+    if ($updateStatus < 200 || $updateStatus >= 300) {
+        fail($updateStatus >= 400 && $updateStatus < 500 ? 409 : 502, 'GuestPoint rejected the update. Nothing was changed.');
+    }
+    if (!guestPointConfirmed($updateResponse)) {
+        fail(502, 'GuestPoint did not confirm the update. Nothing was changed.');
+    }
 
     $notificationSent = null;
-    if (!empty($input['Notify']) && isset($changes['ExtraInfo'])) {
+    if (!empty($input['Notify']) && $notificationText !== '') {
         $notificationSent = false;
         if (filter_var($NOTIFICATION_EMAIL, FILTER_VALIDATE_EMAIL)) {
-            $requestText = trim(strip_tags((string)$changes['ExtraInfo']));
             $subject = 'Guest request - ' . $confNum;
-            $message = "Guest request\nBooking: " . $confNum . "\n\n" . $requestText;
+            $message = "Guest request\nBooking: " . $confNum . "\n\n" . $notificationText;
             $headers = "From: Kosipark portal <no-reply@kosipark.com.au>\r\nContent-Type: text/plain; charset=UTF-8";
             $notificationSent = @mail($NOTIFICATION_EMAIL, $subject, $message, $headers);
         }
@@ -609,13 +756,17 @@ if ($endpoint === 'portal/cancel') {
     $input = is_array($decodedBody) ? $decodedBody : [];
     $confNum = strtoupper(trim((string)($input['ConfNum'] ?? '')));
     $token = (string)($input['PortalToken'] ?? '');
-    $reservationId = (int)($input['ReservationId'] ?? 0);
     $acknowledged = ($input['Acknowledged'] ?? false) === true;
+    $tokenPayload = portalTokenPayload($token, $confNum);
     if (!preg_match('/^[A-Z0-9._-]{3,64}$/', $confNum)
-        || !verifyPortalToken($token, $confNum)
-        || $reservationId < 1
+        || $tokenPayload === null
         || !$acknowledged) {
         fail(403, 'Your booking session has expired or the cancellation was not accepted. Please look up the booking again.');
+    }
+    $reservationId = (int)$tokenPayload['rid'];
+    $quote = is_array($tokenPayload['cq'] ?? null) ? $tokenPayload['cq'] : null;
+    if ($quote === null || !isset($quote['fee'], $quote['refund'], $quote['quotedAt'])) {
+        fail(403, 'The cancellation quote is missing or expired. Please look up the booking again.');
     }
 
     $cancelUrl = $UPSTREAM . '/properties/' . rawurlencode($PROPERTY_ID) . '/reservations/' . rawurlencode((string)$reservationId);
@@ -625,15 +776,21 @@ if ($endpoint === 'portal/cancel') {
     ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     [$cancelStatus, $cancelResponse, $cancelError] = upstreamCall('DELETE', $cancelUrl, $API_KEY, $cancelBody);
     if ($cancelStatus === 0) fail(502, 'The booking system is not responding. Your booking has not been cancelled.', $cancelError);
-    if ($cancelStatus < 200 || $cancelStatus >= 300) send($cancelStatus, $cancelResponse, ['Cache-Control' => 'no-store']);
+    if ($cancelStatus < 200 || $cancelStatus >= 300) {
+        fail($cancelStatus >= 400 && $cancelStatus < 500 ? 409 : 502, 'GuestPoint did not accept the cancellation. Your booking has not been cancelled.');
+    }
+    if (!guestPointConfirmed($cancelResponse)) {
+        fail(502, 'GuestPoint did not confirm the cancellation. Your booking has not been cancelled.');
+    }
 
     $audit = [
         'time' => gmdate('c'),
         'event' => 'portal.booking_cancelled',
         'confirmation' => $confNum,
         'reservation_id' => $reservationId,
-        'policy_fee_shown' => max(0, (float)($input['PolicyFee'] ?? 0)),
-        'estimated_refund_shown' => max(0, (float)($input['EstimatedRefund'] ?? 0)),
+        'policy_fee_shown' => max(0, (float)$quote['fee']),
+        'estimated_refund_shown' => max(0, (float)$quote['refund']),
+        'quote_time' => (string)$quote['quotedAt'],
         'ip_hash' => hash('sha256', clientIp()),
     ];
     @file_put_contents($CACHE_DIR . '/portal-audit.jsonl', json_encode($audit, JSON_UNESCAPED_SLASHES) . "\n", FILE_APPEND | LOCK_EX);

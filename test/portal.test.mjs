@@ -65,12 +65,31 @@ const updated = await modifyReservation("ABC123", { EstimatedArrival: "18:30" },
 assert.equal(updated.Updated, true);
 assert.equal(updated.NotificationSent, true);
 
-const cancellation = await cancelReservation(42, "ABC123", "signed-test-token", { policyFee: 90, estimatedRefund: 510 });
+const cancellation = await cancelReservation("ABC123", "signed-test-token", true);
 assert.equal(cancellation.Cancelled, true);
 
 const proxySource = await readFile(new URL("../public_html/api/gp/index.php", import.meta.url), "utf8");
 assert.match(proxySource, /'portal\/cancel'\s*=>\s*\['POST'/, "authenticated portal cancellation route is allow-listed");
 assert.doesNotMatch(proxySource, /'reservations\/\*'\s*=>\s*\['DELETE'/, "direct unauthenticated cancellation route is not exposed");
+assert.doesNotMatch(proxySource, /'reservations\/manage'\s*=>\s*\['POST'/, "direct unauthenticated manage lookup is not exposed");
+assert.match(proxySource, /\$reqPropertyId !== 'self'/, "the browser's self property alias is accepted by the configured proxy");
+assert.match(proxySource, /guestPointConfirmed\(\$cancelResponse\)/, "cancellation requires GuestPoint success confirmation");
+assert.match(proxySource, /\$reservationId = \(int\)\$tokenPayload\['rid'\]/, "cancellation id comes from the signed portal token");
+
+const unpaid = normaliseManagedReservation({
+  Reservation: {
+    ID: 43, ConfNum: "UNPAID1", ReservationTotalAfterTax: "600",
+    PaymentRequired: "0", PayLater: "600", Adults: "0", Children: "0", Infants: "0",
+    RoomStays: [{ Arrival: "2027-01-10", Departure: "2027-01-12", Adults: 2, RoomTotal: "600",
+      RateDetails: [{ CancelRule: { CancelRule: "none", CancelRuleText: "No refund." } }] }]
+  },
+  CancellationQuote: { fee: 600, refund: 0, amountDue: 600, paid: 0, balance: 600, detail: "No refund." }
+});
+assert.equal(unpaid.balance, 600);
+assert.equal(unpaid.paid, 0);
+assert.equal(unpaid.adults, 0, "a documented zero guest count is not replaced by stay data");
+assert.equal(unpaid.cancelRule.CancelRule, "none");
+assert.equal(unpaid.cancellationQuote.amountDue, 600);
 
 const multi = normaliseManagedReservation({
   Reservation: {
