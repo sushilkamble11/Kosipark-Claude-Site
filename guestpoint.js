@@ -179,7 +179,7 @@ async function request(method, path, { params, body, cacheKind } = {}) {
   }
 
   if (!res.ok) {
-    const err = new Error((payload && (payload.message || payload.error)) || "GuestPoint request failed (" + res.status + ")");
+    const err = new Error((payload && (payload.Error && payload.Error.Message || payload.message || payload.error)) || "GuestPoint request failed (" + res.status + ")");
     err.status = res.status;
     err.payload = payload;
     throw err;
