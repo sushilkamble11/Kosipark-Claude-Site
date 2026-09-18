@@ -499,10 +499,50 @@ function loadManagedReservation(string $confNum, string $surname, string $email,
     $reservation = is_array($root['Reservation'] ?? null) ? $root['Reservation'] : [];
     $reservationId = (int)($reservation['ID'] ?? 0);
     if ($reservationId < 1) return [502, null, 'GuestPoint returned a reservation without an id.'];
+    // The Booking Engine management view can lag behind a Phoenix PMS edit.
+    // On the test portal, overlay authoritative dates, occupancy and current
+    // room balance from Core/Phoenix so a refresh never appears to undo a
+    // change that the PMS has already accepted.
+    global $PMS_PRIVATE_WRITES;
+    if ($PMS_PRIVATE_WRITES) {
+        $core = resolvePortalCoreReservation($confNum, $surname);
+        $coreAllocations = is_array($core['Allocations'] ?? null) ? array_values($core['Allocations']) : [];
+        if (count($coreAllocations) === 1 && !empty($coreAllocations[0]['RoomAllocationId'])) {
+            $roomAllocationId = (string)$coreAllocations[0]['RoomAllocationId'];
+            [$pmsStatus, $pmsRaw] = pmsCall('GET', 'Reservation/GetRoomAllocation?roomAllocationID=' . rawurlencode($roomAllocationId));
+            $pms = json_decode($pmsRaw, true);
+            if ($pmsStatus === 200 && is_array($pms)) {
+                $arrival = substr((string)($pms['ArrivalDate'] ?? ''), 0, 10);
+                $nights = max(1, (int)($pms['NumberOfNights'] ?? 1));
+                try { $departure = (new DateTimeImmutable($arrival))->modify('+' . $nights . ' days')->format('Y-m-d'); }
+                catch (Throwable $e) { $departure = ''; }
+                $root['Reservation']['Adults'] = (int)($pms['NumberAdults'] ?? $reservation['Adults'] ?? 0);
+                $root['Reservation']['Children'] = (int)($pms['NumberChildren'] ?? $reservation['Children'] ?? 0);
+                $root['Reservation']['Infants'] = (int)($pms['NumberInfants'] ?? $reservation['Infants'] ?? 0);
+                $statusMap = [1=>'Modified', 2=>'Checked in', 3=>'Checked out', 4=>'Cancelled', 5=>'No show'];
+                if (isset($statusMap[(int)($pms['Status'] ?? 0)])) $root['Reservation']['Status'] = $statusMap[(int)$pms['Status']];
+                if ($arrival !== '' && $departure !== '' && is_array($root['Reservation']['RoomStays'] ?? null) && count($root['Reservation']['RoomStays']) === 1) {
+                    $root['Reservation']['RoomStays'][0]['Arrival'] = $arrival;
+                    $root['Reservation']['RoomStays'][0]['Departure'] = $departure;
+                    $root['Reservation']['RoomStays'][0]['Adults'] = $root['Reservation']['Adults'];
+                    $root['Reservation']['RoomStays'][0]['Children'] = $root['Reservation']['Children'];
+                    $root['Reservation']['RoomStays'][0]['Infants'] = $root['Reservation']['Infants'];
+                    $root['Reservation']['RoomStays'][0]['IsCancelled'] = (int)($pms['Status'] ?? 0) === 4;
+                }
+                $outstanding = gpNumber($core['AmountOutstanding'] ?? null) ?? gpNumber($pms['DepartureBalance'] ?? null);
+                if ($outstanding !== null) {
+                    $oldTotal = gpNumber($root['Reservation']['ReservationTotalAfterTax'] ?? null) ?? gpNumber($root['Reservation']['ReservationTotal'] ?? null) ?? 0.0;
+                    $root['Reservation']['ReservationTotalAfterTax'] = max($oldTotal, $outstanding);
+                    $root['Reservation']['PaymentRequired'] = max(0.0, $outstanding);
+                    $root['Reservation']['PayLater'] = max(0.0, $outstanding);
+                }
+                $reservation = $root['Reservation'];
+            }
+        }
+    }
     $quote = cancellationQuote($reservation);
     $root['PortalToken'] = issuePortalToken($confNum, $reservationId, $surname, $email, $quote);
     $root['CancellationQuote'] = $quote;
-    global $PMS_PRIVATE_WRITES;
     if ($PMS_PRIVATE_WRITES) {
         $root['PortalCapabilities'] = ['Amend'=>true, 'Extras'=>true, 'Cancel'=>true];
     }
