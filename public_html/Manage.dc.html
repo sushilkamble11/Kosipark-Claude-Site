@@ -76,6 +76,13 @@
 
             <p style="{{ noticeStyle }}">{{ noticeText }}</p>
 
+            <sc-if value="{{ showCapabilityNotice }}" hint-placeholder-val="{{ true }}">
+              <div style="margin-top:18px; border-radius:14px; background:#F3ECE0; padding:16px 18px; border-left:4px solid #96592A">
+                <strong style="display:block; font:600 14px/1.5 Figtree,sans-serif; color:#1D3730">What can be changed online</strong>
+                <p style="font:400 13.5px/1.65 Figtree,sans-serif; color:#56534C; margin:5px 0 0">{{ capabilityNotice }}</p>
+              </div>
+            </sc-if>
+
             <sc-if value="{{ canAct }}" hint-placeholder-val="{{ true }}">
               <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:22px">
                 <sc-if value="{{ canAmend }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ openAmend }}" style="{{ tabAmend }}">Amend booking</button></sc-if>
@@ -512,6 +519,19 @@ class Component extends DCLogic {
     const permissions = b ? (b.permissions || {}) : {};
     const activeStatus = b && /^(booked|modified|confirmed|reserved)$/i.test(b.status);
     const canAct = !!b && activeStatus && p && p.days >= 0;
+    // GuestPoint's own guest portal currently exposes these two edits even
+    // though its Login capability object returns false for this GPBE booking.
+    // Both fields are part of the documented manage PATCH and have been
+    // verified against the development property. OTA bookings remain gated by
+    // GuestPoint's explicit permissions.
+    const directBooking = !!b && /^GPBE$/i.test(String(b.channel || ""));
+    const canEditGuest = canAct && (!!permissions.UpdateGuestDetails || directBooking);
+    const canAddRequest = canAct && (!!permissions.SpecialRequests || directBooking);
+    const unavailable = [];
+    if (canAct && !permissions.UpdateStayDates) unavailable.push("date changes");
+    if (canAct && !permissions.Cancel) unavailable.push("cancellation");
+    if (canAct && !permissions.PayNow) unavailable.push("balance payments");
+    if (canAct) unavailable.push("adding extras to this existing booking");
     const addStayUrl = b ? "/book?arrival=" + encodeURIComponent(b.checkIn) + "&departure=" + encodeURIComponent(b.checkOut) + "&adults=" + b.adults + "&children=" + b.children + "&infants=" + b.infants : "/book";
 
     return {
@@ -554,10 +574,12 @@ class Component extends DCLogic {
       canDates: canAct && !!permissions.UpdateStayDates && !!p.amendAllowed,
       canAmend: canAct && ((!!permissions.UpdateStayDates && !!p.amendAllowed) || !!permissions.Cancel),
       canParty: canAct && !!permissions.UpdateGuestDetails && !!p.amendAllowed,
-      canGuests: canAct && !!permissions.UpdateGuestDetails && Array.isArray(b.guests) && b.guests.length > 0,
-      canNote: canAct && !!permissions.SpecialRequests,
+      canGuests: canEditGuest && Array.isArray(b.guests) && b.guests.length > 0,
+      canNote: canAddRequest,
       canCancel: canAct && !!permissions.Cancel,
       canPay: canAct && !!permissions.PayNow && b.balance > 0 && !!b.paymentUrl,
+      showCapabilityNotice: canAct && unavailable.length > 0,
+      capabilityNotice: "Guest details, arrival time, vehicle registrations and special requests save directly to GuestPoint. GuestPoint has not enabled " + unavailable.join(", ") + " through its guest API for this booking, so the portal will not pretend those actions completed.",
       noticeText: b && p && p.days < 0 ? "This stay has already taken place, so it can no longer be changed online."
         : b && !canAct ? "GuestPoint has marked this booking as view-only. Reception can help with anything that still needs attention."
         : "",
@@ -700,7 +722,7 @@ class Component extends DCLogic {
       travelSaveLabel: s.travelSaving ? "Saving…" : "Save arrival details",
 
       extrasMessage: s.extrasLoading ? "Checking GuestPoint for eligible extras…"
-        : s.extras.length ? "Select an extra to review its GuestPoint price. The final live add step will switch on when GuestPoint supplies its existing-booking extras operation."
+        : s.extras.length ? "These are the live extras GuestPoint offers for this room and rate. GuestPoint currently exposes them for new bookings, but not for adding to an existing booking."
         : "GuestPoint has not returned any eligible extras for this stay.",
       extrasList: s.extras.map(x => {
         const selected = !!s.selectedExtras[x.id];
@@ -724,12 +746,10 @@ class Component extends DCLogic {
           this.setState({ confirm: { title: "Demo extras selected", body: "Your selected extras are ready for review. No real booking has been changed in demo mode." } });
           return;
         }
-        const names = s.extras.filter(x => s.selectedExtras[x.id]).map(x => x.name);
-        this.saveManagedRequest("add extras", [
-          "Requested extras: " + names.join(", "),
-          "Displayed extras total: " + Component.money(this.gp.extrasTotal(s.extras, s.selectedExtras, this.nights(b))),
-          "Guest understands the extras are not added or charged until reception confirms them."
-        ]);
+        this.setState({ confirm: {
+          title: "Extra not added",
+          body: "GuestPoint returned the live extra and price, but its public API has not supplied the account and transaction details needed to add it to this existing booking. Nothing has been charged or changed."
+        } });
       },
       addStayUrl,
       openAddStayWarning: () => this.setState({ leaveAction: "add-stay" }),
