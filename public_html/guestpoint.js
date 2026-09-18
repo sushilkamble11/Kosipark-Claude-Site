@@ -340,7 +340,11 @@ export function normaliseExtras(list, ctx) {
 
       return {
         id: x.Id,
-        name: x.Name,
+        // Misconfigured GuestPoint extras can be live and priced while both
+        // their web name and description are blank. Never render an empty
+        // product card; the generic label is deliberately not an invented
+        // product description.
+        name: String(x.Name || x.Description || "Optional extra").trim(),
         description: x.Description || "",
         image: (Array.isArray(x.Images) && x.Images[0] && x.Images[0].URL) || "",
         priceType,
