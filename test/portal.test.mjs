@@ -74,6 +74,9 @@ assert.doesNotMatch(proxySource, /'reservations\/manage'\s*=>\s*\['POST'/, "dire
 assert.match(proxySource, /\$reqPropertyId !== 'self'/, "the browser's self property alias is accepted by the configured proxy");
 assert.match(proxySource, /'portal\/lookup'\s*=>\s*\['POST'/, "portal lookup accepts reference and surname without OTP");
 assert.match(proxySource, /isset\(\$payload\['ReservationNumber'\]\)/, "single-reservation Core responses are supported");
+assert.match(proxySource, /function resolvePortalBookingIdentity/, "portal resolves either GuestPoint booking number to one identity");
+assert.match(proxySource, /GetReservationDetailByRoomAllocationWithCurrentPackage/, "portal reads the channel reference behind a PMS reservation number");
+assert.match(proxySource, /'manageReference'\s*=>\s*\$numbers\['bookingReference'\]/, "portal canonicalises lookup to the channel reference required by manage");
 assert.match(proxySource, /guestPointConfirmed\(\$cancelResponse\)/, "cancellation requires GuestPoint success confirmation");
 assert.match(proxySource, /\$reservationId = \(int\)\$tokenPayload\['rid'\]/, "cancellation id comes from the signed portal token");
 assert.match(proxySource, /\$freshLogin\['Cancel'\]/, "cancellation rechecks GuestPoint permission immediately before deletion");
