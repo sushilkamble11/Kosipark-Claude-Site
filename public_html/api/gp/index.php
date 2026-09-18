@@ -39,6 +39,7 @@ $OTP_FROM_EMAIL = trim((string)($config['otp_from_email'] ?? $SMTP_USERNAME));
 $OTP_FROM_NAME = trim((string)($config['otp_from_name'] ?? 'Kosciuszko Tourist Park'));
 $OTP_TTL = max(300, min(900, (int)($config['otp_ttl'] ?? 600)));
 $OTP_MAX_ATTEMPTS = max(3, min(8, (int)($config['otp_max_attempts'] ?? 5)));
+$OTP_REQUIRED = (bool)($config['portal_otp_required'] ?? false);
 $DEBUG       = (bool)($config['debug'] ?? false);
 
 $CACHE_DIR = (string)($config['cache_dir'] ?? '');
@@ -588,6 +589,12 @@ if ($endpoint === 'portal/otp/request') {
         && $surname !== '' && strlen($surname) <= 80
         && ((strlen($mobile) >= 10 && strlen($mobile) <= 15) || ($confNum === '1' && $surname === '1' && $mobile === '1'));
     $email = $validInput ? resolvePortalEmail($confNum, $surname, $mobile) : '';
+    if (!$OTP_REQUIRED) {
+        if ($email === '') fail(403, 'We could not verify those booking details. Check them and try again.');
+        [$status, $payload, $detail] = loadManagedReservation($confNum, $surname, $email);
+        if (!is_array($payload)) fail(502, 'The booking system is not responding. Please try again shortly.', (string)$detail);
+        send($status, $payload, ['Cache-Control' => 'no-store']);
+    }
     $code = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
     $sent = false;
     if ($email !== '') {

@@ -73,6 +73,7 @@ assert.match(proxySource, /'portal\/cancel'\s*=>\s*\['POST'/, "authenticated por
 assert.doesNotMatch(proxySource, /'reservations\/\*'\s*=>\s*\['DELETE'/, "direct unauthenticated cancellation route is not exposed");
 assert.doesNotMatch(proxySource, /'reservations\/manage'\s*=>\s*\['POST'/, "direct unauthenticated manage lookup is not exposed");
 assert.match(proxySource, /\$reqPropertyId !== 'self'/, "the browser's self property alias is accepted by the configured proxy");
+assert.match(proxySource, /portal_otp_required'\]\s*\?\?\s*false/, "configured portals default to reference, surname and mobile without OTP");
 assert.match(proxySource, /guestPointConfirmed\(\$cancelResponse\)/, "cancellation requires GuestPoint success confirmation");
 assert.match(proxySource, /\$reservationId = \(int\)\$tokenPayload\['rid'\]/, "cancellation id comes from the signed portal token");
 
