@@ -22,7 +22,7 @@ const pass = (condition, label) => {
 await page.goto(`http://localhost:${port}/manage`, { waitUntil: "networkidle" });
 pass(page.url().endsWith("/manage"), "manage page identity is correct");
 pass((await page.locator("body").innerText()).includes("Manage your booking"), "manage page is not blank");
-await page.getByPlaceholder("KTP-48213").fill("1");
+await page.getByPlaceholder("Reservation number or channel booking ref").fill("1");
 await page.getByPlaceholder("Nguyen").fill("1");
 await page.getByRole("button", { name: "Find my booking" }).click();
 await page.getByText("Booking reference: 1").waitFor({ timeout: 5000 });
@@ -44,7 +44,7 @@ const confirmCancel = page.getByRole("button", { name: "Confirm cancellation" })
 pass(!(await confirmCancel.isEnabled()), "cancellation remains locked until the final acceptance");
 await page.getByRole("checkbox").check();
 await confirmCancel.click();
-const cancellationConfirmation = page.getByText("Booking cancelled", { exact: true });
+const cancellationConfirmation = page.getByText("Booking cancelled in GuestPoint", { exact: true });
 await cancellationConfirmation.waitFor();
 pass(await cancellationConfirmation.isVisible(), "verified cancellation is submitted to GuestPoint");
 pass(await page.getByText("Cancelled", { exact: true }).isVisible(), "booking status changes to Cancelled after GuestPoint confirms");
@@ -55,7 +55,7 @@ await page.screenshot({ path: "/tmp/kosipark-manage-cancellation-email-verificat
 // be exercised after the cancellation state correctly disables all writes.
 await page.getByRole("button", { name: "Look up another booking" }).click();
 await page.getByRole("button", { name: "Continue" }).click();
-await page.getByPlaceholder("KTP-48213").fill("1");
+await page.getByPlaceholder("Reservation number or channel booking ref").fill("1");
 await page.getByPlaceholder("Nguyen").fill("1");
 await page.getByRole("button", { name: "Find my booking" }).click();
 await page.getByText("Booking reference: 1").waitFor({ timeout: 5000 });
