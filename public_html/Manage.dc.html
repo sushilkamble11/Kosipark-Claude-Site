@@ -39,8 +39,7 @@
           <div style="background:#FFFFFF; border:1px solid rgba(29,55,48,0.10); border-radius:16px; padding:clamp(20px,3vw,32px); box-shadow:0 22px 50px -34px rgba(18,39,32,0.45)">
             <h2 style="font:400 19px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:0">{{ accessTitle }}</h2>
             <p style="font:400 14.5px/1.7 Figtree, sans-serif; color:#6C6862; margin:10px 0 22px">{{ accessIntro }}</p>
-            <sc-if value="{{ showCredentials }}" hint-placeholder-val="{{ true }}">
-              <div style="display:flex; flex-direction:column; gap:12px">
+            <div style="display:flex; flex-direction:column; gap:12px">
                 <label style="display:flex; flex-direction:column; gap:7px; padding:14px 18px; border-radius:14px; background:#F3ECE0; border:1px solid rgba(29,55,48,0.08)">
                   <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.18em; text-transform:uppercase; color:#74836A">Booking reference</span>
                   <input value="{{ refValue }}" onChange="{{ onRefChange }}" placeholder="KTP-48213" autocomplete="off" style="border:0; background:transparent; outline:none; font:500 17px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0" />
@@ -54,19 +53,7 @@
                   <input value="{{ mobileValue }}" onChange="{{ onMobileChange }}" inputmode="tel" autocomplete="tel" placeholder="0412 345 678" style="border:0; background:transparent; outline:none; font:500 17px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0" />
                 </label>
                 <button type="button" onClick="{{ find }}" disabled="{{ findDisabled }}" style="{{ findButtonStyle }}" style-hover="background:#96592A">{{ findLabel }}</button>
-              </div>
-            </sc-if>
-            <sc-if value="{{ showOtp }}" hint-placeholder-val="{{ false }}">
-              <div style="display:flex; flex-direction:column; gap:12px; animation:riseIn .2s ease both">
-                <label style="display:flex; flex-direction:column; gap:9px; padding:16px 18px; border-radius:14px; background:#F3ECE0; border:1px solid rgba(29,55,48,0.08)">
-                  <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.18em; text-transform:uppercase; color:#74836A">Six-digit email code</span>
-                  <input aria-label="Six-digit email code" value="{{ otpValue }}" onChange="{{ onOtpChange }}" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" style="border:0; background:transparent; outline:none; font:600 24px/1.3 Figtree, sans-serif; letter-spacing:.22em; color:#1D3730; width:100%; padding:0" />
-                </label>
-                <p style="{{ demoOtpStyle }}">Demo verification code: <strong>{{ demoOtp }}</strong></p>
-                <button type="button" onClick="{{ verifyOtp }}" disabled="{{ verifyDisabled }}" style="{{ verifyButtonStyle }}" style-hover="background:#96592A">{{ verifyLabel }}</button>
-                <button type="button" onClick="{{ changeDetails }}" style="border:1px solid rgba(29,55,48,.18); border-radius:14px; background:transparent; color:#1D3730; font:700 12px/1 Figtree,sans-serif; letter-spacing:.08em; text-transform:uppercase; padding:15px 18px; cursor:pointer">Use different details</button>
-              </div>
-            </sc-if>
+            </div>
             <p style="{{ errorStyle }}">{{ errorText }}</p>
             <p style="font:400 13.5px/1.7 Figtree, sans-serif; color:#8B877E; margin:20px 0 0">Booked through Booking.com, Airbnb or Expedia? The agent's terms apply — please contact them directly. Otherwise call reception on <a href="tel:0264562224" style="color:#1D3730; border-bottom:1px solid #96592A">02 6456 2224</a>.</p>
           </div>
@@ -289,7 +276,7 @@
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{}">
 class Component extends DCLogic {
-  state = { refInput: "", nameInput: "", mobileInput: "", otpChallenge: "", otpInput: "", otpMessage: "", demoOtp: "", booking: null, error: "", mode: null, adults: 0, children: 0, infants: 0, note: "", confirm: null, loading: false, verifying: false, saving: false, requestSaving: false, cancelSaving: false, dateQuote: null, dateLoading: false, partyQuote: null, partyLoading: false, guestFirst: "", guestLast: "", guestEmail: "", guestMobile: "", guestSaving: false, eta: "", vehicles: "", travelSaving: false, extras: [], extrasLoading: false, selectedExtras: {}, vehicleField: null, policyAccepted: false, leaveAction: "" };
+  state = { refInput: "", nameInput: "", mobileInput: "", booking: null, error: "", mode: null, adults: 0, children: 0, infants: 0, note: "", confirm: null, loading: false, saving: false, requestSaving: false, cancelSaving: false, dateQuote: null, dateLoading: false, partyQuote: null, partyLoading: false, guestFirst: "", guestLast: "", guestEmail: "", guestMobile: "", guestSaving: false, eta: "", vehicles: "", travelSaving: false, extras: [], extrasLoading: false, selectedExtras: {}, vehicleField: null, policyAccepted: false, leaveAction: "" };
 
   async componentDidMount() {
     try { this.gp = await import("./guestpoint.js"); }
@@ -326,10 +313,9 @@ class Component extends DCLogic {
         this.openBooking(result);
         return;
       }
-      if (!result || !result.ChallengeId) throw new Error("verification-unavailable");
-      this.setState({ loading: false, otpChallenge: result.ChallengeId, otpInput: "", otpMessage: result.Message || "Check the email held on your booking for the verification code.", demoOtp: result.DemoCode || "", error: "" });
+      throw new Error("booking-not-found");
     } catch (e) {
-      this.setState({ loading: false, error: e && e.status === 429 ? "Please wait a minute before requesting another code." : "We couldn't start secure verification. Please try again, or call reception on 02 6456 2224." });
+      this.setState({ loading: false, error: e && e.status === 429 ? "Please wait a minute before trying again." : "We couldn't find a matching booking. Check the details, or call reception on 02 6456 2224." });
     }
   }
 
@@ -337,25 +323,10 @@ class Component extends DCLogic {
     const b = this.gp.normaliseManagedReservation(found);
     if (!b.ref || !b.permissions.ViewReservation) throw new Error("not-viewable");
     const lead = (b.guests || []).find(g => b.bookingContact && g.ID === b.bookingContact.ID) || (b.guests || [])[0] || b.bookingContact || {};
-    this.setState({ booking: b, error: "", mode: null, confirm: null, loading: false, verifying: false, otpChallenge: "", otpInput: "", otpMessage: "", demoOtp: "", selectedExtras: {}, partyQuote: null, policyAccepted: false,
+    this.setState({ booking: b, error: "", mode: null, confirm: null, loading: false, selectedExtras: {}, partyQuote: null, policyAccepted: false,
       adults: b.adults, children: b.children, infants: b.infants,
       note: "", eta: b.estimatedArrival || "", vehicles: "",
       guestFirst: lead.FirstName || "", guestLast: lead.LastName || "", guestEmail: lead.Email || "", guestMobile: lead.Mobile || lead.Phone || "" });
-  }
-
-  async verifyOtp() {
-    const code = String(this.state.otpInput || "").replace(/\D/g, "");
-    if (code.length !== 6 || !this.state.otpChallenge || this.state.verifying) {
-      this.setState({ error: "Enter the six-digit code from your email." });
-      return;
-    }
-    this.setState({ verifying: true, error: "" });
-    try {
-      const found = await this.gp.verifyPortalOtp({ challengeId: this.state.otpChallenge, code });
-      this.openBooking(found);
-    } catch (e) {
-      this.setState({ verifying: false, error: "That code is incorrect or has expired. Check the code, or use different details to request a new one." });
-    }
   }
 
   daysUntil(b) {
@@ -551,10 +522,8 @@ class Component extends DCLogic {
     return {
       showFind: !b,
       showBooking: !!b,
-      showCredentials: !s.otpChallenge,
-      showOtp: !!s.otpChallenge,
-      accessTitle: s.otpChallenge ? "Check your email" : "Find your booking",
-      accessIntro: s.otpChallenge ? (s.otpMessage || "Enter the verification code sent to the email held on your booking.") : "Use the booking reference, surname and mobile number held on the reservation.",
+      accessTitle: "Find your booking",
+      accessIntro: "Use the booking reference, surname and mobile number held on the reservation.",
       refValue: s.refInput,
       nameValue: s.nameInput,
       mobileValue: s.mobileInput,
@@ -565,15 +534,6 @@ class Component extends DCLogic {
       findDisabled: s.loading,
       findLabel: s.loading ? "Checking…" : "Find my booking",
       findButtonStyle: "min-height:62px; border:0; border-radius:14px; background:#1D3730; color:#FCFAF6; font:700 13.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; cursor:" + (s.loading ? "wait" : "pointer") + "; opacity:" + (s.loading ? ".65" : "1"),
-      otpValue: s.otpInput,
-      onOtpChange: e => this.setState({ otpInput: String(e.target.value || "").replace(/\D/g, "").slice(0, 6), error: "" }),
-      verifyOtp: () => this.verifyOtp(),
-      verifyDisabled: s.verifying,
-      verifyLabel: s.verifying ? "Verifying…" : "Verify and view booking",
-      verifyButtonStyle: "min-height:58px; border:0; border-radius:14px; background:#1D3730; color:#FCFAF6; font:700 13px/1 Figtree,sans-serif; letter-spacing:.09em; text-transform:uppercase; cursor:" + (s.verifying ? "wait" : "pointer") + "; opacity:" + (s.verifying ? ".65" : "1"),
-      changeDetails: () => this.setState({ otpChallenge: "", otpInput: "", otpMessage: "", demoOtp: "", error: "" }),
-      demoOtp: s.demoOtp,
-      demoOtpStyle: s.demoOtp ? "margin:0; padding:12px 14px; border-radius:12px; background:#E9EEE3; color:#1D3730; font:500 14px/1.5 Figtree,sans-serif" : "display:none",
       errorText: s.error,
       errorStyle: s.error
         ? "margin:16px 0 0; font:500 13.5px/1.6 Figtree, sans-serif; color:#8C3B2A; animation:riseIn .18s ease both"
@@ -789,7 +749,7 @@ class Component extends DCLogic {
       closeLeaveWarning: () => this.setState({ leaveAction: "" }),
       continueLeaving: () => {
         if (s.leaveAction === "add-stay") window.location.href = addStayUrl;
-        else if (s.leaveAction === "lookup") this.setState({ booking: null, refInput: "", nameInput: "", mobileInput: "", otpChallenge: "", otpInput: "", otpMessage: "", demoOtp: "", mode: null, confirm: null, error: "", dateQuote: null, partyQuote: null, selectedExtras: {}, policyAccepted: false, leaveAction: "" });
+        else if (s.leaveAction === "lookup") this.setState({ booking: null, refInput: "", nameInput: "", mobileInput: "", mode: null, confirm: null, error: "", dateQuote: null, partyQuote: null, selectedExtras: {}, policyAccepted: false, leaveAction: "" });
       },
       balanceLabel: Component.money(b ? b.balance : 0),
       payButtonStyle: "border:0; border-radius:999px; background:#96592A; color:#FCFAF6; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.06em; padding:14px 18px; cursor:pointer",
@@ -836,7 +796,7 @@ class Component extends DCLogic {
         ? "margin-top:22px; background:#E9EEE3; border-radius:16px; padding:20px; animation:riseIn .2s ease both"
         : "display:none",
 
-      reset: () => this.setState({ booking: null, refInput: "", nameInput: "", mobileInput: "", otpChallenge: "", otpInput: "", otpMessage: "", demoOtp: "", mode: null, confirm: null, error: "", dateQuote: null, partyQuote: null, selectedExtras: {}, policyAccepted: false, leaveAction: "" })
+      reset: () => this.setState({ booking: null, refInput: "", nameInput: "", mobileInput: "", mode: null, confirm: null, error: "", dateQuote: null, partyQuote: null, selectedExtras: {}, policyAccepted: false, leaveAction: "" })
     };
   }
 }

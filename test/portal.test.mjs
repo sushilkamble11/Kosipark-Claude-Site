@@ -1,15 +1,14 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { cancelReservation, normaliseMobile, normaliseManagedReservation, quoteManagedStayChange, modifyReservation, requestPortalOtp, verifyPortalOtp } from "../public_html/guestpoint.js";
+import { cancelReservation, normaliseMobile, normaliseManagedReservation, quoteManagedStayChange, modifyReservation, requestPortalOtp } from "../public_html/guestpoint.js";
 
 assert.equal(normaliseMobile("0412 345 678"), "61412345678");
 assert.equal(normaliseMobile("+61 412 345 678"), "61412345678");
 assert.equal(normaliseMobile("0011 61 412 345 678"), "61412345678");
 
-const otp = await requestPortalOtp({ confNum: "1", surname: "1", mobile: "1" });
-assert.equal(otp.DemoCode, "123456");
-const otpBooking = await verifyPortalOtp({ challengeId: otp.ChallengeId, code: "123456" });
-assert.equal(otpBooking.Reservation.ConfNum, "1");
+const directBooking = await requestPortalOtp({ confNum: "1", surname: "1", mobile: "1" });
+assert.equal(directBooking.Reservation.ConfNum, "1");
+assert.equal(directBooking.PortalToken, "mock-portal-token");
 
 const booking = normaliseManagedReservation({
   PortalToken: "signed-test-token",

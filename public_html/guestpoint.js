@@ -1324,32 +1324,11 @@ function mockRateFor(slug, dateStr) {
   return Math.round(rate);
 }
 
-const mockOtpChallenges = new Map();
-
 async function mockResponse(method, path, params, body) {
   await new Promise(r => setTimeout(r, 220));
 
   if (path === "/portal/otp/request") {
-    const challengeId = "mock-" + Math.random().toString(36).slice(2);
-    mockOtpChallenges.set(challengeId, { ...(body || {}) });
-    return {
-      ChallengeId: challengeId,
-      ExpiresIn: 600,
-      DemoCode: "123456",
-      Message: "If those details match a booking, a verification code has been sent to the email held on it."
-    };
-  }
-
-  if (path === "/portal/otp/verify") {
-    const challengeId = String(body && body.ChallengeId || "");
-    const details = mockOtpChallenges.get(challengeId);
-    if (!details || String(body && body.Code || "") !== "123456") {
-      const err = new Error("That code is invalid or has expired.");
-      err.status = 403;
-      throw err;
-    }
-    mockOtpChallenges.delete(challengeId);
-    return mockResponse("POST", "/portal/lookup", null, details);
+    return mockResponse("POST", "/portal/lookup", null, body);
   }
 
   if (path === "/portal/lookup") {

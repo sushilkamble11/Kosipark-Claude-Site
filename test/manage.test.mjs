@@ -26,13 +26,8 @@ await page.getByPlaceholder("KTP-48213").fill("1");
 await page.getByPlaceholder("Nguyen").fill("1");
 await page.getByPlaceholder("0412 345 678").fill("1");
 await page.getByRole("button", { name: "Find my booking" }).click();
-await page.getByText("Demo verification code: 123456").waitFor({ timeout: 5000 });
-pass(await page.getByText("Demo verification code: 123456").isVisible(), "demo mode shows the test-only verification code");
-await page.screenshot({ path: "/tmp/kosipark-manage-email-otp.png", fullPage: false });
-await page.getByLabel("Six-digit email code").fill("123456");
-await page.getByRole("button", { name: "Verify and view booking" }).click();
 await page.getByText("Booking reference: 1").waitFor({ timeout: 5000 });
-pass(await page.getByText("Booking reference: 1").isVisible(), "1 / 1 / 1 plus OTP opens the demo booking");
+pass(await page.getByText("Booking reference: 1").isVisible(), "1 / 1 / 1 opens the demo booking without OTP");
 
 for (const section of ["Amend booking", "Guest numbers", "Guest details", "Arrival & vehicles", "View extras", "Special request"]) {
   await page.getByRole("button", { name: section, exact: true }).click();
@@ -65,8 +60,6 @@ await page.getByPlaceholder("KTP-48213").fill("1");
 await page.getByPlaceholder("Nguyen").fill("1");
 await page.getByPlaceholder("0412 345 678").fill("1");
 await page.getByRole("button", { name: "Find my booking" }).click();
-await page.getByLabel("Six-digit email code").fill("123456");
-await page.getByRole("button", { name: "Verify and view booking" }).click();
 await page.getByText("Booking reference: 1").waitFor({ timeout: 5000 });
 
 await page.getByRole("button", { name: "View extras" }).click();
