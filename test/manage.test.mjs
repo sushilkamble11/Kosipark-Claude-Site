@@ -24,7 +24,6 @@ pass(page.url().endsWith("/manage"), "manage page identity is correct");
 pass((await page.locator("body").innerText()).includes("Manage your booking"), "manage page is not blank");
 await page.getByPlaceholder("KTP-48213").fill("1");
 await page.getByPlaceholder("Nguyen").fill("1");
-await page.getByPlaceholder("0412 345 678").fill("1");
 await page.getByRole("button", { name: "Find my booking" }).click();
 await page.getByText("Booking reference: 1").waitFor({ timeout: 5000 });
 pass(await page.getByText("Booking reference: 1").isVisible(), "1 / 1 / 1 opens the demo booking without OTP");
@@ -58,7 +57,6 @@ await page.getByRole("button", { name: "Look up another booking" }).click();
 await page.getByRole("button", { name: "Continue" }).click();
 await page.getByPlaceholder("KTP-48213").fill("1");
 await page.getByPlaceholder("Nguyen").fill("1");
-await page.getByPlaceholder("0412 345 678").fill("1");
 await page.getByRole("button", { name: "Find my booking" }).click();
 await page.getByText("Booking reference: 1").waitFor({ timeout: 5000 });
 
