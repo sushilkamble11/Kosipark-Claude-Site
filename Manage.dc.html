@@ -739,7 +739,10 @@ class Component extends DCLogic {
         action: () => this.setState(old => {
           const chosen = { ...old.selectedExtras };
           if (chosen[x.id]) delete chosen[x.id];
-          else chosen[x.id] = Object.fromEntries(x.prices.map(pr => [pr.id, Math.max(1, pr.suggested || 1)]));
+          else chosen[x.id] = Object.fromEntries(x.prices.map(pr => {
+            const guestCount = /child/i.test(pr.name || "") ? Number(b.children || 0) : Number(b.adults || 0);
+            return [pr.id, Math.max(1, guestCount || pr.suggested || 1)];
+          }));
           return { selectedExtras: chosen, confirm: null };
         })
       }}),
