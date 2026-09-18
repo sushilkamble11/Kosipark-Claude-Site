@@ -579,11 +579,6 @@ if ($endpoint === 'portal/lookup') {
     $input = is_array($decodedBody) ? $decodedBody : [];
     $confNum = strtoupper(trim((string)($input['ConfNum'] ?? '')));
     $surname = trim((string)($input['Surname'] ?? ''));
-    $identity = strtolower($confNum . '|' . $surname);
-    if (!allowOtpRequest($identity)) {
-        fail(429, 'Please wait before requesting another code.');
-    }
-
     $validInput = preg_match('/^[A-Z0-9._-]{1,64}$/', $confNum)
         && $surname !== '' && strlen($surname) <= 80;
     $email = $validInput ? resolvePortalEmail($confNum, $surname) : '';
