@@ -435,49 +435,132 @@ function allowOtpRequest(string $identity): bool {
     return @file_put_contents($path, json_encode($record), LOCK_EX) !== false;
 }
 
-/** Return the Core reservation only when reference, property and surname match. */
-function resolvePortalCoreReservation(string $confNum, string $surname): ?array {
-    global $CORE_UPSTREAM, $CORE_KEY, $PROPERTY_ID;
-    if ($CORE_UPSTREAM === '' || $CORE_KEY === '') return null;
-    $search = $CORE_UPSTREAM . '/v1/reservations?' . http_build_query([
-        'bookingReference' => $confNum,
-        'lastName' => $surname,
-    ], '', '&', PHP_QUERY_RFC3986);
+/** Return Core reservation rows for a documented reservation search. */
+function searchCoreReservations(array $parameters): array {
+    global $CORE_UPSTREAM, $CORE_KEY;
+    if ($CORE_UPSTREAM === '' || $CORE_KEY === '') return [];
+    $search = $CORE_UPSTREAM . '/v1/reservations?' . http_build_query($parameters, '', '&', PHP_QUERY_RFC3986);
     [$status, $response] = upstreamCall('GET', $search, $CORE_KEY);
-    if ($status !== 200) return null;
+    if ($status !== 200) return [];
     $payload = json_decode($response, true);
     $rows = [];
     if (is_array($payload)) {
         if (isset($payload['ReservationNumber'])) $rows = [$payload];
         else $rows = $payload['Data'] ?? $payload['data'] ?? [];
     }
-    if (!is_array($rows)) return null;
-    foreach ($rows as $reservation) {
-        if (!is_array($reservation)) continue;
-        $rowProperty = strtolower(trim((string)($reservation['PropertyId'] ?? '')));
-        // GuestPoint accepts either its reservation number or the booking
-        // engine/channel reference in the bookingReference search parameter.
-        if (!hash_equals(strtolower($PROPERTY_ID), $rowProperty)) continue;
-        foreach (($reservation['Allocations'] ?? []) as $allocation) {
-            if (!is_array($allocation) || empty($allocation['IsPrimary'])) continue;
-            $rowSurname = strtolower(trim((string)($allocation['GuestLastName'] ?? '')));
-            if (!hash_equals(strtolower($surname), $rowSurname)) continue;
-            return $reservation;
+    return is_array($rows) ? array_values(array_filter($rows, 'is_array')) : [];
+}
+
+/** Read the two human-facing booking numbers from Phoenix for one Core row. */
+function pmsBookingNumbers(array $reservation): array {
+    $numbers = [
+        'reservationNumber' => strtoupper(trim((string)($reservation['ReservationNumber'] ?? ''))),
+        'bookingReference' => '',
+    ];
+    $allocations = is_array($reservation['Allocations'] ?? null) ? $reservation['Allocations'] : [];
+    $primary = null;
+    foreach ($allocations as $allocation) {
+        if (is_array($allocation) && !empty($allocation['IsPrimary']) && !empty($allocation['RoomAllocationId'])) {
+            $primary = $allocation;
+            break;
+        }
+    }
+    if ($primary === null) {
+        foreach ($allocations as $allocation) {
+            if (is_array($allocation) && !empty($allocation['RoomAllocationId'])) { $primary = $allocation; break; }
+        }
+    }
+    if ($primary === null) return $numbers;
+
+    [$status, $raw] = pmsCall(
+        'GET',
+        'Reservation/GetReservationDetailByRoomAllocationWithCurrentPackage?roomAllocationID=' .
+            rawurlencode((string)$primary['RoomAllocationId']) . '&allCharges=false'
+    );
+    $detail = $status === 200 ? json_decode($raw, true) : null;
+    if (!is_array($detail)) return $numbers;
+    $sources = [$detail];
+    if (is_array($detail['_Reservation'] ?? null)) $sources[] = $detail['_Reservation'];
+    if (is_array($detail['_RoomAllocations'][0]['_Reservation'] ?? null)) $sources[] = $detail['_RoomAllocations'][0]['_Reservation'];
+    foreach ($sources as $source) {
+        $reservationNumber = strtoupper(trim((string)($source['ReservationNumber'] ?? '')));
+        $bookingReference = strtoupper(trim((string)($source['BookingReference'] ?? '')));
+        if ($reservationNumber !== '') $numbers['reservationNumber'] = $reservationNumber;
+        if ($bookingReference !== '') $numbers['bookingReference'] = $bookingReference;
+    }
+    return $numbers;
+}
+
+/**
+ * Resolve either the Phoenix Reservation Number or the Channel Booking Ref.
+ * GuestPoint's booking-engine manage endpoint needs the channel reference, so
+ * the returned reference is canonical even when the guest entered the PMS one.
+ */
+function resolvePortalBookingIdentity(string $enteredReference, string $surname): ?array {
+    global $PROPERTY_ID;
+    $enteredReference = strtoupper(trim($enteredReference));
+    $surnameKey = strtolower(trim($surname));
+    $searches = [
+        ['bookingReference' => $enteredReference, 'lastName' => $surname],
+        // Some Core installations search only the channel reference in the
+        // bookingReference filter. The surname fallback lets us compare the
+        // returned Phoenix ReservationNumber ourselves.
+        ['lastName' => $surname],
+    ];
+    $seen = [];
+    foreach ($searches as $searchIndex => $parameters) {
+        foreach (searchCoreReservations($parameters) as $reservation) {
+            $rowProperty = strtolower(trim((string)($reservation['PropertyId'] ?? '')));
+            if (!hash_equals(strtolower($PROPERTY_ID), $rowProperty)) continue;
+            $primaryMatches = false;
+            foreach (($reservation['Allocations'] ?? []) as $allocation) {
+                if (!is_array($allocation) || empty($allocation['IsPrimary'])) continue;
+                $rowSurname = strtolower(trim((string)($allocation['GuestLastName'] ?? '')));
+                if (hash_equals($surnameKey, $rowSurname)) $primaryMatches = true;
+            }
+            if (!$primaryMatches) continue;
+            $rowId = (string)($reservation['ReservationId'] ?? $reservation['ReservationNumber'] ?? '');
+            if ($rowId !== '' && isset($seen[$rowId])) continue;
+            if ($rowId !== '') $seen[$rowId] = true;
+
+            $numbers = pmsBookingNumbers($reservation);
+            $matchesReservation = $numbers['reservationNumber'] !== '' && hash_equals($numbers['reservationNumber'], $enteredReference);
+            $matchesChannel = $numbers['bookingReference'] !== '' && hash_equals($numbers['bookingReference'], $enteredReference);
+            // If the Phoenix bridge is unavailable, preserve the documented
+            // exact Core lookup behaviour for channel references.
+            $trustedExactCoreResult = $searchIndex === 0 && $numbers['bookingReference'] === '' && !$matchesReservation;
+            if (!$matchesReservation && !$matchesChannel && !$trustedExactCoreResult) continue;
+
+            return [
+                'reservation' => $reservation,
+                'manageReference' => $numbers['bookingReference'] !== '' ? $numbers['bookingReference'] : $enteredReference,
+                'reservationNumber' => $numbers['reservationNumber'],
+            ];
         }
     }
     return null;
 }
 
-/** Return the stored primary email only when the reference and surname match. */
-function resolvePortalEmail(string $confNum, string $surname): string {
-    $reservation = resolvePortalCoreReservation($confNum, $surname);
-    if (!is_array($reservation)) return '';
+/** Return the Core reservation only when either booking number and surname match. */
+function resolvePortalCoreReservation(string $confNum, string $surname): ?array {
+    $identity = resolvePortalBookingIdentity($confNum, $surname);
+    return is_array($identity) && is_array($identity['reservation'] ?? null) ? $identity['reservation'] : null;
+}
+
+/** Return the stored primary email from an already verified Core reservation. */
+function portalReservationEmail(array $reservation): string {
     foreach (($reservation['Allocations'] ?? []) as $allocation) {
         if (!is_array($allocation) || empty($allocation['IsPrimary'])) continue;
         $email = trim((string)($allocation['GuestEmail'] ?? ''));
         if (filter_var($email, FILTER_VALIDATE_EMAIL)) return $email;
     }
     return '';
+}
+
+/** Return the stored primary email only when the reference and surname match. */
+function resolvePortalEmail(string $confNum, string $surname): string {
+    $reservation = resolvePortalCoreReservation($confNum, $surname);
+    return is_array($reservation) ? portalReservationEmail($reservation) : '';
 }
 
 /** Use the verified identity to fetch GuestPoint's complete management view. */
@@ -692,9 +775,12 @@ if ($endpoint === 'portal/lookup') {
     $surname = trim((string)($input['Surname'] ?? ''));
     $validInput = preg_match('/^[A-Z0-9._-]{1,64}$/', $confNum)
         && $surname !== '' && strlen($surname) <= 80;
-    $email = $validInput ? resolvePortalEmail($confNum, $surname) : '';
+    $identity = $validInput ? resolvePortalBookingIdentity($confNum, $surname) : null;
+    $coreReservation = is_array($identity) && is_array($identity['reservation'] ?? null) ? $identity['reservation'] : null;
+    $email = is_array($coreReservation) ? portalReservationEmail($coreReservation) : '';
     if ($email === '') fail(403, 'We could not verify those booking details. Check them and try again.');
-    [$status, $payload, $detail] = loadManagedReservation($confNum, $surname, $email);
+    $manageReference = (string)($identity['manageReference'] ?? $confNum);
+    [$status, $payload, $detail] = loadManagedReservation($manageReference, $surname, $email);
     if (!is_array($payload)) fail(502, 'The booking system is not responding. Please try again shortly.', (string)$detail);
     send($status, $payload, ['Cache-Control' => 'no-store']);
 }

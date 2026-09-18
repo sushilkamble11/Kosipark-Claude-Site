@@ -41,8 +41,8 @@
             <p style="font:400 14.5px/1.7 Figtree, sans-serif; color:#6C6862; margin:10px 0 22px">{{ accessIntro }}</p>
             <div style="display:flex; flex-direction:column; gap:12px">
                 <label style="display:flex; flex-direction:column; gap:7px; padding:14px 18px; border-radius:14px; background:#F3ECE0; border:1px solid rgba(29,55,48,0.08)">
-                  <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.18em; text-transform:uppercase; color:#74836A">Booking reference</span>
-                  <input value="{{ refValue }}" onChange="{{ onRefChange }}" placeholder="KTP-48213" autocomplete="off" style="border:0; background:transparent; outline:none; font:500 17px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0" />
+                  <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.18em; text-transform:uppercase; color:#74836A">Booking number</span>
+                  <input value="{{ refValue }}" onChange="{{ onRefChange }}" placeholder="Reservation number or channel booking ref" autocomplete="off" style="border:0; background:transparent; outline:none; font:500 17px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0" />
                 </label>
                 <label style="display:flex; flex-direction:column; gap:7px; padding:14px 18px; border-radius:14px; background:#F3ECE0; border:1px solid rgba(29,55,48,0.08)">
                   <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.18em; text-transform:uppercase; color:#74836A">Surname</span>
@@ -305,7 +305,7 @@ class Component extends DCLogic {
     }
     const demoShortcut = demoRequested && this.gp && this.gp.isUnconfigured();
     if (!r || !n) {
-      this.setState({ error: "Enter your booking reference and surname exactly as shown on the booking." });
+      this.setState({ error: "Enter either booking number and the surname exactly as shown on the booking." });
       return;
     }
     this.setState({ loading: true, error: "", confirm: null });
@@ -539,7 +539,7 @@ class Component extends DCLogic {
       showFind: !b,
       showBooking: !!b,
       accessTitle: "Find your booking",
-      accessIntro: "Use the booking reference and surname shown on the reservation.",
+      accessIntro: "Enter either the Reservation Number or Channel Booking Ref shown on your confirmation, together with your surname.",
       refValue: s.refInput,
       nameValue: s.nameInput,
       onRefChange: e => this.setState({ refInput: e.target.value, error: "" }),
