@@ -50,11 +50,24 @@ const confirmCancel = page.getByRole("button", { name: "Confirm cancellation" })
 pass(!(await confirmCancel.isEnabled()), "cancellation remains locked until the final acceptance");
 await page.getByRole("checkbox").check();
 await confirmCancel.click();
-const cancellationEmailConfirmation = page.getByText(/fresh verification code will be sent to the email held on the booking/i);
-await cancellationEmailConfirmation.waitFor();
-pass(await cancellationEmailConfirmation.isVisible(), "cancellation confirmation consistently uses email verification");
-await cancellationEmailConfirmation.scrollIntoViewIfNeeded();
+const cancellationConfirmation = page.getByText("Booking cancelled", { exact: true });
+await cancellationConfirmation.waitFor();
+pass(await cancellationConfirmation.isVisible(), "verified cancellation is submitted to GuestPoint");
+pass(await page.getByText("Cancelled", { exact: true }).isVisible(), "booking status changes to Cancelled after GuestPoint confirms");
+await cancellationConfirmation.scrollIntoViewIfNeeded();
 await page.screenshot({ path: "/tmp/kosipark-manage-cancellation-email-verification.png", fullPage: false });
+
+// Re-open the fixture booking so the remaining independent portal controls can
+// be exercised after the cancellation state correctly disables all writes.
+await page.getByRole("button", { name: "Look up another booking" }).click();
+await page.getByRole("button", { name: "Continue" }).click();
+await page.getByPlaceholder("KTP-48213").fill("1");
+await page.getByPlaceholder("Nguyen").fill("1");
+await page.getByPlaceholder("0412 345 678").fill("1");
+await page.getByRole("button", { name: "Email me a secure code" }).click();
+await page.getByLabel("Six-digit email code").fill("123456");
+await page.getByRole("button", { name: "Verify and view booking" }).click();
+await page.getByText("Booking reference: 1").waitFor({ timeout: 5000 });
 
 await page.getByRole("button", { name: "View extras" }).click();
 await page.getByText("Drying room access").waitFor({ timeout: 5000 });

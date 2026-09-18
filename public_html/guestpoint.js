@@ -184,6 +184,12 @@ async function request(method, path, { params, body, cacheKind } = {}) {
     err.payload = payload;
     throw err;
   }
+  if (payload && payload.success === false) {
+    const err = new Error(payload.message || "GuestPoint rejected the request");
+    err.status = res.status;
+    err.payload = payload;
+    throw err;
+  }
 
   const data = payload && payload.data !== undefined ? payload.data : payload;
   if (key && ttl) cacheSet(key, data);
@@ -464,8 +470,9 @@ export function normaliseManagedReservation(payload) {
   const stays = activeStays.length ? activeStays : allStays;
   const arrivals = stays.map(x => x.Arrival).filter(Boolean).sort();
   const departures = stays.map(x => x.Departure).filter(Boolean).sort();
-  const total = Number(r.ReservationTotalAfterTax || r.ReservationTotal || 0);
-  const balance = Number(r.PaymentRequired || r.PayLater || 0);
+  const numberOrNull = value => value === null || value === undefined || value === "" || !Number.isFinite(Number(value)) ? null : Number(value);
+  const total = numberOrNull(r.ReservationTotalAfterTax) ?? numberOrNull(r.ReservationTotal) ?? 0;
+  const balance = Math.min(total, Math.max(0, numberOrNull(r.PaymentRequired) ?? 0, numberOrNull(r.PayLater) ?? 0));
   const rooms = [...new Set(stays.map(x => x.RoomTypeName).filter(Boolean))];
   const rateNames = [...new Set(stays.flatMap(x => (x.RateDetails || []).map(y => y.RatePlanName)).filter(Boolean))];
   const firstStay = stays[0] || {};
@@ -477,9 +484,9 @@ export function normaliseManagedReservation(payload) {
     room: rooms.join(" + ") || "Accommodation booking",
     checkIn: arrivals[0] || "",
     checkOut: departures[departures.length - 1] || "",
-    adults: Number(r.Adults || stays.reduce((n, x) => n + Number(x.Adults || 0), 0)),
-    children: Number(r.Children || stays.reduce((n, x) => n + Number(x.Children || 0), 0)),
-    infants: Number(r.Infants || stays.reduce((n, x) => n + Number(x.Infants || 0), 0)),
+    adults: numberOrNull(r.Adults) ?? stays.reduce((n, x) => n + Number(x.Adults || 0), 0),
+    children: numberOrNull(r.Children) ?? stays.reduce((n, x) => n + Number(x.Children || 0), 0),
+    infants: numberOrNull(r.Infants) ?? stays.reduce((n, x) => n + Number(x.Infants || 0), 0),
     total,
     balance,
     paid: Math.max(0, total - balance),
@@ -489,6 +496,8 @@ export function normaliseManagedReservation(payload) {
     stayCount: stays.length,
     rate: rateNames.join(" + ") || "Booked rate",
     policyText: stays.map(x => x.PolicyText).filter(Boolean).join(" "),
+    cancelRule: firstRate.CancelRule || null,
+    cancellationQuote: root.CancellationQuote || null,
     specialRequest: r.ExtraInfo || "",
     estimatedArrival: r.EstimatedArrival || "",
     channel: r.ChannelCode || r.SalesChannelCode || "",
@@ -578,13 +587,17 @@ export function modifyReservation(confNum, changes, portalToken, notify = false)
 }
 
 /**
- * 10. DELETE /reservations/{reservationId} — cancel. Takes the internal integer
- * id from the lookup, and the ConfNum must match it. Only works while the
- * reservation is Booked or Modified.
+ * 10. Cancel through the authenticated portal. The server takes the internal
+ * reservation id and accepted fee/refund quote only from the signed OTP session;
+ * the browser cannot choose either. Only works while the booking is actionable.
  */
-export function cancelReservation(reservationId, confNum) {
-  return request("DELETE", "/reservations/" + encodeURIComponent(reservationId), {
-    body: { PropertyId: CONFIG.propertyId, ConfNum: confNum }
+export function cancelReservation(confNum, portalToken, acknowledged) {
+  return request("POST", "/portal/cancel", {
+    body: {
+      ConfNum: confNum,
+      PortalToken: portalToken,
+      Acknowledged: acknowledged === true
+    }
   });
 }
 
@@ -1404,6 +1417,15 @@ async function mockResponse(method, path, params, body) {
 
   if (path === "/portal/update") {
     return { Updated: true, NotificationSent: body && body.Notify ? true : null, GuestPoint: { Success: true } };
+  }
+
+  if (path === "/portal/cancel") {
+    if (!body || !body.PortalToken || !body.Acknowledged) {
+      const err = new Error("The cancellation was not authorised.");
+      err.status = 403;
+      throw err;
+    }
+    return { Cancelled: true, Message: "GuestPoint has cancelled the reservation.", GuestPoint: { Success: true } };
   }
 
   if (path === "/availabilities") {

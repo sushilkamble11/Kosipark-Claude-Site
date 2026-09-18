@@ -95,6 +95,16 @@ says so. That is why prices, availability and photos are invented right now.
 - `/manage` is built on the self-service API and uses booking reference,
   surname and mobile. Live access still needs `GP_CORE_UPSTREAM` and, if the
   Booking Engine key is not accepted by Core, `GP_CORE_API_KEY`.
+- Portal cancellation is sent only through the signed `portal/cancel` wrapper;
+  the raw GuestPoint DELETE endpoint is not exposed to the browser. GuestPoint
+  cancels the reservation but does not calculate or execute the monetary
+  refund, so the amount shown to the guest remains an estimate until it is
+  reconciled through GuestPoint Pay or reception.
+- GuestPoint's documented management PATCH updates guest details, ETA, profile
+  fields and special requests. It does not accept new stay dates, repriced
+  guest counts, or extras on an existing booking. The portal checks live
+  availability/pricing and records those as structured GuestPoint requests; it
+  must not claim the underlying amendment is complete.
 - `MaxStay` does not exist in the Booking Engine API. The sample data emits it
   and `Availability.dc.html` reads it, so that message will never fire live —
   either remove it or derive it in the proxy.
