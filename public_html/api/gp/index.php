@@ -842,6 +842,29 @@ function savePortalNightlyCharges(string $roomAllocationId, array $nightly): voi
     if ($saveStatus < 200 || $saveStatus >= 300 || !is_array(json_decode($saveRaw, true))) fail(502, 'GuestPoint rejected the revised nightly prices. Please check the booking in GuestPoint.', $saveRaw);
 }
 
+/** Fetch the eligible extras from GuestPoint; client-supplied prices are ignored. */
+function portalExtrasCatalog(string $confNum, array $tokenPayload): array {
+    global $UPSTREAM, $PROPERTY_ID, $API_KEY;
+    [$manageStatus, $managePayload] = loadManagedReservation(
+        $confNum,
+        (string)($tokenPayload['sn'] ?? ''),
+        (string)($tokenPayload['em'] ?? ''),
+        false
+    );
+    if ($manageStatus < 200 || $manageStatus >= 300 || !is_array($managePayload)) fail(502, 'GuestPoint could not load the booking extras. Nothing was added.');
+    $root = managedRoot($managePayload);
+    $stays = $root['Reservation']['RoomStays'] ?? [];
+    if (!is_array($stays) || count($stays) !== 1) fail(409, 'Extras can only be added online to a booking with one accommodation.');
+    $body = json_encode(['RoomStays'=>$stays], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    $url = $UPSTREAM . '/properties/' . rawurlencode($PROPERTY_ID) . '/extras';
+    [$status, $raw, $error] = upstreamCall('POST', $url, $API_KEY, $body);
+    $payload = json_decode($raw, true);
+    if ($status !== 200 || !is_array($payload)) fail(502, 'GuestPoint could not confirm the eligible extras. Nothing was added.', $error ?: $raw);
+    $payload = managedRoot($payload);
+    if (!array_is_list($payload)) $payload = $payload['Extras'] ?? [];
+    return is_array($payload) ? $payload : [];
+}
+
 // Test-site amendment bridge. Phoenix itself performs the final optimistic
 // concurrency check; we re-read the allocation after saving before claiming
 // success to the guest.
@@ -922,6 +945,9 @@ if ($endpoint === 'portal/extras') {
     if (($input['Acknowledged'] ?? false) !== true) fail(400, 'Confirm the selected extras before adding them.');
     $items = is_array($input['Items'] ?? null) ? $input['Items'] : [];
     if (!$items || count($items) > 12) fail(400, 'Select at least one valid extra.');
+    $catalog = portalExtrasCatalog($confNum, $tokenPayload);
+    $eligible = [];
+    foreach ($catalog as $extra) if (is_array($extra) && !empty($extra['Id'])) $eligible[strtolower((string)$extra['Id'])] = $extra;
     $roomAllocationId = (string)$identity['allocations'][0]['RoomAllocationId'];
     [$allocationStatus, $allocationRaw] = pmsCall('GET', 'Reservation/GetRoomAllocation?roomAllocationID=' . rawurlencode($roomAllocationId));
     $allocation = json_decode($allocationRaw, true);
@@ -933,10 +959,32 @@ if ($endpoint === 'portal/extras') {
     $nights = max(1, (int)($allocation['NumberOfNights'] ?? 1));
     foreach ($items as $item) {
         if (!is_array($item) || !preg_match('/^[a-f0-9-]{36}$/i', (string)($item['id'] ?? ''))) fail(400, 'One of the selected extras is invalid.');
-        $addonId = (string)$item['id']; $quantity = max(0, min(12, (int)($item['quantity'] ?? 0))); $childQuantity = max(0, min(12, (int)($item['childQuantity'] ?? 0)));
-        $rate = round(max(0, min(10000, (float)($item['rate'] ?? 0))), 2); $childRate = round(max(0, min(10000, (float)($item['childRate'] ?? $rate))), 2);
+        $addonId = (string)$item['id'];
+        $definition = $eligible[strtolower($addonId)] ?? null;
+        if (!is_array($definition)) fail(409, 'One of the selected extras is no longer offered for this booking. Nothing was added.');
+        $priceType = (string)($definition['PriceType'] ?? 'perBooking');
+        $perPerson = in_array($priceType, ['perPerson', 'perPersonPerNight'], true);
+        $perNight = in_array($priceType, ['perNight', 'perPersonPerNight'], true);
+        $quantity = max(0, min(12, (int)($item['quantity'] ?? 0)));
+        $childQuantity = max(0, min(12, (int)($item['childQuantity'] ?? 0)));
+        if ($perPerson) {
+            if ($quantity > (int)($allocation['NumberAdults'] ?? 0) || $childQuantity > (int)($allocation['NumberChildren'] ?? 0)) fail(409, 'Extra quantities cannot exceed the guests on this booking.');
+        } else {
+            $maxItems = (int)($definition['MaxItems'] ?? 0);
+            if ($maxItems > 0 && $quantity + $childQuantity > $maxItems) fail(409, 'That extra exceeds GuestPoint’s quantity limit.');
+        }
+        $rate = 0.0; $childRate = 0.0;
+        foreach (($definition['Prices'] ?? []) as $price) {
+            if (!is_array($price)) continue;
+            $name = strtolower((string)($price['Name'] ?? ''));
+            $value = round(max(0, (float)($price['Price'] ?? 0)), 2);
+            if (str_contains($name, 'child')) $childRate = $value;
+            elseif ($rate === 0.0 || str_contains($name, 'adult')) $rate = $value;
+        }
+        if ($childRate === 0.0) $childRate = $rate;
+        if ($rate <= 0 && $childRate <= 0) fail(409, 'GuestPoint did not return a valid price for that extra. Nothing was added.');
         if ($quantity + $childQuantity < 1) continue;
-        $repeat = !empty($item['perNight']) ? $nights : 1;
+        $repeat = $perNight ? $nights : 1;
         for ($i = 0; $i < $repeat; $i++) {
             $date = $arrival->modify('+' . $i . ' days')->format('Y-m-d') . 'T00:00:00';
             $found = false;
