@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { cancelReservation, normaliseMobile, normaliseManagedReservation, quoteManagedStayChange, modifyReservation, requestPortalOtp } from "../public_html/guestpoint.js";
+import { cancelReservation, normaliseMobile, normaliseManagedReservation, quoteManagedStayChange, modifyReservation, lookupPortalBooking } from "../public_html/guestpoint.js";
 
 assert.equal(normaliseMobile("0412 345 678"), "61412345678");
 assert.equal(normaliseMobile("+61 412 345 678"), "61412345678");
 assert.equal(normaliseMobile("0011 61 412 345 678"), "61412345678");
 
-const directBooking = await requestPortalOtp({ confNum: "1", surname: "1", mobile: "1" });
+const directBooking = await lookupPortalBooking({ confNum: "1", surname: "1" });
 assert.equal(directBooking.Reservation.ConfNum, "1");
 assert.equal(directBooking.PortalToken, "mock-portal-token");
 
@@ -72,7 +72,8 @@ assert.match(proxySource, /'portal\/cancel'\s*=>\s*\['POST'/, "authenticated por
 assert.doesNotMatch(proxySource, /'reservations\/\*'\s*=>\s*\['DELETE'/, "direct unauthenticated cancellation route is not exposed");
 assert.doesNotMatch(proxySource, /'reservations\/manage'\s*=>\s*\['POST'/, "direct unauthenticated manage lookup is not exposed");
 assert.match(proxySource, /\$reqPropertyId !== 'self'/, "the browser's self property alias is accepted by the configured proxy");
-assert.match(proxySource, /portal_otp_required'\]\s*\?\?\s*false/, "configured portals default to reference, surname and mobile without OTP");
+assert.match(proxySource, /'portal\/lookup'\s*=>\s*\['POST'/, "portal lookup accepts reference and surname without OTP");
+assert.match(proxySource, /isset\(\$payload\['ReservationNumber'\]\)/, "single-reservation Core responses are supported");
 assert.match(proxySource, /guestPointConfirmed\(\$cancelResponse\)/, "cancellation requires GuestPoint success confirmation");
 assert.match(proxySource, /\$reservationId = \(int\)\$tokenPayload\['rid'\]/, "cancellation id comes from the signed portal token");
 

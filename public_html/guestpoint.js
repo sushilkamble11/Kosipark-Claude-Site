@@ -427,7 +427,7 @@ export function createReservation(reservation) {
  * The Booking Engine API does have guest self-service, on its own endpoints.
  * GuestPoint's native manage call expects confirmation number + email +
  * surname. Kosipark deliberately asks for confirmation number + mobile +
- * surname instead. Our proxy verifies those three values against the Core API,
+ * surname instead. Our proxy verifies those two values against the Core API,
  * then supplies the stored email to the Booking Engine manage endpoint. The
  * browser never receives or invents the email used for that upstream login.
  *
@@ -445,17 +445,10 @@ export function normaliseMobile(value) {
   return digits;
 }
 
-/** Start the email verification step without returning any booking data. */
-export function requestPortalOtp({ confNum, mobile, surname }) {
-  return request("POST", "/portal/otp/request", {
-    body: { ConfNum: confNum, Mobile: normaliseMobile(mobile), Surname: surname }
-  });
-}
-
-/** Complete email verification; only this response may contain the booking. */
-export function verifyPortalOtp({ challengeId, code }) {
-  return request("POST", "/portal/otp/verify", {
-    body: { ChallengeId: challengeId, Code: String(code || "").replace(/\D/g, "").slice(0, 6) }
+/** Look up a booking while keeping the stored email server-side. */
+export function lookupPortalBooking({ confNum, surname }) {
+  return request("POST", "/portal/lookup", {
+    body: { ConfNum: confNum, Surname: surname }
   });
 }
 
@@ -1327,10 +1320,6 @@ function mockRateFor(slug, dateStr) {
 async function mockResponse(method, path, params, body) {
   await new Promise(r => setTimeout(r, 220));
 
-  if (path === "/portal/otp/request") {
-    return mockResponse("POST", "/portal/lookup", null, body);
-  }
-
   if (path === "/portal/lookup") {
     const samples = [
       { ref: "1", surname: "1", mobile: "1", id: 1, roomType: "cedar-cabin",
@@ -1352,8 +1341,7 @@ async function mockResponse(method, path, params, body) {
     ];
     const ref = String(body && body.ConfNum || "").trim().toUpperCase();
     const surname = String(body && body.Surname || "").trim().toLowerCase();
-    const mobile = normaliseMobile(body && body.Mobile);
-    const b = samples.find(x => x.ref === ref && x.surname.toLowerCase() === surname && x.mobile === mobile);
+    const b = samples.find(x => x.ref === ref && x.surname.toLowerCase() === surname);
     if (!b) {
       const err = new Error("We couldn't match those booking details.");
       err.status = 404;

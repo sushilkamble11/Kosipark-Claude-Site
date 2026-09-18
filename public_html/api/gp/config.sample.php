@@ -44,7 +44,6 @@ return [
     'otp_max_attempts' => 5,
     // Access currently uses booking reference + surname + mobile only.
     // Set true later if the park decides to restore email verification.
-    'portal_otp_required' => false,
 
     // Server-side cache directory. Must be writable and OUTSIDE public_html.
     // Falls back to the system temp dir when this path is not writable.

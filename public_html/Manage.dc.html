@@ -48,10 +48,6 @@
                   <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.18em; text-transform:uppercase; color:#74836A">Surname</span>
                   <input value="{{ nameValue }}" onChange="{{ onNameChange }}" placeholder="Nguyen" autocomplete="family-name" style="border:0; background:transparent; outline:none; font:500 17px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0" />
                 </label>
-                <label style="display:flex; flex-direction:column; gap:7px; padding:14px 18px; border-radius:14px; background:#F3ECE0; border:1px solid rgba(29,55,48,0.08)">
-                  <span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.18em; text-transform:uppercase; color:#74836A">Mobile number</span>
-                  <input value="{{ mobileValue }}" onChange="{{ onMobileChange }}" inputmode="tel" autocomplete="tel" placeholder="0412 345 678" style="border:0; background:transparent; outline:none; font:500 17px/1.3 Figtree, sans-serif; color:#1D3730; width:100%; padding:0" />
-                </label>
                 <button type="button" onClick="{{ find }}" disabled="{{ findDisabled }}" style="{{ findButtonStyle }}" style-hover="background:#96592A">{{ findLabel }}</button>
             </div>
             <p style="{{ errorStyle }}">{{ errorText }}</p>
@@ -276,7 +272,7 @@
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{}">
 class Component extends DCLogic {
-  state = { refInput: "", nameInput: "", mobileInput: "", booking: null, error: "", mode: null, adults: 0, children: 0, infants: 0, note: "", confirm: null, loading: false, saving: false, requestSaving: false, cancelSaving: false, dateQuote: null, dateLoading: false, partyQuote: null, partyLoading: false, guestFirst: "", guestLast: "", guestEmail: "", guestMobile: "", guestSaving: false, eta: "", vehicles: "", travelSaving: false, extras: [], extrasLoading: false, selectedExtras: {}, vehicleField: null, policyAccepted: false, leaveAction: "" };
+  state = { refInput: "", nameInput: "", booking: null, error: "", mode: null, adults: 0, children: 0, infants: 0, note: "", confirm: null, loading: false, saving: false, requestSaving: false, cancelSaving: false, dateQuote: null, dateLoading: false, partyQuote: null, partyLoading: false, guestFirst: "", guestLast: "", guestEmail: "", guestMobile: "", guestSaving: false, eta: "", vehicles: "", travelSaving: false, extras: [], extrasLoading: false, selectedExtras: {}, vehicleField: null, policyAccepted: false, leaveAction: "" };
 
   async componentDidMount() {
     try { this.gp = await import("./guestpoint.js"); }
@@ -293,8 +289,7 @@ class Component extends DCLogic {
   async find() {
     const r = this.state.refInput.trim().toUpperCase();
     const n = this.state.nameInput.trim().toLowerCase();
-    const m = this.gp ? this.gp.normaliseMobile(this.state.mobileInput) : "";
-    const demoRequested = r === "1" && n === "1" && m === "1";
+    const demoRequested = r === "1" && n === "1";
     // Localhost knows its sample state immediately. On Hostinger, safely probe
     // a read-only GuestPoint endpoint first; the 1 / 1 / 1 shortcut is accepted
     // only when the proxy explicitly reports that live credentials are absent.
@@ -302,13 +297,13 @@ class Component extends DCLogic {
       try { await this.gp.getProfileFields(); } catch (e) {}
     }
     const demoShortcut = demoRequested && this.gp && this.gp.isUnconfigured();
-    if (!r || !n || (m.length < 10 && !demoShortcut)) {
-      this.setState({ error: "Enter your booking reference, surname and the mobile number held on the booking." });
+    if (!r || !n) {
+      this.setState({ error: "Enter your booking reference and surname exactly as shown on the booking." });
       return;
     }
     this.setState({ loading: true, error: "", confirm: null });
     try {
-      const result = await this.gp.requestPortalOtp({ confNum: r, surname: n, mobile: m });
+      const result = await this.gp.lookupPortalBooking({ confNum: r, surname: n });
       if (result && result.Reservation && result.PortalToken) {
         this.openBooking(result);
         return;
@@ -523,13 +518,11 @@ class Component extends DCLogic {
       showFind: !b,
       showBooking: !!b,
       accessTitle: "Find your booking",
-      accessIntro: "Use the booking reference, surname and mobile number held on the reservation.",
+      accessIntro: "Use the booking reference and surname shown on the reservation.",
       refValue: s.refInput,
       nameValue: s.nameInput,
-      mobileValue: s.mobileInput,
       onRefChange: e => this.setState({ refInput: e.target.value, error: "" }),
       onNameChange: e => this.setState({ nameInput: e.target.value, error: "" }),
-      onMobileChange: e => this.setState({ mobileInput: e.target.value, error: "" }),
       find: () => this.find(),
       findDisabled: s.loading,
       findLabel: s.loading ? "Checking…" : "Find my booking",
@@ -749,7 +742,7 @@ class Component extends DCLogic {
       closeLeaveWarning: () => this.setState({ leaveAction: "" }),
       continueLeaving: () => {
         if (s.leaveAction === "add-stay") window.location.href = addStayUrl;
-        else if (s.leaveAction === "lookup") this.setState({ booking: null, refInput: "", nameInput: "", mobileInput: "", mode: null, confirm: null, error: "", dateQuote: null, partyQuote: null, selectedExtras: {}, policyAccepted: false, leaveAction: "" });
+        else if (s.leaveAction === "lookup") this.setState({ booking: null, refInput: "", nameInput: "", mode: null, confirm: null, error: "", dateQuote: null, partyQuote: null, selectedExtras: {}, policyAccepted: false, leaveAction: "" });
       },
       balanceLabel: Component.money(b ? b.balance : 0),
       payButtonStyle: "border:0; border-radius:999px; background:#96592A; color:#FCFAF6; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.06em; padding:14px 18px; cursor:pointer",
@@ -796,7 +789,7 @@ class Component extends DCLogic {
         ? "margin-top:22px; background:#E9EEE3; border-radius:16px; padding:20px; animation:riseIn .2s ease both"
         : "display:none",
 
-      reset: () => this.setState({ booking: null, refInput: "", nameInput: "", mobileInput: "", mode: null, confirm: null, error: "", dateQuote: null, partyQuote: null, selectedExtras: {}, policyAccepted: false, leaveAction: "" })
+      reset: () => this.setState({ booking: null, refInput: "", nameInput: "", mode: null, confirm: null, error: "", dateQuote: null, partyQuote: null, selectedExtras: {}, policyAccepted: false, leaveAction: "" })
     };
   }
 }
