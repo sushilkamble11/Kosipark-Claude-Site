@@ -30,6 +30,11 @@ $PROPERTY_ID = (string)($config['property_id'] ?? '');
 $UPSTREAM    = rtrim((string)($config['upstream'] ?? 'https://beapi.guestpoint.dev/api/v1'), '/');
 $CORE_KEY    = (string)($config['core_api_key'] ?? $API_KEY);
 $CORE_UPSTREAM = rtrim((string)($config['core_upstream'] ?? ''), '/');
+$PMS_PRIVATE_WRITES = (bool)($config['pms_private_writes'] ?? false);
+$PMS_UPSTREAM = rtrim((string)($config['pms_upstream'] ?? 'https://dev.guestpoint.com/WebAPI'), '/');
+$PMS_SERIAL = trim((string)($config['pms_serial'] ?? ''));
+$PMS_USERNAME = trim((string)($config['pms_username'] ?? ''));
+$PMS_PASSWORD = (string)($config['pms_password'] ?? '');
 $NOTIFICATION_EMAIL = trim((string)($config['notification_email'] ?? ''));
 $SMTP_HOST = trim((string)($config['smtp_host'] ?? 'smtp.hostinger.com'));
 $SMTP_PORT = (int)($config['smtp_port'] ?? 465);
@@ -65,6 +70,8 @@ const ROUTES = [
     // expose reservations/manage directly: confirmation details are resolved
     // and checked by the server-side portal lookup.
     'portal/update'         => ['POST',               0],
+    'portal/amend'          => ['POST',               0],
+    'portal/extras'         => ['POST',               0],
     'portal/cancel'         => ['POST',               0],
     // Guest access uses the reference and surname held by GuestPoint.
     'portal/lookup'         => ['POST',               0],
@@ -276,6 +283,51 @@ function upstreamCall(string $method, string $url, string $key, ?string $body = 
     return [$status, $response === false ? '' : (string)$response, $error];
 }
 
+/** Call Phoenix's authenticated WebAPI. This is enabled only on the test site. */
+function pmsToken(): string {
+    global $PMS_PRIVATE_WRITES, $PMS_UPSTREAM, $PMS_SERIAL, $PMS_USERNAME, $PMS_PASSWORD, $CACHE_DIR;
+    if (!$PMS_PRIVATE_WRITES || $PMS_SERIAL === '' || $PMS_USERNAME === '' || $PMS_PASSWORD === '') return '';
+    $cache = $CACHE_DIR . '/pms-token.json';
+    if (is_file($cache)) {
+        $saved = json_decode((string)@file_get_contents($cache), true);
+        if (is_array($saved) && (int)($saved['expires'] ?? 0) > time() + 60 && is_string($saved['token'] ?? null)) return $saved['token'];
+    }
+    $ch = curl_init($PMS_UPSTREAM . '/token');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true, CURLOPT_POST => true, CURLOPT_TIMEOUT => UPSTREAM_TIMEOUT,
+        CURLOPT_CONNECTTIMEOUT => 8, CURLOPT_SSL_VERIFYPEER => true, CURLOPT_SSL_VERIFYHOST => 2,
+        CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded', 'Accept: application/json'],
+        CURLOPT_POSTFIELDS => http_build_query(['username'=>$PMS_USERNAME,'password'=>$PMS_PASSWORD,'grant_type'=>'password','serialNumber'=>$PMS_SERIAL], '', '&', PHP_QUERY_RFC3986),
+    ]);
+    $raw = curl_exec($ch); $status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE); curl_close($ch);
+    $decoded = is_string($raw) ? json_decode($raw, true) : null;
+    $token = is_array($decoded) ? (string)($decoded['access_token'] ?? '') : '';
+    if ($status !== 200 || $token === '') return '';
+    @file_put_contents($cache, json_encode(['token'=>$token,'expires'=>time()+max(300,(int)($decoded['expires_in'] ?? 3600)-120)]), LOCK_EX);
+    return $token;
+}
+
+/** @return array{0:int,1:string,2:string} */
+function pmsCall(string $method, string $path, ?array $payload = null): array {
+    global $PMS_UPSTREAM;
+    $token = pmsToken();
+    if ($token === '') return [503, '', 'Phoenix PMS bridge is not configured.'];
+    $ch = curl_init($PMS_UPSTREAM . '/' . ltrim($path, '/'));
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true, CURLOPT_CUSTOMREQUEST => $method, CURLOPT_TIMEOUT => UPSTREAM_TIMEOUT,
+        CURLOPT_CONNECTTIMEOUT => 8, CURLOPT_FOLLOWLOCATION => false, CURLOPT_SSL_VERIFYPEER => true, CURLOPT_SSL_VERIFYHOST => 2,
+        CURLOPT_HTTPHEADER => array_filter(['Authorization: Bearer ' . $token, 'Accept: application/json', $payload !== null ? 'Content-Type: application/json' : null]),
+    ]);
+    if ($payload !== null) curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+    $response = curl_exec($ch); $status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE); $error = curl_error($ch); curl_close($ch);
+    return [$status, $response === false ? '' : (string)$response, $error];
+}
+
+function uuidV4(): string {
+    $data = random_bytes(16); $data[6] = chr((ord($data[6]) & 0x0f) | 0x40); $data[8] = chr((ord($data[8]) & 0x3f) | 0x80);
+    return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
+}
+
 /** Read one complete SMTP response, including multiline replies. */
 function smtpRead($socket): array {
     $reply = '';
@@ -379,23 +431,23 @@ function allowOtpRequest(string $identity): bool {
     return @file_put_contents($path, json_encode($record), LOCK_EX) !== false;
 }
 
-/** Return the stored primary email only when the reference and surname match. */
-function resolvePortalEmail(string $confNum, string $surname): string {
+/** Return the Core reservation only when reference, property and surname match. */
+function resolvePortalCoreReservation(string $confNum, string $surname): ?array {
     global $CORE_UPSTREAM, $CORE_KEY, $PROPERTY_ID;
-    if ($CORE_UPSTREAM === '' || $CORE_KEY === '') return '';
+    if ($CORE_UPSTREAM === '' || $CORE_KEY === '') return null;
     $search = $CORE_UPSTREAM . '/v1/reservations?' . http_build_query([
         'bookingReference' => $confNum,
         'lastName' => $surname,
     ], '', '&', PHP_QUERY_RFC3986);
     [$status, $response] = upstreamCall('GET', $search, $CORE_KEY);
-    if ($status !== 200) return '';
+    if ($status !== 200) return null;
     $payload = json_decode($response, true);
     $rows = [];
     if (is_array($payload)) {
         if (isset($payload['ReservationNumber'])) $rows = [$payload];
         else $rows = $payload['Data'] ?? $payload['data'] ?? [];
     }
-    if (!is_array($rows)) return '';
+    if (!is_array($rows)) return null;
     foreach ($rows as $reservation) {
         if (!is_array($reservation)) continue;
         $rowProperty = strtolower(trim((string)($reservation['PropertyId'] ?? '')));
@@ -406,9 +458,20 @@ function resolvePortalEmail(string $confNum, string $surname): string {
             if (!is_array($allocation) || empty($allocation['IsPrimary'])) continue;
             $rowSurname = strtolower(trim((string)($allocation['GuestLastName'] ?? '')));
             if (!hash_equals(strtolower($surname), $rowSurname)) continue;
-            $email = trim((string)($allocation['GuestEmail'] ?? ''));
-            if (filter_var($email, FILTER_VALIDATE_EMAIL)) return $email;
+            return $reservation;
         }
+    }
+    return null;
+}
+
+/** Return the stored primary email only when the reference and surname match. */
+function resolvePortalEmail(string $confNum, string $surname): string {
+    $reservation = resolvePortalCoreReservation($confNum, $surname);
+    if (!is_array($reservation)) return '';
+    foreach (($reservation['Allocations'] ?? []) as $allocation) {
+        if (!is_array($allocation) || empty($allocation['IsPrimary'])) continue;
+        $email = trim((string)($allocation['GuestEmail'] ?? ''));
+        if (filter_var($email, FILTER_VALIDATE_EMAIL)) return $email;
     }
     return '';
 }
@@ -439,6 +502,10 @@ function loadManagedReservation(string $confNum, string $surname, string $email,
     $quote = cancellationQuote($reservation);
     $root['PortalToken'] = issuePortalToken($confNum, $reservationId, $surname, $email, $quote);
     $root['CancellationQuote'] = $quote;
+    global $PMS_PRIVATE_WRITES;
+    if ($PMS_PRIVATE_WRITES) {
+        $root['PortalCapabilities'] = ['Amend'=>true, 'Extras'=>true, 'Cancel'=>true];
+    }
     // ExtraInfo is an internal reception note. Guests may append a new request,
     // but must never read or replace staff notes already on the reservation.
     if (isset($root['Reservation']) && is_array($root['Reservation'])) unset($root['Reservation']['ExtraInfo']);
@@ -586,6 +653,128 @@ if ($endpoint === 'portal/lookup') {
     [$status, $payload, $detail] = loadManagedReservation($confNum, $surname, $email);
     if (!is_array($payload)) fail(502, 'The booking system is not responding. Please try again shortly.', (string)$detail);
     send($status, $payload, ['Cache-Control' => 'no-store']);
+}
+
+/** Resolve the Phoenix IDs for the signed booking session. */
+function portalPmsIdentity(string $confNum, array $tokenPayload): array {
+    $core = resolvePortalCoreReservation($confNum, (string)($tokenPayload['sn'] ?? ''));
+    if (!is_array($core)) return [];
+    $allocations = array_values(array_filter($core['Allocations'] ?? [], fn($a) => is_array($a) && !empty($a['RoomAllocationId'])));
+    return [
+        'reservationId' => (string)($core['ReservationId'] ?? ''),
+        'allocations' => $allocations,
+    ];
+}
+
+function requirePortalSession(array $input): array {
+    $confNum = strtoupper(trim((string)($input['ConfNum'] ?? '')));
+    $tokenPayload = portalTokenPayload((string)($input['PortalToken'] ?? ''), $confNum);
+    if (!preg_match('/^[A-Z0-9._-]{3,64}$/', $confNum) || $tokenPayload === null) {
+        fail(403, 'Your booking session has expired. Please look up the booking again.');
+    }
+    $identity = portalPmsIdentity($confNum, $tokenPayload);
+    if (($identity['reservationId'] ?? '') === '' || count($identity['allocations'] ?? []) !== 1) {
+        fail(409, 'This portal can only change a booking with one accommodation. Nothing was changed.');
+    }
+    return [$confNum, $tokenPayload, $identity];
+}
+
+// Test-site amendment bridge. Phoenix itself performs the final optimistic
+// concurrency check; we re-read the allocation after saving before claiming
+// success to the guest.
+if ($endpoint === 'portal/amend') {
+    $input = is_array($decodedBody) ? $decodedBody : [];
+    [$confNum, $tokenPayload, $identity] = requirePortalSession($input);
+    $proposal = is_array($input['Proposal'] ?? null) ? $input['Proposal'] : [];
+    if (($input['Acknowledged'] ?? false) !== true) fail(400, 'Accept the displayed conditions before making this change.');
+    $reservationId = $identity['reservationId'];
+    $roomAllocationId = (string)$identity['allocations'][0]['RoomAllocationId'];
+    [$readStatus, $readRaw] = pmsCall('GET', 'Reservation/GetRoomAllocationDetail2sByReservation?reservationID=' . rawurlencode($reservationId));
+    $details = json_decode($readRaw, true);
+    if ($readStatus !== 200 || !is_array($details) || count($details) !== 1) fail(502, 'GuestPoint could not load the editable booking. Nothing was changed.');
+    $allocation =& $details[0];
+    if ((string)($allocation['RoomAllocationID'] ?? '') !== $roomAllocationId || (int)($allocation['Status'] ?? 0) !== 1) fail(409, 'This booking can no longer be amended online.');
+
+    $adults = isset($proposal['adults']) ? (int)$proposal['adults'] : (int)($allocation['NumberAdults'] ?? 1);
+    $children = isset($proposal['children']) ? (int)$proposal['children'] : (int)($allocation['NumberChildren'] ?? 0);
+    $infants = isset($proposal['infants']) ? (int)$proposal['infants'] : (int)($allocation['NumberInfants'] ?? 0);
+    $maxGuests = (int)($allocation['_RoomType']['MaxNumberOfGuests'] ?? 0);
+    if ($adults < 1 || $children < 0 || $infants < 0 || $adults > 12 || $children > 12 || $infants > 12 || ($maxGuests > 0 && $adults + $children + $infants > $maxGuests)) {
+        fail(409, $maxGuests > 0 ? 'This accommodation allows a maximum of ' . $maxGuests . ' guests.' : 'Those guest numbers are not valid.');
+    }
+    $allocation['NumberAdults'] = $adults; $allocation['NumberChildren'] = $children; $allocation['NumberInfants'] = $infants;
+
+    $arrival = trim((string)($proposal['checkIn'] ?? ''));
+    $departure = trim((string)($proposal['checkOut'] ?? ''));
+    if ($arrival !== '' || $departure !== '') {
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $arrival) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $departure)) fail(400, 'Choose valid arrival and departure dates.');
+        try {
+            $from = new DateTimeImmutable($arrival, new DateTimeZone('Australia/Sydney'));
+            $to = new DateTimeImmutable($departure, new DateTimeZone('Australia/Sydney'));
+            $nights = (int)$from->diff($to)->format('%r%a');
+        } catch (Throwable $e) { $nights = 0; }
+        if ($nights < 1 || $nights > 60) fail(409, 'The selected stay length is not valid.');
+        $allocation['ArrivalDate'] = $arrival . 'T00:00:00';
+        $allocation['NumberOfNights'] = $nights;
+        // Keep existing unposted extras aligned with the amended stay.
+        if (is_array($allocation['_Addons'] ?? null)) {
+            foreach ($allocation['_Addons'] as $i => &$addon) {
+                if (is_array($addon)) $addon['Date'] = $from->modify('+' . min($i, $nights - 1) . ' days')->format('Y-m-d') . 'T00:00:00';
+            }
+            unset($addon);
+        }
+    }
+    [$saveStatus, $saveRaw] = pmsCall('POST', 'Reservation/SaveRoomAllocationDetail2sWithVirtualRooms?propertyID=' . rawurlencode($PROPERTY_ID), $details);
+    if ($saveStatus < 200 || $saveStatus >= 300) fail(502, 'GuestPoint rejected the amendment. Nothing was changed.', $saveRaw);
+    [$verifyStatus, $verifyRaw] = pmsCall('GET', 'Reservation/GetRoomAllocation?roomAllocationID=' . rawurlencode($roomAllocationId));
+    $verified = json_decode($verifyRaw, true);
+    if ($verifyStatus !== 200 || !is_array($verified)
+        || (int)($verified['NumberAdults'] ?? -1) !== $adults
+        || (int)($verified['NumberChildren'] ?? -1) !== $children
+        || (int)($verified['NumberInfants'] ?? -1) !== $infants
+        || ($arrival !== '' && substr((string)($verified['ArrivalDate'] ?? ''), 0, 10) !== $arrival)) {
+        fail(502, 'GuestPoint did not verify the amendment. Please check the booking in GuestPoint.');
+    }
+    send(200, ['Updated'=>true,'ConfNum'=>$confNum,'ArrivalDate'=>$verified['ArrivalDate'] ?? null,'NumberOfNights'=>$verified['NumberOfNights'] ?? null,'Adults'=>$adults,'Children'=>$children,'Infants'=>$infants,'DepartureBalance'=>$verified['DepartureBalance'] ?? null], ['Cache-Control'=>'no-store']);
+}
+
+if ($endpoint === 'portal/extras') {
+    $input = is_array($decodedBody) ? $decodedBody : [];
+    [$confNum, $tokenPayload, $identity] = requirePortalSession($input);
+    if (($input['Acknowledged'] ?? false) !== true) fail(400, 'Confirm the selected extras before adding them.');
+    $items = is_array($input['Items'] ?? null) ? $input['Items'] : [];
+    if (!$items || count($items) > 12) fail(400, 'Select at least one valid extra.');
+    $roomAllocationId = (string)$identity['allocations'][0]['RoomAllocationId'];
+    [$allocationStatus, $allocationRaw] = pmsCall('GET', 'Reservation/GetRoomAllocation?roomAllocationID=' . rawurlencode($roomAllocationId));
+    $allocation = json_decode($allocationRaw, true);
+    if ($allocationStatus !== 200 || !is_array($allocation) || (int)($allocation['Status'] ?? 0) !== 1) fail(409, 'This booking can no longer accept extras.');
+    [$existingStatus, $existingRaw] = pmsCall('GET', 'Reservation/GetRoomAllocationAddons?propertyID=' . rawurlencode($PROPERTY_ID) . '&roomAllocationID=' . rawurlencode($roomAllocationId));
+    $addons = json_decode($existingRaw, true);
+    if ($existingStatus !== 200 || !is_array($addons)) $addons = [];
+    $arrival = new DateTimeImmutable(substr((string)$allocation['ArrivalDate'], 0, 10), new DateTimeZone('Australia/Sydney'));
+    $nights = max(1, (int)($allocation['NumberOfNights'] ?? 1));
+    foreach ($items as $item) {
+        if (!is_array($item) || !preg_match('/^[a-f0-9-]{36}$/i', (string)($item['id'] ?? ''))) fail(400, 'One of the selected extras is invalid.');
+        $addonId = (string)$item['id']; $quantity = max(0, min(12, (int)($item['quantity'] ?? 0))); $childQuantity = max(0, min(12, (int)($item['childQuantity'] ?? 0)));
+        $rate = round(max(0, min(10000, (float)($item['rate'] ?? 0))), 2); $childRate = round(max(0, min(10000, (float)($item['childRate'] ?? $rate))), 2);
+        if ($quantity + $childQuantity < 1) continue;
+        $repeat = !empty($item['perNight']) ? $nights : 1;
+        for ($i = 0; $i < $repeat; $i++) {
+            $date = $arrival->modify('+' . $i . ' days')->format('Y-m-d') . 'T00:00:00';
+            $found = false;
+            foreach ($addons as &$addon) {
+                if (strcasecmp((string)($addon['AddonID'] ?? ''), $addonId) === 0 && substr((string)($addon['Date'] ?? ''), 0, 10) === substr($date, 0, 10)) {
+                    $addon['Quantity'] = $quantity; $addon['QuantityChild'] = $childQuantity; $addon['Rate'] = $rate; $addon['ChildRate'] = $childRate; $addon['Total'] = round($quantity*$rate + $childQuantity*$childRate, 2); $found = true; break;
+                }
+            }
+            unset($addon);
+            if (!$found) $addons[] = ['RoomAllocationAddonID'=>uuidV4(),'RoomAllocationID'=>$roomAllocationId,'AddonID'=>$addonId,'Date'=>$date,'Quantity'=>$quantity,'QuantityChild'=>$childQuantity,'Rate'=>$rate,'ChildRate'=>$childRate,'Total'=>round($quantity*$rate+$childQuantity*$childRate,2),'UpdatedLocal'=>0];
+        }
+    }
+    [$saveStatus, $saveRaw] = pmsCall('POST', 'Reservation/SaveRoomAllocationAddons', $addons);
+    $saved = json_decode($saveRaw, true);
+    if ($saveStatus < 200 || $saveStatus >= 300 || !is_array($saved)) fail(502, 'GuestPoint rejected the extras. Nothing was added.', $saveRaw);
+    send(200, ['Updated'=>true,'ConfNum'=>$confNum,'AddonCount'=>count($saved),'GuestPoint'=>$saved], ['Cache-Control'=>'no-store']);
 }
 
 // Step 2: atomically count attempts and return the booking only after the code
@@ -761,16 +950,37 @@ if ($endpoint === 'portal/cancel') {
         || !in_array(strtolower((string)($freshReservation['Status'] ?? '')), ['booked', 'modified'], true)) {
         fail(409, 'This booking can no longer be cancelled online. Nothing was changed.');
     }
-    if (($freshLogin['Cancel'] ?? false) !== true) {
+    if (!$PMS_PRIVATE_WRITES && ($freshLogin['Cancel'] ?? false) !== true) {
         fail(409, 'GuestPoint has not enabled online cancellation for this booking. Nothing was changed.');
     }
     $freshQuote = cancellationQuote($freshReservation);
-    if ((float)($freshQuote['fee'] ?? 0) > 0
+    if (!$PMS_PRIVATE_WRITES && ((float)($freshQuote['fee'] ?? 0) > 0
         || (float)($freshQuote['refund'] ?? 0) > 0
-        || (float)($freshQuote['amountDue'] ?? 0) > 0) {
+        || (float)($freshQuote['amountDue'] ?? 0) > 0)) {
         fail(409, 'GuestPoint has not supplied the payment and refund operations needed to settle this cancellation automatically. Nothing was changed.');
     }
     $quote = $freshQuote;
+
+    if ($PMS_PRIVATE_WRITES) {
+        $identity = portalPmsIdentity($confNum, $tokenPayload);
+        if (($identity['reservationId'] ?? '') === '' || count($identity['allocations'] ?? []) !== 1) fail(409, 'This booking cannot be cancelled automatically.');
+        $roomAllocationId = (string)$identity['allocations'][0]['RoomAllocationId'];
+        [$allocationStatus, $allocationRaw] = pmsCall('GET', 'Reservation/GetRoomAllocation?roomAllocationID=' . rawurlencode($roomAllocationId));
+        $allocation = json_decode($allocationRaw, true);
+        if ($allocationStatus !== 200 || !is_array($allocation) || (int)($allocation['Status'] ?? 0) !== 1) fail(409, 'This booking can no longer be cancelled.');
+        $allocation['CancellationBookingValue'] = round((float)($quote['fee'] ?? 0), 2);
+        $allocation['CancellationReason'] = 'Cancelled by guest through the online portal. Policy fee: $' . number_format((float)($quote['fee'] ?? 0), 2) . '; estimated refund: $' . number_format((float)($quote['refund'] ?? 0), 2) . '.';
+        $allocation['CancelledAppuserID'] = (string)($allocation['UpdatedAppuserID'] ?? $allocation['CreatedAppuserID'] ?? '');
+        $allocation['CancelledDate'] = (new DateTimeImmutable('now', new DateTimeZone('Australia/Sydney')))->format('Y-m-d\TH:i:s');
+        $allocation['IsDeleted'] = false;
+        $allocation['Status'] = 4;
+        [$cancelStatus, $cancelResponse, $cancelError] = pmsCall('POST', 'Reservation/SaveRoomAllocationWithVirtualRooms?propertyID=' . rawurlencode($PROPERTY_ID) . '&addChangeLogs=true', $allocation);
+        if ($cancelStatus < 200 || $cancelStatus >= 300) fail(502, 'GuestPoint rejected the cancellation. The booking remains active.', $cancelResponse ?: $cancelError);
+        [$verifyStatus, $verifyRaw] = pmsCall('GET', 'Reservation/GetRoomAllocation?roomAllocationID=' . rawurlencode($roomAllocationId));
+        $verified = json_decode($verifyRaw, true);
+        if ($verifyStatus !== 200 || !is_array($verified) || (int)($verified['Status'] ?? 0) !== 4) fail(502, 'GuestPoint did not verify the cancellation. Please check the booking in GuestPoint.');
+        send(200, ['Cancelled'=>true,'Message'=>'GuestPoint PMS has cancelled the reservation.','PolicyFee'=>$quote['fee'],'EstimatedRefund'=>$quote['refund'],'GuestPoint'=>$verified], ['Cache-Control'=>'no-store']);
+    }
 
     $cancelUrl = $UPSTREAM . '/properties/' . rawurlencode($PROPERTY_ID) . '/reservations/' . rawurlencode((string)$reservationId);
     $cancelBody = json_encode([

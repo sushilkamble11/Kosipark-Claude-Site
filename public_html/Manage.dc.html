@@ -517,6 +517,7 @@ class Component extends DCLogic {
     const p = b ? this.policy(b) : null;
     const status = b ? (/cancel/i.test(b.status) ? b.status : (p.days < 0 ? "Completed" : b.status)) : "";
     const permissions = b ? (b.permissions || {}) : {};
+    const pms = b ? (b.portalCapabilities || {}) : {};
     const activeStatus = b && /^(booked|modified|confirmed|reserved)$/i.test(b.status);
     const canAct = !!b && activeStatus && p && p.days >= 0;
     // GuestPoint's own guest portal currently exposes these two edits even
@@ -528,10 +529,10 @@ class Component extends DCLogic {
     const canEditGuest = canAct && (!!permissions.UpdateGuestDetails || directBooking);
     const canAddRequest = canAct && (!!permissions.SpecialRequests || directBooking);
     const unavailable = [];
-    if (canAct && !permissions.UpdateStayDates) unavailable.push("date changes");
-    if (canAct && !permissions.Cancel) unavailable.push("cancellation");
+    if (canAct && !permissions.UpdateStayDates && !pms.Amend) unavailable.push("date changes");
+    if (canAct && !permissions.Cancel && !pms.Cancel) unavailable.push("cancellation");
     if (canAct && !permissions.PayNow) unavailable.push("balance payments");
-    if (canAct) unavailable.push("adding extras to this existing booking");
+    if (canAct && !pms.Extras) unavailable.push("adding extras to this existing booking");
     const addStayUrl = b ? "/book?arrival=" + encodeURIComponent(b.checkIn) + "&departure=" + encodeURIComponent(b.checkOut) + "&adults=" + b.adults + "&children=" + b.children + "&infants=" + b.infants : "/book";
 
     return {
@@ -571,15 +572,15 @@ class Component extends DCLogic {
         (/cancel/i.test(status) ? "background:#F3E3DE; color:#8C3B2A" : "background:#E9EEE3; color:#4C5C40"),
 
       canAct,
-      canDates: canAct && !!permissions.UpdateStayDates && !!p.amendAllowed,
-      canAmend: canAct && ((!!permissions.UpdateStayDates && !!p.amendAllowed) || !!permissions.Cancel),
-      canParty: canAct && !!permissions.UpdateGuestDetails && !!p.amendAllowed,
+      canDates: canAct && (!!permissions.UpdateStayDates || !!pms.Amend) && !!p.amendAllowed,
+      canAmend: canAct && (((!!permissions.UpdateStayDates || !!pms.Amend) && !!p.amendAllowed) || !!permissions.Cancel || !!pms.Cancel),
+      canParty: canAct && (!!permissions.UpdateGuestDetails || !!pms.Amend) && !!p.amendAllowed,
       canGuests: canEditGuest && Array.isArray(b.guests) && b.guests.length > 0,
       canNote: canAddRequest,
-      canCancel: canAct && !!permissions.Cancel,
+      canCancel: canAct && (!!permissions.Cancel || !!pms.Cancel),
       canPay: canAct && !!permissions.PayNow && b.balance > 0 && !!b.paymentUrl,
       showCapabilityNotice: canAct && unavailable.length > 0,
-      capabilityNotice: "Guest details, arrival time, vehicle registrations and special requests save directly to GuestPoint. GuestPoint has not enabled " + unavailable.join(", ") + " for online completion, so the portal will not pretend those actions completed.",
+      capabilityNotice: "Available actions save directly to GuestPoint. " + (unavailable.length ? "GuestPoint has not enabled " + unavailable.join(", ") + " for online completion." : "Dates, guest numbers, extras and cancellation are connected on this test portal."),
       noticeText: b && p && p.days < 0 ? "This stay has already taken place, so it can no longer be changed online."
         : b && !canAct ? "GuestPoint has marked this booking as view-only. Reception can help with anything that still needs attention."
         : "",
@@ -654,19 +655,21 @@ class Component extends DCLogic {
         { k: "Policy fee", v: Component.money((s.dateQuote.difference < 0 || (s.dateQuote.proposal && this.nights({ checkIn: s.dateQuote.proposal.checkIn, checkOut: s.dateQuote.proposal.checkOut }) < this.nights(b))) ? p.fee : p.amendFee) },
         { k: "Availability", v: typeof s.dateQuote.roomsLeft === "number" ? s.dateQuote.roomsLeft + " remaining" : "Confirmed live" }
       ] : [],
-      acceptDateChange: () => {
+      acceptDateChange: async () => {
         if (!s.policyAccepted || !s.dateQuote || !s.dateQuote.available) return;
         if (b.sample) {
           this.setState({ confirm: { title: "Demo amendment ready", body: "The new dates, live price and policy charge have been accepted. A connected booking would save a structured amendment request in GuestPoint." } });
           return;
         }
         const q = s.dateQuote;
-        this.saveManagedRequest("change dates", [
-          "Requested dates: " + q.proposal.checkIn + " to " + q.proposal.checkOut,
-          "Quoted accommodation total: " + Component.money(q.newTotal),
-          "Quoted difference: " + Component.money(q.difference),
-          "Guest accepted the displayed amendment and cancellation conditions."
-        ]);
+        this.setState({ requestSaving: true, confirm: null });
+        try {
+          const result = await this.gp.amendManagedReservation(b.ref, { ...q.proposal, adults: b.adults, children: b.children, infants: b.infants, quotedTotal: q.newTotal }, b.portalToken, true);
+          if (!result || result.Updated !== true) throw new Error("not-confirmed");
+          this.setState(x => ({ requestSaving: false, mode: null, policyAccepted: false,
+            booking: { ...x.booking, checkIn: q.proposal.checkIn, checkOut: q.proposal.checkOut },
+            confirm: { title: "Dates changed in GuestPoint", body: "GuestPoint PMS confirmed the new arrival date and stay length. The room account remains visible for payment and reconciliation." } }));
+        } catch (e) { this.setState({ requestSaving: false, confirm: { title: "Dates not changed", body: "GuestPoint did not verify the amendment. Nothing has been claimed as complete." } }); }
       },
 
       partyFields: [
@@ -688,19 +691,20 @@ class Component extends DCLogic {
       partyQuoteTitle: s.partyQuote && s.partyQuote.loading ? "Checking GuestPoint…" : s.partyQuote && s.partyQuote.available ? "Guest numbers fit this accommodation" : "These guest numbers cannot be accepted online",
       partyQuoteBody: s.partyQuote && s.partyQuote.loading ? "Checking maximum occupancy, availability and the original rate." : s.partyQuote ? ((s.adults + s.children + s.infants) + " guests · revised accommodation total " + Component.money(s.partyQuote.newTotal) + ". " + ((s.adults + s.children + s.infants) < (b.adults + b.children + b.infants) ? "Because this reduces the booking, the cancellation-policy fee is " + Component.money(p.fee) + ". " : "") + s.partyQuote.message) : "",
       partyQuoteAvailable: !!(s.partyQuote && s.partyQuote.available),
-      acceptPartyChange: () => {
+      acceptPartyChange: async () => {
         if (!s.policyAccepted || !s.partyQuote || !s.partyQuote.available) return;
         if (b.sample) {
           this.setState({ confirm: { title: "Demo guest change ready", body: "Capacity and revised pricing have been checked. A connected booking would save a structured amendment request in GuestPoint." } });
           return;
         }
-        this.saveManagedRequest("change guest numbers", [
-          "Adults: " + s.adults,
-          "Children: " + s.children,
-          "Infants: " + s.infants,
-          "Quoted accommodation total: " + Component.money(s.partyQuote.newTotal),
-          "Guest accepted the displayed amendment and cancellation conditions."
-        ]);
+        this.setState({ requestSaving: true, confirm: null });
+        try {
+          const result = await this.gp.amendManagedReservation(b.ref, { adults: s.adults, children: s.children, infants: s.infants, quotedTotal: s.partyQuote.newTotal }, b.portalToken, true);
+          if (!result || result.Updated !== true) throw new Error("not-confirmed");
+          this.setState(x => ({ requestSaving: false, mode: null, policyAccepted: false,
+            booking: { ...x.booking, adults: s.adults, children: s.children, infants: s.infants },
+            confirm: { title: "Guest numbers changed in GuestPoint", body: "GuestPoint PMS confirmed the revised adults, children and infants for this room." } }));
+        } catch (e) { this.setState({ requestSaving: false, confirm: { title: "Guest numbers not changed", body: "GuestPoint did not verify the amendment. Nothing has been claimed as complete." } }); }
       },
 
       guestFields: [
@@ -722,7 +726,7 @@ class Component extends DCLogic {
       travelSaveLabel: s.travelSaving ? "Saving…" : "Save arrival details",
 
       extrasMessage: s.extrasLoading ? "Checking GuestPoint for eligible extras…"
-        : s.extras.length ? "These are the live extras GuestPoint offers for this room and rate. GuestPoint currently exposes them for new bookings, but not for adding to an existing booking."
+        : s.extras.length ? (pms.Extras ? "These are the live extras GuestPoint offers for this room and rate. Confirming adds them directly to the GuestPoint PMS booking." : "These are the live extras GuestPoint offers for this room and rate, but existing-booking posting is not enabled.")
         : "GuestPoint has not returned any eligible extras for this stay.",
       extrasList: s.extras.map(x => {
         const selected = !!s.selectedExtras[x.id];
@@ -741,15 +745,24 @@ class Component extends DCLogic {
       }}),
       extrasTotalLabel: Component.money(this.gp ? this.gp.extrasTotal(s.extras, s.selectedExtras, b ? this.nights(b) : 1) : 0),
       extrasReviewStyle: Object.keys(s.selectedExtras).length ? "margin-top:14px; background:#E9EEE3; border-radius:14px; padding:18px" : "display:none",
-      reviewExtras: () => {
+      reviewExtras: async () => {
         if (b.sample) {
           this.setState({ confirm: { title: "Demo extras selected", body: "Your selected extras are ready for review. No real booking has been changed in demo mode." } });
           return;
         }
-        this.setState({ confirm: {
-          title: "Extra not added",
-          body: "GuestPoint returned the live extra and price, but its public API has not supplied the account and transaction details needed to add it to this existing booking. Nothing has been charged or changed."
-        } });
+        if (!pms.Extras) { this.setState({ confirm: { title: "Extra not added", body: "Existing-booking extras are not enabled for this property." } }); return; }
+        const items = s.extras.filter(x => s.selectedExtras[x.id]).map(x => {
+          const counts = s.selectedExtras[x.id] || {};
+          let quantity = 0, childQuantity = 0, rate = 0, childRate = 0;
+          x.prices.forEach(pr => { const count = Math.max(0, Number(counts[pr.id]) || 0); if (/child/i.test(pr.name || "")) { childQuantity += count; childRate = Number(pr.price || 0); } else { quantity += count; rate = Number(pr.price || 0); } });
+          return { id: x.id, quantity, childQuantity, rate, childRate: childRate || rate, perNight: !!x.perNight };
+        });
+        this.setState({ requestSaving: true, confirm: null });
+        try {
+          const result = await this.gp.addManagedExtras(b.ref, items, b.portalToken, true);
+          if (!result || result.Updated !== true) throw new Error("not-confirmed");
+          this.setState({ requestSaving: false, mode: null, selectedExtras: {}, confirm: { title: "Extras added in GuestPoint", body: "GuestPoint PMS confirmed the selected extras on this room allocation." } });
+        } catch (e) { this.setState({ requestSaving: false, confirm: { title: "Extras not added", body: "GuestPoint did not verify the extras. Nothing has been claimed as complete." } }); }
       },
       addStayUrl,
       openAddStayWarning: () => this.setState({ leaveAction: "add-stay" }),
@@ -797,7 +810,7 @@ class Component extends DCLogic {
           if (!result || result.Cancelled !== true) throw new Error("not-confirmed");
           this.setState(x => ({ cancelSaving: false, mode: null, policyAccepted: false,
             booking: { ...x.booking, status: "Cancelled", permissions: { ...x.booking.permissions, Cancel: false, UpdateStayDates: false, UpdateGuestDetails: false, SpecialRequests: false, PayNow: false } },
-            confirm: { title: "Booking cancelled", body: "GuestPoint has cancelled the reservation. The refund shown was an estimate; any refund or retained cancellation charge must still be processed and reconciled through GuestPoint Pay or reception." } }));
+            confirm: { title: "Booking cancelled in GuestPoint", body: "GuestPoint PMS confirmed the cancellation and recorded the policy fee and estimated refund in the cancellation record." } }));
         } catch (e) {
           this.setState({ cancelSaving: false, confirm: { title: "Booking not cancelled", body: "GuestPoint did not confirm the cancellation. The reservation remains unchanged. Please try again or contact reception." } });
         }
