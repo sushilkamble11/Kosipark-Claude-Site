@@ -63,6 +63,11 @@ ok(extras.length === 2, "an extra not offered on the chosen rate plan is dropped
    extras.map(x => x.id).join(", "));
 ok(extras[0].id === "bikes", "extras come back in DisplayOrder", extras.map(x => x.id).join(", "));
 ok(extras[0].image === "https://images.guestpoint.com/bike.png", "the extra's photo is carried through");
+const unnamed = gp.normaliseExtras([{
+  Id: "unnamed", Name: "", Description: "", PriceType: "perPersonPerNight",
+  Prices: [{ Id: 0, Name: "Adult", Price: "5" }]
+}], ctx)[0];
+ok(unnamed.name === "Optional extra", "a live but unnamed GuestPoint extra never renders as a blank card");
 
 const dinner = extras.find(x => x.id === "dinner");
 const bikes = extras.find(x => x.id === "bikes");
