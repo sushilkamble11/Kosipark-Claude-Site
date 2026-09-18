@@ -136,7 +136,7 @@ function portalSecret(): string {
     return hash('sha256', $API_KEY . '|' . $CORE_KEY . '|' . $PROPERTY_ID, true);
 }
 
-function issuePortalToken(string $confNum, int $reservationId, string $surname, string $email, array $quote): string {
+function issuePortalToken(string $confNum, string $reservationId, string $surname, string $email, array $quote): string {
     $payload = json_encode([
         'ref' => $confNum,
         'rid' => $reservationId,
@@ -160,7 +160,7 @@ function portalTokenPayload(string $token, string $confNum): ?array {
     if (!is_array($payload)
         || !hash_equals($confNum, strtoupper(trim((string)($payload['ref'] ?? ''))))
         || (int)($payload['exp'] ?? 0) < time()
-        || (int)($payload['rid'] ?? 0) < 1) return null;
+        || trim((string)($payload['rid'] ?? '')) === '') return null;
     return $payload;
 }
 
@@ -563,6 +563,109 @@ function resolvePortalEmail(string $confNum, string $surname): string {
     return is_array($reservation) ? portalReservationEmail($reservation) : '';
 }
 
+/** Collapse Phoenix's per-date add-on rows into the quantities a guest edits. */
+function portalCurrentExtras(string $roomAllocationId): array {
+    global $PROPERTY_ID;
+    [$status, $raw] = pmsCall('GET', 'Reservation/GetRoomAllocationAddons?propertyID=' . rawurlencode($PROPERTY_ID) . '&roomAllocationID=' . rawurlencode($roomAllocationId));
+    $rows = json_decode($raw, true);
+    if ($status !== 200 || !is_array($rows)) return [];
+    $grouped = [];
+    foreach ($rows as $row) {
+        if (!is_array($row) || empty($row['AddonID'])) continue;
+        $id = strtolower((string)$row['AddonID']);
+        if (!isset($grouped[$id])) $grouped[$id] = ['Id'=>(string)$row['AddonID'],'Quantity'=>0,'ChildQuantity'=>0,'Total'=>0.0,'Dates'=>[]];
+        // Repeating extras have one row per applicable date. The editable
+        // quantity is the largest per-date count, not the sum across nights.
+        $grouped[$id]['Quantity'] = max($grouped[$id]['Quantity'], (int)($row['Quantity'] ?? 0));
+        $grouped[$id]['ChildQuantity'] = max($grouped[$id]['ChildQuantity'], (int)($row['QuantityChild'] ?? 0));
+        $grouped[$id]['Total'] = round($grouped[$id]['Total'] + max(0.0, (float)($row['Total'] ?? 0)), 2);
+        $date = substr((string)($row['Date'] ?? ''), 0, 10);
+        if ($date !== '') $grouped[$id]['Dates'][] = $date;
+    }
+    return array_values($grouped);
+}
+
+/** Build a Booking Engine-shaped management response for a Phoenix-only stay. */
+function pmsManagedReservationPayload(array $identity, string $surname, string $email): ?array {
+    $core = is_array($identity['reservation'] ?? null) ? $identity['reservation'] : [];
+    $allocations = array_values(array_filter($core['Allocations'] ?? [], fn($a) => is_array($a) && !empty($a['RoomAllocationId'])));
+    if (count($allocations) !== 1) return null;
+    $coreAllocation = $allocations[0];
+    $reservationId = trim((string)($core['ReservationId'] ?? ''));
+    $roomAllocationId = (string)$coreAllocation['RoomAllocationId'];
+    if ($reservationId === '') return null;
+
+    [$detailsStatus, $detailsRaw] = pmsCall('GET', 'Reservation/GetRoomAllocationDetail2sByReservation?reservationID=' . rawurlencode($reservationId));
+    $details = json_decode($detailsRaw, true);
+    if ($detailsStatus !== 200 || !is_array($details) || count($details) !== 1 || !is_array($details[0])) return null;
+    $allocation = $details[0];
+    if ((string)($allocation['RoomAllocationID'] ?? '') !== $roomAllocationId) return null;
+
+    $arrival = substr((string)($allocation['ArrivalDate'] ?? ''), 0, 10);
+    $nights = max(1, (int)($allocation['NumberOfNights'] ?? 1));
+    try { $departure = (new DateTimeImmutable($arrival))->modify('+' . $nights . ' days')->format('Y-m-d'); }
+    catch (Throwable $e) { return null; }
+    $statusCode = (int)($allocation['Status'] ?? 0);
+    $statusMap = [1=>'Modified', 2=>'Checked in', 3=>'Checked out', 4=>'Cancelled', 5=>'No show'];
+    $status = $statusMap[$statusCode] ?? 'Booked';
+    $outstanding = max(0.0, gpNumber($core['AmountOutstanding'] ?? null) ?? gpNumber($allocation['DepartureBalance'] ?? null) ?? 0.0);
+    $roomTotal = max($outstanding, gpNumber($allocation['DepartureBalance'] ?? null) ?? 0.0);
+    $roomType = is_array($allocation['_RoomType'] ?? null) ? $allocation['_RoomType'] : [];
+    $roomTypeName = trim((string)($roomType['Name'] ?? $roomType['RoomType'] ?? '')) ?: 'Accommodation booking';
+    $ratePlanId = (string)($allocation['PackageID'] ?? '');
+    $bookingReference = strtoupper(trim((string)($identity['manageReference'] ?? '')));
+    $reservationNumber = strtoupper(trim((string)($identity['reservationNumber'] ?? $core['ReservationNumber'] ?? '')));
+    $confNum = $bookingReference !== '' ? $bookingReference : $reservationNumber;
+    $guestId = (string)($coreAllocation['GuestId'] ?? '');
+    $guest = [
+        'ID'=>$guestId,
+        'FirstName'=>(string)($coreAllocation['GuestFirstName'] ?? ''),
+        'LastName'=>(string)($coreAllocation['GuestLastName'] ?? $surname),
+        'Email'=>$email,
+        'Mobile'=>(string)($coreAllocation['GuestPhone'] ?? ''),
+        'Phone'=>(string)($coreAllocation['GuestPhone'] ?? ''),
+    ];
+    $reservation = [
+        'ID'=>$reservationId,
+        'ConfNum'=>$confNum,
+        'Status'=>$status,
+        'ReservationTotalAfterTax'=>$roomTotal,
+        'PaymentRequired'=>$outstanding,
+        'PayLater'=>$outstanding,
+        'Adults'=>(int)($allocation['NumberAdults'] ?? 0),
+        'Children'=>(int)($allocation['NumberChildren'] ?? 0),
+        'Infants'=>(int)($allocation['NumberInfants'] ?? 0),
+        'EstimatedArrival'=>(string)($allocation['Eta'] ?? ''),
+        'ChannelCode'=>'PMS',
+        'Guests'=>$guestId !== '' ? [$guest] : [],
+        'BookingContact'=>$guest,
+        'RoomStays'=>[[
+            'Arrival'=>$arrival,
+            'Departure'=>$departure,
+            'RoomTypeId'=>(string)($allocation['RoomTypeID'] ?? ''),
+            'RoomTypeName'=>$roomTypeName,
+            'RoomTotal'=>$roomTotal,
+            'Adults'=>(int)($allocation['NumberAdults'] ?? 0),
+            'Children'=>(int)($allocation['NumberChildren'] ?? 0),
+            'Infants'=>(int)($allocation['NumberInfants'] ?? 0),
+            'GuestId'=>$guestId,
+            'GuestName'=>trim((string)($coreAllocation['GuestName'] ?? '')),
+            'IsCancelled'=>$statusCode === 4,
+            'PolicyText'=>'The original booking terms apply.',
+            'RateDetails'=>[['RatePlanId'=>$ratePlanId,'RatePlanName'=>'Booked rate','RoomRate'=>$roomTotal]],
+        ]],
+    ];
+    $quote = cancellationQuote($reservation);
+    return [
+        'Reservation'=>$reservation,
+        'Login'=>['ViewReservation'=>true,'UpdateGuestDetails'=>false,'SpecialRequests'=>false,'PayNow'=>false,'Cancel'=>false,'UpdateStayDates'=>false],
+        'CurrentExtras'=>portalCurrentExtras($roomAllocationId),
+        'PortalCapabilities'=>['Amend'=>true,'Extras'=>true,'Cancel'=>true],
+        'PortalToken'=>issuePortalToken($confNum, $reservationId, $surname, $email, $quote),
+        'CancellationQuote'=>$quote,
+    ];
+}
+
 /** Use the verified identity to fetch GuestPoint's complete management view. */
 function loadManagedReservation(string $confNum, string $surname, string $email, bool $decorate = true): array {
     global $UPSTREAM, $PROPERTY_ID, $API_KEY;
@@ -584,8 +687,8 @@ function loadManagedReservation(string $confNum, string $surname, string $email,
     elseif (isset($payload['Data']) && is_array($payload['Data'])) $root =& $payload['Data'];
     else $root =& $payload;
     $reservation = is_array($root['Reservation'] ?? null) ? $root['Reservation'] : [];
-    $reservationId = (int)($reservation['ID'] ?? 0);
-    if ($reservationId < 1) return [502, null, 'GuestPoint returned a reservation without an id.'];
+    $reservationId = trim((string)($reservation['ID'] ?? ''));
+    if ($reservationId === '') return [502, null, 'GuestPoint returned a reservation without an id.'];
     // The Booking Engine management view can lag behind a Phoenix PMS edit.
     // On the test portal, overlay authoritative dates, occupancy and current
     // room balance from Core/Phoenix so a refresh never appears to undo a
@@ -625,6 +728,7 @@ function loadManagedReservation(string $confNum, string $surname, string $email,
                 }
                 $reservation = $root['Reservation'];
             }
+            $root['CurrentExtras'] = portalCurrentExtras($roomAllocationId);
         }
     }
     $quote = cancellationQuote($reservation);
@@ -777,10 +881,18 @@ if ($endpoint === 'portal/lookup') {
         && $surname !== '' && strlen($surname) <= 80;
     $identity = $validInput ? resolvePortalBookingIdentity($confNum, $surname) : null;
     $coreReservation = is_array($identity) && is_array($identity['reservation'] ?? null) ? $identity['reservation'] : null;
-    $email = is_array($coreReservation) ? portalReservationEmail($coreReservation) : '';
-    if ($email === '') fail(403, 'We could not verify those booking details. Check them and try again.');
+    if (!is_array($coreReservation)) fail(403, 'We could not verify those booking details. Check them and try again.');
+    $email = portalReservationEmail($coreReservation);
     $manageReference = (string)($identity['manageReference'] ?? $confNum);
-    [$status, $payload, $detail] = loadManagedReservation($manageReference, $surname, $email);
+    $status = 502; $payload = null; $detail = '';
+    if ($email !== '') [$status, $payload, $detail] = loadManagedReservation($manageReference, $surname, $email);
+    // Reservations created directly in Phoenix have no Booking Engine manage
+    // record and may legitimately have no stored email. The already verified
+    // Reservation Number + surname pair can still open a PMS-backed session.
+    if ((!is_array($payload) || $status < 200 || $status >= 300) && $PMS_PRIVATE_WRITES) {
+        $payload = pmsManagedReservationPayload($identity, $surname, $email);
+        $status = is_array($payload) ? 200 : 502;
+    }
     if (!is_array($payload)) fail(502, 'The booking system is not responding. Please try again shortly.', (string)$detail);
     send($status, $payload, ['Cache-Control' => 'no-store']);
 }
@@ -937,9 +1049,30 @@ function portalExtrasCatalog(string $confNum, array $tokenPayload): array {
         (string)($tokenPayload['em'] ?? ''),
         false
     );
-    if ($manageStatus < 200 || $manageStatus >= 300 || !is_array($managePayload)) fail(502, 'GuestPoint could not load the booking extras. Nothing was added.');
-    $root = managedRoot($managePayload);
+    $root = ($manageStatus >= 200 && $manageStatus < 300 && is_array($managePayload)) ? managedRoot($managePayload) : [];
     $stays = $root['Reservation']['RoomStays'] ?? [];
+    if (!is_array($stays) || count($stays) !== 1) {
+        $identity = portalPmsIdentity($confNum, $tokenPayload);
+        $reservationId = (string)($identity['reservationId'] ?? '');
+        if ($reservationId === '' || count($identity['allocations'] ?? []) !== 1) fail(502, 'GuestPoint could not load the booking extras. Nothing was changed.');
+        [$detailsStatus, $detailsRaw] = pmsCall('GET', 'Reservation/GetRoomAllocationDetail2sByReservation?reservationID=' . rawurlencode($reservationId));
+        $details = json_decode($detailsRaw, true);
+        if ($detailsStatus !== 200 || !is_array($details) || count($details) !== 1 || !is_array($details[0])) fail(502, 'GuestPoint could not load the booking extras. Nothing was changed.');
+        $allocation = $details[0];
+        $arrival = substr((string)($allocation['ArrivalDate'] ?? ''), 0, 10);
+        $nights = max(1, (int)($allocation['NumberOfNights'] ?? 1));
+        try { $departure = (new DateTimeImmutable($arrival))->modify('+' . $nights . ' days')->format('Y-m-d'); }
+        catch (Throwable $e) { fail(502, 'GuestPoint returned invalid booking dates. Nothing was changed.'); }
+        $stays = [[
+            'Arrival'=>$arrival,
+            'Departure'=>$departure,
+            'RoomTypeId'=>(string)($allocation['RoomTypeID'] ?? ''),
+            'RatePlanId'=>(string)($allocation['PackageID'] ?? ''),
+            'Adults'=>(int)($allocation['NumberAdults'] ?? 0),
+            'Children'=>(int)($allocation['NumberChildren'] ?? 0),
+            'Infants'=>(int)($allocation['NumberInfants'] ?? 0),
+        ]];
+    }
     if (!is_array($stays) || count($stays) !== 1) fail(409, 'Extras can only be added online to a booking with one accommodation.');
     $body = json_encode(['RoomStays'=>$stays], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     $url = $UPSTREAM . '/properties/' . rawurlencode($PROPERTY_ID) . '/extras';
@@ -1030,7 +1163,7 @@ if ($endpoint === 'portal/extras') {
     [$confNum, $tokenPayload, $identity] = requirePortalSession($input);
     if (($input['Acknowledged'] ?? false) !== true) fail(400, 'Confirm the selected extras before adding them.');
     $items = is_array($input['Items'] ?? null) ? $input['Items'] : [];
-    if (!$items || count($items) > 12) fail(400, 'Select at least one valid extra.');
+    if (!$items || count($items) > 12) fail(400, 'Submit the extras shown for this booking.');
     $catalog = portalExtrasCatalog($confNum, $tokenPayload);
     $eligible = [];
     foreach ($catalog as $extra) if (is_array($extra) && !empty($extra['Id'])) $eligible[strtolower((string)$extra['Id'])] = $extra;
@@ -1043,9 +1176,17 @@ if ($endpoint === 'portal/extras') {
     if ($existingStatus !== 200 || !is_array($addons)) $addons = [];
     $arrival = new DateTimeImmutable(substr((string)$allocation['ArrivalDate'], 0, 10), new DateTimeZone('Australia/Sydney'));
     $nights = max(1, (int)($allocation['NumberOfNights'] ?? 1));
+    $departure = $arrival->modify('+' . $nights . ' days');
+    $today = new DateTimeImmutable('today', new DateTimeZone('Australia/Sydney'));
+    $effectiveStart = $today > $arrival ? $today : $arrival;
+    if ($effectiveStart >= $departure) fail(409, 'This stay has ended, so its extras can no longer be changed online.');
+    $requestedIds = [];
+    $desiredRows = [];
     foreach ($items as $item) {
         if (!is_array($item) || !preg_match('/^[a-f0-9-]{36}$/i', (string)($item['id'] ?? ''))) fail(400, 'One of the selected extras is invalid.');
         $addonId = (string)$item['id'];
+        $addonKey = strtolower($addonId);
+        $requestedIds[$addonKey] = true;
         $definition = $eligible[strtolower($addonId)] ?? null;
         if (!is_array($definition)) fail(409, 'One of the selected extras is no longer offered for this booking. Nothing was added.');
         $priceType = (string)($definition['PriceType'] ?? 'perBooking');
@@ -1069,10 +1210,27 @@ if ($endpoint === 'portal/extras') {
         }
         if ($childRate === 0.0) $childRate = $rate;
         if ($rate <= 0 && $childRate <= 0) fail(409, 'GuestPoint did not return a valid price for that extra. Nothing was added.');
+        // A one-off extra already charged on a past date cannot be erased or
+        // charged again. Only the increase above that locked quantity is new.
+        if (!$perNight) {
+            $lockedQuantity = 0; $lockedChildQuantity = 0;
+            foreach ($addons as $existingAddon) {
+                if (!is_array($existingAddon) || strcasecmp((string)($existingAddon['AddonID'] ?? ''), $addonId) !== 0) continue;
+                $existingDate = substr((string)($existingAddon['Date'] ?? ''), 0, 10);
+                if ($existingDate !== '' && $existingDate < $effectiveStart->format('Y-m-d')) {
+                    $lockedQuantity = max($lockedQuantity, (int)($existingAddon['Quantity'] ?? 0));
+                    $lockedChildQuantity = max($lockedChildQuantity, (int)($existingAddon['QuantityChild'] ?? 0));
+                }
+            }
+            $quantity = max(0, $quantity - $lockedQuantity);
+            $childQuantity = max(0, $childQuantity - $lockedChildQuantity);
+        }
         if ($quantity + $childQuantity < 1) continue;
-        $repeat = $perNight ? $nights : 1;
+        $repeat = $perNight ? max(1, (int)$effectiveStart->diff($departure)->days) : 1;
         for ($i = 0; $i < $repeat; $i++) {
-            $date = $arrival->modify('+' . $i . ' days')->format('Y-m-d') . 'T00:00:00';
+            $date = $effectiveStart->modify('+' . $i . ' days')->format('Y-m-d') . 'T00:00:00';
+            $rowKey = $addonKey . '|' . substr($date, 0, 10);
+            $desiredRows[$rowKey] = true;
             $found = false;
             foreach ($addons as &$addon) {
                 if (strcasecmp((string)($addon['AddonID'] ?? ''), $addonId) === 0 && substr((string)($addon['Date'] ?? ''), 0, 10) === substr($date, 0, 10)) {
@@ -1083,6 +1241,18 @@ if ($endpoint === 'portal/extras') {
             if (!$found) $addons[] = ['RoomAllocationAddonID'=>uuidV4(),'RoomAllocationID'=>$roomAllocationId,'AddonID'=>$addonId,'Date'=>$date,'Quantity'=>$quantity,'QuantityChild'=>$childQuantity,'Rate'=>$rate,'ChildRate'=>$childRate,'Total'=>round($quantity*$rate+$childQuantity*$childRate,2),'UpdatedLocal'=>0];
         }
     }
+    // The submitted catalogue is the desired future state. Remove future rows
+    // that were reduced to zero or no longer match the selected quantity, but
+    // retain past charges so a guest cannot undo an extra already delivered.
+    $cutoff = $effectiveStart->format('Y-m-d');
+    $addons = array_values(array_filter($addons, function($addon) use ($requestedIds, $desiredRows, $cutoff) {
+        if (!is_array($addon)) return false;
+        $id = strtolower((string)($addon['AddonID'] ?? ''));
+        if (!isset($requestedIds[$id])) return true;
+        $date = substr((string)($addon['Date'] ?? ''), 0, 10);
+        if ($date !== '' && $date < $cutoff) return true;
+        return isset($desiredRows[$id . '|' . $date]);
+    }));
     [$saveStatus, $saveRaw] = pmsCall('POST', 'Reservation/SaveRoomAllocationAddons', $addons);
     $saved = json_decode($saveRaw, true);
     if ($saveStatus < 200 || $saveStatus >= 300 || !is_array($saved)) fail(502, 'GuestPoint rejected the extras. Nothing was added.', $saveRaw);
