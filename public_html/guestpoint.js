@@ -502,6 +502,7 @@ export function normaliseManagedReservation(payload) {
     bookingContact: r.BookingContact || null,
     permissions: { ViewReservation: true, ...(root.Login || {}) },
     portalCapabilities: root.PortalCapabilities || {},
+    currentExtras: Array.isArray(root.CurrentExtras) ? root.CurrentExtras : [],
     paymentDetails: root.PaymentDetails || null,
     paymentUrl: root.PaymentDetails && root.PaymentDetails.Session ? (root.PaymentDetails.Session.PayUrl || "") : "",
     sample: isUnconfigured(),
@@ -1401,6 +1402,7 @@ async function mockResponse(method, path, params, body) {
         UpdateStayDates: b.rate === "Standard rate", RequirePhone: true, RequireAddress: false
       },
       PortalToken: "mock-portal-token",
+      CurrentExtras: b.ref === "1" ? [{ Id: "firewood", Quantity: 2, ChildQuantity: 0, Total: 40, Dates: [b.arrival] }] : [],
       PaymentDetails: b.total > b.paid ? { Gateway: "GuestPoint Pay", Session: { PayUrl: "https://payments.example.invalid/pay/" + b.ref } } : null,
       Message: ""
     };

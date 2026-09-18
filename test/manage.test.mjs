@@ -62,10 +62,12 @@ await page.getByText("Booking reference: 1").waitFor({ timeout: 5000 });
 
 await page.getByRole("button", { name: "View extras" }).click();
 await page.getByText("Drying room access").waitFor({ timeout: 5000 });
-pass(await page.getByRole("button", { name: "Add", exact: true }).count() > 0, "eligible extras have visible Add buttons");
-await page.getByRole("button", { name: "Add", exact: true }).first().click();
-await page.getByText(/Selected extras: \$/).waitFor({ timeout: 3000 });
-pass(await page.getByText(/Selected extras: \$/).isVisible(), "selected extras show a calculated total");
+pass(await page.getByText(/Already on booking: 2 · \$40/).isVisible(), "existing GuestPoint extras and quantities are shown");
+await page.getByRole("button", { name: /Increase Premium seasoned firewood/i }).click();
+await page.getByText(/Selected future extras: \$/).waitFor({ timeout: 3000 });
+pass(await page.getByText(/Selected future extras: \$/).isVisible(), "amended extras show a calculated total");
+await page.getByRole("button", { name: "Remove", exact: true }).nth(1).click();
+pass(await page.getByText(/Selected future extras: \$0/).isVisible(), "an existing extra can be marked for removal");
 
 await page.getByRole("button", { name: "Add another stay" }).click();
 pass(await page.getByText("Go to the booking page?").isVisible(), "adding another stay warns before leaving");

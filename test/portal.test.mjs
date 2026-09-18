@@ -33,6 +33,7 @@ const booking = normaliseManagedReservation({
       RateDetails: [{ RatePlanId: "standard", RatePlanName: "Standard rate" }]
     }]
   },
+  CurrentExtras: [{ Id: "firewood", Quantity: 2, ChildQuantity: 0, Total: 40 }],
   Login: { ViewReservation: true, Cancel: false, SpecialRequests: true, PayNow: true },
   PaymentDetails: { Session: { PayUrl: "https://pay.example.test/session" } }
 });
@@ -50,6 +51,7 @@ assert.equal(booking.stayCount, 1);
 assert.equal(booking.guests[0].Email, "alex@example.com");
 assert.equal(booking.bookingContact.ID, "guest-1");
 assert.equal(booking.portalToken, "signed-test-token");
+assert.equal(booking.currentExtras[0].Quantity, 2);
 assert.equal(booking.paymentUrl, "https://pay.example.test/session");
 
 const quote = await quoteManagedStayChange(booking, {
@@ -77,6 +79,9 @@ assert.match(proxySource, /isset\(\$payload\['ReservationNumber'\]\)/, "single-r
 assert.match(proxySource, /function resolvePortalBookingIdentity/, "portal resolves either GuestPoint booking number to one identity");
 assert.match(proxySource, /GetReservationDetailByRoomAllocationWithCurrentPackage/, "portal reads the channel reference behind a PMS reservation number");
 assert.match(proxySource, /'manageReference'\s*=>\s*\$numbers\['bookingReference'\]/, "portal canonicalises lookup to the channel reference required by manage");
+assert.match(proxySource, /function pmsManagedReservationPayload/, "Phoenix-only reservations receive a managed portal view");
+assert.match(proxySource, /function portalCurrentExtras/, "existing Phoenix add-ons are returned to the portal");
+assert.match(proxySource, /charges already delivered are protected|retain past charges/i, "past add-on charges cannot be removed by the guest");
 assert.match(proxySource, /guestPointConfirmed\(\$cancelResponse\)/, "cancellation requires GuestPoint success confirmation");
 assert.match(proxySource, /\$reservationId = \(int\)\$tokenPayload\['rid'\]/, "cancellation id comes from the signed portal token");
 assert.match(proxySource, /\$freshLogin\['Cancel'\]/, "cancellation rechecks GuestPoint permission immediately before deletion");
