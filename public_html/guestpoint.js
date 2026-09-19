@@ -1412,7 +1412,15 @@ async function mockResponse(method, path, params, body) {
       },
       PortalToken: "mock-portal-token",
       PortalCapabilities: { Amend: true, Extras: true, Cancel: true, ChargeCard: true },
-      CurrentExtras: b.ref === "1" ? [{ Id: "firewood", Name: "PMS firewood", Quantity: 2, ChildQuantity: 0, Total: 40, Dates: [b.arrival] }] : [],
+      CurrentExtras: b.ref === "1"
+        ? [{ Id: "firewood", Name: "PMS firewood", Quantity: 2, ChildQuantity: 0, Total: 40, Dates: [b.arrival] }]
+        // KTP-48213 carries a deliberately stale per-person extra: one adult's
+        // worth on a booking of two adults and two children. That is what a
+        // per-person extra looks like after the party has been amended, and
+        // the portal has to offer to reprice it rather than hide the control.
+        : b.ref === "KTP-48213"
+        ? [{ Id: "drying-room", Name: "Drying room access", Quantity: 1, ChildQuantity: 0, Total: 15, Dates: [b.arrival] }]
+        : [],
       PaymentDetails: b.total > b.paid ? { Gateway: "GuestPoint Pay", Session: { PayUrl: "https://payments.example.invalid/pay/" + b.ref } } : null,
       Message: ""
     };

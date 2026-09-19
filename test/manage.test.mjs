@@ -106,6 +106,26 @@ await page.getByRole("button", { name: "Look up another booking" }).click();
 await page.getByRole("button", { name: "Continue" }).click();
 pass(await page.getByRole("button", { name: "Find my booking" }).isVisible(), "Continue returns to the booking lookup form");
 
+// A per-person extra left over from a smaller party must be offered for
+// repricing without the guest touching a stepper. Deriving both the current
+// and the desired selection from the new party size made them identical, so
+// the review panel stayed hidden — the portal could tell a guest to review
+// their extras after a guest-number change and then show no way to do it.
+await page.getByPlaceholder("Reservation number or channel booking ref").fill("KTP-48213");
+await page.getByPlaceholder("Nguyen").fill("Nguyen");
+await page.getByRole("button", { name: "Find my booking" }).click();
+await page.getByText("Booking reference: KTP-48213").waitFor({ timeout: 8000 });
+await page.getByRole("button", { name: "View extras", exact: true }).click();
+await page.getByText(/Already on booking/i).first().waitFor({ timeout: 8000 });
+const reprice = page.getByRole("button", { name: /Review price and payment/i });
+pass(await reprice.count() > 0, "a stale per-person extra offers a reprice with no stepper interaction");
+await reprice.first().click();
+await page.getByText("GuestPoint has confirmed this change").waitFor({ timeout: 8000 });
+pass(await page.getByText(/Extras already on booking/i).isVisible(), "the reprice quote breaks down current and new extras totals");
+const acceptExtras = page.getByRole("button", { name: /Charge card and update extras|Confirm extra changes/i }).first();
+pass(!(await acceptExtras.isEnabled()), "the extras charge stays locked until the guest accepts it");
+pass(pageErrors.length === 0, "the extras reprice flow has no page errors");
+
 await browser.close();
 server.kill();
 console.log("manage.test.mjs: all assertions passed");

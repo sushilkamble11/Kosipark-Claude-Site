@@ -542,22 +542,36 @@ class Component extends DCLogic {
       }));
       const raw = await this.gp.getExtras(stays);
       const extras = this.gp.normaliseExtras(raw, { nights: this.nights(b), adults: b.adults, children: b.children, ratePlanId: b.ratePlanId });
+      // Two different things, and conflating them was the bug: `posted` is what
+      // GuestPoint actually holds, `desired` is what the selection should be
+      // for the party currently on the booking. Deriving both from the new
+      // party size made them identical, so after a guest-number change
+      // extrasChanged was false, the review panel stayed hidden, and a
+      // per-person extra could never be repriced — the portal told the guest to
+      // review extras and then offered no way to do it.
       const selected = {};
+      const posted = {};
       const current = Object.fromEntries((b.currentExtras || []).map(x => [String(x.Id || "").toLowerCase(), x]));
       extras.forEach(extra => {
         const existing = current[String(extra.id || "").toLowerCase()];
         if (!existing) return;
         if (String(existing.Name || "").trim()) extra.name = String(existing.Name).trim();
-        const counts = {};
+        const onBooking = {};
+        const forThisParty = {};
         extra.prices.forEach(pr => {
-          const quantity = extra.isService
+          const postedCount = /child/i.test(pr.name || "")
+            ? Number(existing.ChildQuantity || 0)
+            : Number(existing.Quantity || 0);
+          if (postedCount > 0) onBooking[pr.id] = postedCount;
+          const wanted = extra.isService
             ? (extra.perPerson ? Number(pr.suggested || 0) : 1)
-            : (/child/i.test(pr.name || "") ? Number(existing.ChildQuantity || 0) : Number(existing.Quantity || 0));
-          if (quantity > 0) counts[pr.id] = quantity;
+            : postedCount;
+          if (wanted > 0) forThisParty[pr.id] = wanted;
         });
-        if (Object.values(counts).some(Number)) selected[extra.id] = counts;
+        if (Object.values(forThisParty).some(Number)) selected[extra.id] = forThisParty;
+        if (Object.values(onBooking).some(Number)) posted[extra.id] = onBooking;
       });
-      this.setState({ extrasLoading: false, extras, selectedExtras: selected, initialExtras: JSON.parse(JSON.stringify(selected)), extrasQuote: null, extrasAccepted: false });
+      this.setState({ extrasLoading: false, extras, selectedExtras: selected, initialExtras: posted, extrasQuote: null, extrasAccepted: false });
     } catch (e) {
       this.setState({ extrasLoading: false, extras: [] });
     }
