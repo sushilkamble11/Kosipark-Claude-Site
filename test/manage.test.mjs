@@ -84,6 +84,20 @@ pass(await page.getByText(/charged \$30/).isVisible(), "accepted extras charge i
 await page.getByRole("button", { name: "Arrival & vehicles" }).click();
 pass(await page.getByPlaceholder("7m x 5m").isVisible(), "vehicle dimensions are captured alongside car registration");
 
+// Arrival time is a dropdown, and it has to show the time GuestPoint already
+// holds. GuestPoint stores "03:00 PM" while the old <input type="time"> needed
+// "15:00", so a booking with an ETA opened the field blank and any save that
+// followed silently replaced a real arrival time with whatever was picked.
+{
+  const etaSelect = page.locator("select").first();
+  pass(await etaSelect.count() > 0, "estimated arrival is chosen from a list, not typed");
+  pass(await etaSelect.inputValue() === "15:00", `the ETA GuestPoint holds ("03:00 PM") is preselected, got ${JSON.stringify(await etaSelect.inputValue())}`);
+  const optionCount = await etaSelect.locator("option").count();
+  pass(optionCount === 49, `half-hourly for the whole day plus "Not supplied" (${optionCount} options)`);
+  await etaSelect.selectOption("16:30");
+  pass(await etaSelect.inputValue() === "16:30", "a different arrival time can be selected");
+}
+
 await page.getByRole("button", { name: "Add another stay" }).click();
 pass(await page.getByText("Go to the booking page?").isVisible(), "adding another stay warns before leaving");
 await page.screenshot({ path: "/tmp/kosipark-manage-leave-warning.png", fullPage: false });

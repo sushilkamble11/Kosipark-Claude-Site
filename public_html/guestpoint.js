@@ -1392,7 +1392,9 @@ async function mockResponse(method, path, params, body) {
         ID: b.id, ConfNum: b.ref, Status: "Booked", CurrencyCode: "AUD",
         ChannelCode: "KOSIPARK-DIRECT", Adults: b.adults, Children: b.children, Infants: b.infants,
         ReservationTotalAfterTax: String(b.total), PaymentRequired: String(b.total - b.paid),
-        EstimatedArrival: "15:00", ExtraInfo: "",
+        // GuestPoint returns the PMS format, "03:00 PM", not "15:00". The
+        // sample data claiming otherwise hid a field that never displayed.
+        EstimatedArrival: "03:00 PM", ExtraInfo: "",
         Guests: [{
           ID: "guest-" + b.id, FirstName: "Alex", LastName: b.surname,
           Email: "alex." + b.surname.toLowerCase() + "@example.com", Mobile: "+" + b.mobile,
