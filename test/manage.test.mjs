@@ -64,11 +64,20 @@ await page.getByRole("button", { name: "View extras" }).click();
 await page.getByText("Drying room access").waitFor({ timeout: 5000 });
 pass(await page.getByText("PMS firewood", { exact: true }).isVisible(), "the attached PMS extra name replaces a generic catalogue label");
 pass(await page.getByText(/Already on booking: 2 · \$40/).isVisible(), "existing GuestPoint extras and quantities are shown");
-await page.getByRole("button", { name: /Increase PMS firewood/i }).click();
-await page.getByText(/Selected future extras: \$/).waitFor({ timeout: 3000 });
-pass(await page.getByText(/Selected future extras: \$/).isVisible(), "amended extras show a calculated total");
-await page.getByRole("button", { name: "Remove", exact: true }).nth(1).click();
-pass(await page.getByText(/Selected future extras: \$0/).isVisible(), "an existing extra can be marked for removal");
+await page.getByRole("button", { name: /Add Drying room access/i }).click();
+await page.getByText(/Selected extras: \$/).waitFor({ timeout: 3000 });
+pass(await page.getByText(/Selected extras: \$70/).isVisible(), "per-person-per-night service uses every guest and night");
+await page.getByRole("button", { name: "Review price and payment" }).click();
+await page.getByText("GuestPoint has confirmed this change").waitFor({ timeout: 3000 });
+pass(await page.getByText(/saved card 4111\*+1111/).isVisible(), "the exact saved-card charge is shown before consent");
+const extrasCheckbox = page.getByText(/authorise the displayed charge/i).locator("..").getByRole("checkbox");
+await extrasCheckbox.check();
+await page.getByRole("button", { name: "Charge card and update extras" }).click();
+await page.getByText("Extras updated in GuestPoint").waitFor({ timeout: 3000 });
+pass(await page.getByText(/charged \$30/).isVisible(), "accepted extras charge is confirmed");
+
+await page.getByRole("button", { name: "Arrival & vehicles" }).click();
+pass(await page.getByPlaceholder("7m x 5m").isVisible(), "vehicle dimensions are captured alongside car registration");
 
 await page.getByRole("button", { name: "Add another stay" }).click();
 pass(await page.getByText("Go to the booking page?").isVisible(), "adding another stay warns before leaving");

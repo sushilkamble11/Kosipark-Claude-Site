@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { cancelReservation, normaliseMobile, normaliseManagedReservation, quoteManagedStayChange, modifyReservation, lookupPortalBooking } from "../public_html/guestpoint.js";
+import { cancelReservation, normaliseMobile, normaliseManagedReservation, quoteManagedStayChange, quoteManagedExtras, modifyReservation, lookupPortalBooking } from "../public_html/guestpoint.js";
 
 assert.equal(normaliseMobile("0412 345 678"), "61412345678");
 assert.equal(normaliseMobile("+61 412 345 678"), "61412345678");
@@ -69,12 +69,18 @@ assert.equal(updated.NotificationSent, true);
 const cancellation = await cancelReservation("ABC123", "signed-test-token", true);
 assert.equal(cancellation.Cancelled, true);
 
+const extrasQuote = await quoteManagedExtras("ABC123", [{ id: "firewood", quantity: 3, childQuantity: 0, total: 60 }], "signed-test-token");
+assert.equal(extrasQuote.NewTotal, 60);
+assert.equal(extrasQuote.ChargeAmount, 20);
+assert.equal(extrasQuote.Card.Available, true);
+
 const proxySource = await readFile(new URL("../public_html/api/gp/index.php", import.meta.url), "utf8");
 assert.match(proxySource, /'portal\/cancel'\s*=>\s*\['POST'/, "authenticated portal cancellation route is allow-listed");
 assert.doesNotMatch(proxySource, /'reservations\/\*'\s*=>\s*\['DELETE'/, "direct unauthenticated cancellation route is not exposed");
 assert.doesNotMatch(proxySource, /'reservations\/manage'\s*=>\s*\['POST'/, "direct unauthenticated manage lookup is not exposed");
 assert.match(proxySource, /\$reqPropertyId !== 'self'/, "the browser's self property alias is accepted by the configured proxy");
 assert.match(proxySource, /'portal\/lookup'\s*=>\s*\['POST'/, "portal lookup accepts reference and surname without OTP");
+assert.match(proxySource, /'portal\/extras\/quote'\s*=>\s*\['POST'/, "extras are repriced server-side before final acceptance");
 assert.match(proxySource, /isset\(\$payload\['ReservationNumber'\]\)/, "single-reservation Core responses are supported");
 assert.match(proxySource, /function resolvePortalBookingIdentity/, "portal resolves either GuestPoint booking number to one identity");
 assert.match(proxySource, /GetReservationDetailByRoomAllocationWithCurrentPackage/, "portal reads the channel reference behind a PMS reservation number");
@@ -83,6 +89,10 @@ assert.match(proxySource, /function pmsManagedReservationPayload/, "Phoenix-only
 assert.match(proxySource, /A reservation created directly in Phoenix has no Booking Engine[\s\S]*PackageID/, "Phoenix-only reservations use their PMS room and package for server-side amendment repricing");
 assert.match(proxySource, /Phoenix excludes cancelled allocations[\s\S]*GetRoomAllocation\?roomAllocationID=/, "cancelled Phoenix bookings fall back to the read-only allocation endpoint");
 assert.match(proxySource, /function portalCurrentExtras/, "existing Phoenix add-ons are returned to the portal");
+assert.match(proxySource, /ProcessPaymentUsingProxyPost/, "saved-card extra payments use GuestPoint's card-vault operation on the server");
+assert.match(proxySource, /GetHasCcMapExpired/, "the saved card is checked before it is offered");
+assert.match(proxySource, /SaveTransactionItemDetails/, "extras and cancellation fees are posted to the GuestPoint room account");
+assert.match(proxySource, /SaveRoomAllocationEditWithVirtualRooms/, "car rego and vehicle dimensions use Phoenix reservation profile fields");
 assert.match(proxySource, /function portalAccommodationTotal/, "cancellation fees use accommodation charges without optional extras");
 assert.match(proxySource, /charges already delivered are protected|retain past charges/i, "past add-on charges cannot be removed by the guest");
 assert.match(proxySource, /guestPointConfirmed\(\$cancelResponse\)/, "cancellation requires GuestPoint success confirmation");

@@ -71,6 +71,7 @@ const ROUTES = [
     // and checked by the server-side portal lookup.
     'portal/update'         => ['POST',               0],
     'portal/amend'          => ['POST',               0],
+    'portal/extras/quote'   => ['POST',               0],
     'portal/extras'         => ['POST',               0],
     'portal/cancel'         => ['POST',               0],
     // Guest access uses the reference and surname held by GuestPoint.
@@ -570,8 +571,97 @@ function resolvePortalEmail(string $confNum, string $surname): string {
     return is_array($reservation) ? portalReservationEmail($reservation) : '';
 }
 
-/** Collapse Phoenix's per-date add-on rows into the quantities a guest edits. */
-function portalCurrentExtras(string $roomAllocationId): array {
+/** Read the complete Phoenix reservation/card record for one room allocation. */
+function pmsReservationFinancialDetail(string $roomAllocationId): ?array {
+    [$status, $raw] = pmsCall('GET', 'Reservation/GetReservationDetailByRoomAllocationWithCurrentPackage?roomAllocationID=' . rawurlencode($roomAllocationId) . '&allCharges=false');
+    $detail = json_decode($raw, true);
+    return $status === 200 && is_array($detail) ? $detail : null;
+}
+
+/** Find a named scalar anywhere in GuestPoint's nested reservation response. */
+function nestedScalar(array $value, string $key): ?string {
+    if (array_key_exists($key, $value) && !is_array($value[$key]) && $value[$key] !== null && $value[$key] !== '') return (string)$value[$key];
+    foreach ($value as $child) {
+        if (!is_array($child)) continue;
+        $found = nestedScalar($child, $key);
+        if ($found !== null) return $found;
+    }
+    return null;
+}
+
+/** Server-only saved-card information. The token is never returned to a browser. */
+function pmsSavedCard(string $roomAllocationId): array {
+    global $PROPERTY_ID;
+    $detail = pmsReservationFinancialDetail($roomAllocationId);
+    if (!is_array($detail)) return ['available'=>false];
+    $token = nestedScalar($detail, 'CCNumberToken') ?? '';
+    $mask = nestedScalar($detail, 'CCPartialNumber') ?? '';
+    $expiry = nestedScalar($detail, 'CCExpiry') ?? '';
+    $accountId = nestedScalar($detail, 'CCTransactionAccountID') ?? '';
+    $reservationNumber = nestedScalar($detail, 'ReservationNumber') ?? '';
+    $name = nestedScalar($detail, 'CCName') ?? '';
+    if ($token === '' || $accountId === '' || $reservationNumber === '') return ['available'=>false];
+    [$expiredStatus, $expiredRaw] = pmsCall('GET', 'CreditCardVault/GetHasCcMapExpired?propertyID=' . rawurlencode($PROPERTY_ID) . '&ccMapID=' . rawurlencode($token));
+    $expired = $expiredStatus !== 200 || json_decode($expiredRaw, true) !== false;
+    return ['available'=>!$expired,'token'=>$token,'mask'=>$mask,'expiry'=>$expiry,'accountId'=>$accountId,'reservationNumber'=>$reservationNumber,'holder'=>$name];
+}
+
+/** Phoenix supplies the encrypted proxy-post credential on the signed-in app-user record. */
+function pmsProxyPassword(): string {
+    global $PROPERTY_ID, $PMS_USERNAME;
+    [$status, $raw] = pmsCall('GET', 'User/GetAllAppusersByProperty?propertyID=' . rawurlencode($PROPERTY_ID));
+    $users = json_decode($raw, true);
+    if ($status !== 200 || !is_array($users)) return '';
+    foreach ($users as $user) {
+        if (!is_array($user) || !hash_equals(strtolower($PMS_USERNAME), strtolower(trim((string)($user['Username'] ?? ''))))) continue;
+        return trim((string)($user['Password'] ?? ''));
+    }
+    return '';
+}
+
+function pmsTransactionItems(string $reservationId): array {
+    [$status, $raw] = pmsCall('GET', 'Accounts/GetTransactionItemDetailsByReservation?reservationID=' . rawurlencode($reservationId));
+    $items = json_decode($raw, true);
+    return $status === 200 && is_array($items) ? array_values(array_filter($items, 'is_array')) : [];
+}
+
+function pmsAddonDefinitions(): array {
+    global $PROPERTY_ID;
+    [$status, $raw] = pmsCall('GET', 'Rates/GetAddons?propertyID=' . rawurlencode($PROPERTY_ID));
+    $rows = json_decode($raw, true);
+    $out = [];
+    if ($status === 200 && is_array($rows)) foreach ($rows as $row) {
+        if (!is_array($row) || empty($row['AddonID'])) continue;
+        $out[strtolower((string)$row['AddonID'])] = $row;
+    }
+    return $out;
+}
+
+/** Return reservation-scoped Phoenix profile definitions and their current values. */
+function pmsReservationProfiles(string $reservationId): array {
+    global $PROPERTY_ID;
+    [$definitionStatus, $definitionRaw] = pmsCall('GET', 'Property/GetProfileFieldDetails?propertyID=' . rawurlencode($PROPERTY_ID));
+    [$valueStatus, $valueRaw] = pmsCall('GET', 'Property/GetProfilesByReservation?reservationID=' . rawurlencode($reservationId));
+    $definitions = json_decode($definitionRaw, true);
+    $values = json_decode($valueRaw, true);
+    if ($definitionStatus !== 200 || !is_array($definitions)) $definitions = [];
+    if ($valueStatus !== 200 || !is_array($values)) $values = [];
+    $valueById = [];
+    foreach ($values as $value) if (is_array($value) && !empty($value['ProfileFieldID'])) $valueById[strtolower((string)$value['ProfileFieldID'])] = $value;
+    $fields = [];
+    foreach ($definitions as $definition) {
+        if (!is_array($definition) || empty($definition['ProfileFieldID'])) continue;
+        $name = trim((string)($definition['Name'] ?? ''));
+        if (!preg_match('/(?:car|vehicle).*(?:rego|registration)|rego|dimentions|dimensions?/i', $name)) continue;
+        $id = (string)$definition['ProfileFieldID'];
+        $current = $valueById[strtolower($id)] ?? [];
+        $fields[] = ['Id'=>$id,'ExternalId'=>$id,'Name'=>$name,'FieldType'=>'text','Type'=>'text','Value'=>(string)($current['Value'] ?? '')];
+    }
+    return ['definitions'=>$fields,'values'=>$values];
+}
+
+/** Collapse future add-ons and posted account charges into the guest-facing state. */
+function portalCurrentExtras(string $roomAllocationId, string $reservationId = ''): array {
     global $PROPERTY_ID;
     [$status, $raw] = pmsCall('GET', 'Reservation/GetRoomAllocationAddons?propertyID=' . rawurlencode($PROPERTY_ID) . '&roomAllocationID=' . rawurlencode($roomAllocationId));
     $rows = json_decode($raw, true);
@@ -580,6 +670,7 @@ function portalCurrentExtras(string $roomAllocationId): array {
     // name from the add-on master so the portal does not have to display the
     // Booking Engine's generic fallback such as "Optional extra".
     $addonNames = [];
+    $addonDefinitions = [];
     [$catalogStatus, $catalogRaw] = pmsCall('GET', 'Rates/GetAddons?propertyID=' . rawurlencode($PROPERTY_ID));
     $catalog = json_decode($catalogRaw, true);
     if ($catalogStatus === 200 && is_array($catalog)) {
@@ -587,7 +678,10 @@ function portalCurrentExtras(string $roomAllocationId): array {
             if (!is_array($addon)) continue;
             $addonId = strtolower(trim((string)($addon['AddonID'] ?? '')));
             $addonName = trim((string)($addon['Name'] ?? ''));
-            if ($addonId !== '' && $addonName !== '') $addonNames[$addonId] = $addonName;
+            if ($addonId !== '') {
+                $addonDefinitions[$addonId] = $addon;
+                if ($addonName !== '') $addonNames[$addonId] = $addonName;
+            }
         }
     }
     $grouped = [];
@@ -602,6 +696,29 @@ function portalCurrentExtras(string $roomAllocationId): array {
         $grouped[$id]['Total'] = round($grouped[$id]['Total'] + max(0.0, (float)($row['Total'] ?? 0)), 2);
         $date = substr((string)($row['Date'] ?? ''), 0, 10);
         if ($date !== '') $grouped[$id]['Dates'][] = $date;
+    }
+    // Account transactions are authoritative once an extra has been posted.
+    // A linked negative row is a reversal, never another selected extra.
+    if ($reservationId !== '') {
+        $posted = [];
+        foreach (pmsTransactionItems($reservationId) as $row) {
+            $addonId = strtolower(trim((string)($row['AddonID'] ?? '')));
+            if ($addonId === '' || (float)($row['AmountInc'] ?? 0) <= 0 || !empty($row['IsReversed']) || !empty($row['ReversedTransactionItemID'])) continue;
+            if ((string)($row['RoomAllocationID'] ?? '') !== $roomAllocationId) continue;
+            if (!isset($posted[$addonId])) $posted[$addonId] = ['Id'=>(string)$row['AddonID'],'Name'=>$addonNames[$addonId] ?? (string)($row['Description'] ?? ''),'Quantity'=>0,'ChildQuantity'=>0,'Total'=>0.0,'Dates'=>[],'Status'=>'Posted'];
+            $perNight = !empty($addonDefinitions[$addonId]['IsPerNight']);
+            if ($perNight) {
+                $posted[$addonId]['Quantity'] = max($posted[$addonId]['Quantity'], max(0, (int)round((float)($row['Quantity'] ?? 0))));
+                $posted[$addonId]['ChildQuantity'] = max($posted[$addonId]['ChildQuantity'], max(0, (int)round((float)($row['QuantityChild'] ?? 0))));
+            } else {
+                $posted[$addonId]['Quantity'] += max(0, (int)round((float)($row['Quantity'] ?? 0)));
+                $posted[$addonId]['ChildQuantity'] += max(0, (int)round((float)($row['QuantityChild'] ?? 0)));
+            }
+            $posted[$addonId]['Total'] = round($posted[$addonId]['Total'] + max(0.0, (float)$row['AmountInc']), 2);
+            $date = substr((string)($row['PrintDate'] ?? $row['AccountingDate'] ?? ''), 0, 10);
+            if ($date !== '') $posted[$addonId]['Dates'][] = $date;
+        }
+        foreach ($posted as $id => $row) $grouped[$id] = $row;
     }
     return array_values($grouped);
 }
@@ -654,7 +771,8 @@ function pmsManagedReservationPayload(array $identity, string $surname, string $
     $outstanding = max(0.0, gpNumber($core['AmountOutstanding'] ?? null) ?? gpNumber($allocation['DepartureBalance'] ?? null) ?? 0.0);
     $departureBalance = max(0.0, gpNumber($allocation['DepartureBalance'] ?? null) ?? 0.0);
     $accommodationTotal = portalAccommodationTotal($roomAllocationId);
-    $currentExtras = portalCurrentExtras($roomAllocationId);
+    $currentExtras = portalCurrentExtras($roomAllocationId, $reservationId);
+    $profiles = pmsReservationProfiles($reservationId);
     $extrasTotal = array_sum(array_map(fn($extra) => max(0.0, (float)($extra['Total'] ?? 0)), $currentExtras));
     $bookingTotal = max($outstanding, $departureBalance, $accommodationTotal !== null ? $accommodationTotal + $extrasTotal : 0.0);
     $roomTotal = $accommodationTotal ?? $bookingTotal;
@@ -715,13 +833,16 @@ function pmsManagedReservationPayload(array $identity, string $surname, string $
             'PolicyText'=>'The original booking terms apply.',
             'RateDetails'=>[['RatePlanId'=>$ratePlanId,'RatePlanName'=>'Booked rate','RoomRate'=>$roomTotal]],
         ]],
+        'ProfileFields'=>$profiles['definitions'],
     ];
     $quote = cancellationQuote($reservation);
     return [
         'Reservation'=>$reservation,
         'Login'=>['ViewReservation'=>true,'UpdateGuestDetails'=>false,'SpecialRequests'=>false,'PayNow'=>false,'Cancel'=>false,'UpdateStayDates'=>false],
         'CurrentExtras'=>$currentExtras,
-        'PortalCapabilities'=>['Amend'=>true,'Extras'=>true,'Cancel'=>true],
+        'ProfileFieldDefinitions'=>$profiles['definitions'],
+        'StoredCard'=>array_diff_key(pmsSavedCard($roomAllocationId), ['token'=>true,'accountId'=>true,'reservationNumber'=>true]),
+        'PortalCapabilities'=>['Amend'=>true,'Extras'=>true,'Cancel'=>true,'ChargeCard'=>true],
         'PortalToken'=>issuePortalToken($confNum, $reservationId, $surname, $email, $quote),
         'CancellationQuote'=>$quote,
     ];
@@ -789,14 +910,19 @@ function loadManagedReservation(string $confNum, string $surname, string $email,
                 }
                 $reservation = $root['Reservation'];
             }
-            $root['CurrentExtras'] = portalCurrentExtras($roomAllocationId);
+            $coreReservationId = (string)($core['ReservationId'] ?? '');
+            $root['CurrentExtras'] = portalCurrentExtras($roomAllocationId, $coreReservationId);
+            $profiles = pmsReservationProfiles($coreReservationId);
+            $root['ProfileFieldDefinitions'] = $profiles['definitions'];
+            $root['Reservation']['ProfileFields'] = $profiles['definitions'];
+            $root['StoredCard'] = array_diff_key(pmsSavedCard($roomAllocationId), ['token'=>true,'accountId'=>true,'reservationNumber'=>true]);
         }
     }
     $quote = cancellationQuote($reservation);
     $root['PortalToken'] = issuePortalToken($confNum, $reservationId, $surname, $email, $quote);
     $root['CancellationQuote'] = $quote;
     if ($PMS_PRIVATE_WRITES) {
-        $root['PortalCapabilities'] = ['Amend'=>true, 'Extras'=>true, 'Cancel'=>true];
+        $root['PortalCapabilities'] = ['Amend'=>true, 'Extras'=>true, 'Cancel'=>true, 'ChargeCard'=>!empty($root['StoredCard']['available'])];
     }
     // ExtraInfo is an internal reception note. Guests may append a new request,
     // but must never read or replace staff notes already on the reservation.
@@ -1168,6 +1294,215 @@ function portalExtrasCatalog(string $confNum, array $tokenPayload): array {
     return is_array($payload) ? $payload : [];
 }
 
+/** Build the authoritative desired/current extras comparison from GuestPoint. */
+function portalExtrasPlan(string $confNum, array $tokenPayload, array $identity, array $items): array {
+    global $PROPERTY_ID;
+    $roomAllocationId = (string)$identity['allocations'][0]['RoomAllocationId'];
+    $reservationId = (string)$identity['reservationId'];
+    [$allocationStatus, $allocationRaw] = pmsCall('GET', 'Reservation/GetRoomAllocation?roomAllocationID=' . rawurlencode($roomAllocationId));
+    $allocation = json_decode($allocationRaw, true);
+    if ($allocationStatus !== 200 || !is_array($allocation) || (int)($allocation['Status'] ?? 0) !== 1) fail(409, 'This booking can no longer accept extras.');
+    $catalog = portalExtrasCatalog($confNum, $tokenPayload);
+    $eligible = [];
+    foreach ($catalog as $extra) if (is_array($extra) && !empty($extra['Id'])) $eligible[strtolower((string)$extra['Id'])] = $extra;
+    $requested = [];
+    foreach ($items as $item) {
+        if (!is_array($item) || !preg_match('/^[a-f0-9-]{36}$/i', (string)($item['id'] ?? ''))) fail(400, 'One of the selected extras is invalid.');
+        $key = strtolower((string)$item['id']);
+        if (!isset($eligible[$key])) fail(409, 'One of the selected extras is no longer offered for this booking.');
+        $requested[$key] = $item;
+    }
+    $currentRows = portalCurrentExtras($roomAllocationId, $reservationId);
+    $current = [];
+    foreach ($currentRows as $row) if (is_array($row) && !empty($row['Id'])) $current[strtolower((string)$row['Id'])] = $row;
+    $masters = pmsAddonDefinitions();
+    $adults = max(0, (int)($allocation['NumberAdults'] ?? 0));
+    $children = max(0, (int)($allocation['NumberChildren'] ?? 0));
+    $nights = max(1, (int)($allocation['NumberOfNights'] ?? 1));
+    $planItems = [];
+    foreach ($eligible as $key => $definition) {
+        $request = $requested[$key] ?? [];
+        $quantity = max(0, min(20, (int)($request['quantity'] ?? 0)));
+        $childQuantity = max(0, min(20, (int)($request['childQuantity'] ?? 0)));
+        $priceType = (string)($definition['PriceType'] ?? 'perBooking');
+        $checkoutType = strtolower((string)($definition['CheckoutType'] ?? 'quantity'));
+        $perPerson = in_array($priceType, ['perPerson','perPersonPerNight'], true);
+        $perNight = in_array($priceType, ['perNight','perPersonPerNight'], true);
+        if ($checkoutType === 'service') {
+            $selected = $quantity + $childQuantity > 0;
+            $quantity = $selected ? ($perPerson ? $adults : 1) : 0;
+            $childQuantity = $selected && $perPerson ? $children : 0;
+        } elseif ($perPerson) {
+            if ($quantity > $adults || $childQuantity > $children) fail(409, 'Extra quantities cannot exceed the guests on this booking.');
+        } else {
+            $max = (int)($definition['MaxItems'] ?? 0);
+            if ($max > 0 && $quantity + $childQuantity > $max) fail(409, 'That extra exceeds GuestPoint’s configured quantity limit.');
+        }
+        $rate = 0.0; $childRate = 0.0;
+        foreach (($definition['Prices'] ?? []) as $price) {
+            if (!is_array($price)) continue;
+            $name = strtolower((string)($price['Name'] ?? ''));
+            $value = round(max(0, (float)($price['Price'] ?? 0)), 2);
+            if (str_contains($name, 'child')) $childRate = $value;
+            elseif ($rate === 0.0 || str_contains($name, 'adult')) $rate = $value;
+        }
+        if ($childRate === 0.0) $childRate = $rate;
+        $multiplier = $perNight ? $nights : 1;
+        $total = round(($quantity * $rate + $childQuantity * $childRate) * $multiplier, 2);
+        $currentRow = $current[$key] ?? [];
+        $planItems[] = [
+            'id'=>(string)$definition['Id'], 'name'=>(string)($masters[$key]['Name'] ?? $definition['Name'] ?? 'Extra'),
+            'quantity'=>$quantity, 'childQuantity'=>$childQuantity, 'rate'=>$rate, 'childRate'=>$childRate,
+            'perNight'=>$perNight, 'nights'=>$nights, 'total'=>$total,
+            'currentTotal'=>round(max(0, (float)($currentRow['Total'] ?? 0)), 2),
+            'master'=>$masters[$key] ?? null,
+        ];
+    }
+    $currentTotal = round(array_sum(array_column($planItems, 'currentTotal')), 2);
+    $newTotal = round(array_sum(array_column($planItems, 'total')), 2);
+    $difference = round($newTotal - $currentTotal, 2);
+    $card = pmsSavedCard($roomAllocationId);
+    return ['roomAllocationId'=>$roomAllocationId,'reservationId'=>$reservationId,'allocation'=>$allocation,'items'=>$planItems,
+        'CurrentTotal'=>$currentTotal,'NewTotal'=>$newTotal,'Difference'=>$difference,'ChargeAmount'=>max(0.0,$difference),'CreditAmount'=>max(0.0,-$difference),
+        'card'=>$card,'CanComplete'=>$difference <= 0 || !empty($card['available'])];
+}
+
+function portalExtrasPublicQuote(array $plan): array {
+    $card = is_array($plan['card'] ?? null) ? $plan['card'] : [];
+    return ['CurrentTotal'=>$plan['CurrentTotal'],'NewTotal'=>$plan['NewTotal'],'Difference'=>$plan['Difference'],'ChargeAmount'=>$plan['ChargeAmount'],'CreditAmount'=>$plan['CreditAmount'],
+        'CanComplete'=>$plan['CanComplete'],'Card'=>['Available'=>!empty($card['available']),'Mask'=>(string)($card['mask'] ?? ''),'Expiry'=>(string)($card['expiry'] ?? ''),'Name'=>(string)($card['holder'] ?? '')]];
+}
+
+/** Post/reverse GuestPoint room-account extras and return the fresh rows. */
+function savePortalExtraTransactions(array $plan): array {
+    global $PROPERTY_ID;
+    $reservationId = (string)$plan['reservationId'];
+    $roomAllocationId = (string)$plan['roomAllocationId'];
+    $allocation = $plan['allocation'];
+    $transactions = pmsTransactionItems($reservationId);
+    $accounts = [];
+    [$accountStatus, $accountRaw] = pmsCall('GET', 'Accounts/GetTransactionAccounts?propertyID=' . rawurlencode($PROPERTY_ID));
+    $accountRows = json_decode($accountRaw, true);
+    if ($accountStatus === 200 && is_array($accountRows)) foreach ($accountRows as $account) if (is_array($account) && !empty($account['TransactionAccountID'])) $accounts[strtolower((string)$account['TransactionAccountID'])] = $account;
+    $now = new DateTimeImmutable('now', new DateTimeZone('Australia/Sydney'));
+    foreach ($plan['items'] as $desired) {
+        $addonId = (string)$desired['id'];
+        $activeIndexes = [];
+        $activeTotal = 0.0; $activeQuantity = 0; $activeChild = 0;
+        foreach ($transactions as $index => $row) {
+            if (strcasecmp((string)($row['AddonID'] ?? ''), $addonId) !== 0 || (string)($row['RoomAllocationID'] ?? '') !== $roomAllocationId || (float)($row['AmountInc'] ?? 0) <= 0 || !empty($row['IsReversed']) || !empty($row['ReversedTransactionItemID'])) continue;
+            $activeIndexes[] = $index; $activeTotal += (float)$row['AmountInc']; $activeQuantity += (int)round((float)($row['Quantity'] ?? 0)); $activeChild += (int)round((float)($row['QuantityChild'] ?? 0));
+        }
+        if (abs($activeTotal - (float)$desired['total']) < 0.005 && $activeQuantity === (int)$desired['quantity'] && $activeChild === (int)$desired['childQuantity']) continue;
+        foreach ($activeIndexes as $index) {
+            $original =& $transactions[$index];
+            $original['IsReversed'] = true;
+            $transactions[] = [
+                'TransactionItemID'=>uuidV4(),'PropertyID'=>$PROPERTY_ID,'TransactionAccountID'=>(string)$original['TransactionAccountID'],'TransactionType'=>(int)($original['TransactionType'] ?? 2),
+                'PersonID'=>(string)($original['PersonID'] ?? $allocation['PersonID'] ?? ''),'RoomAllocationID'=>$roomAllocationId,'AddonID'=>$addonId,
+                'AccountingDate'=>$now->format('Y-m-d\TH:i:s'),'PrintDate'=>$now->format('Y-m-d\T00:00:00'),'Quantity'=>(float)($original['Quantity'] ?? 0),'QuantityChild'=>(float)($original['QuantityChild'] ?? 0),
+                'Tax'=>0,'TaxRate'=>(float)($original['TaxRate'] ?? 0.1),'AmountInc'=>-abs((float)$original['AmountInc']),'Description'=>(string)($original['Description'] ?? $desired['name']),
+                'ReversedTransactionItemID'=>(string)$original['TransactionItemID'],'IsNotAllowedToReverse'=>false,'UpdatedLocal'=>0,
+            ];
+            unset($original);
+        }
+        if ((float)$desired['total'] <= 0) continue;
+        $master = is_array($desired['master']) ? $desired['master'] : [];
+        $transactionAccountId = (string)($master['TransactionAccountID'] ?? '');
+        if ($transactionAccountId === '') fail(409, 'GuestPoint has not assigned a transaction account to ' . $desired['name'] . '.');
+        $account = $accounts[strtolower($transactionAccountId)] ?? [];
+        $transactions[] = [
+            'TransactionItemID'=>uuidV4(),'PropertyID'=>$PROPERTY_ID,'TransactionAccountID'=>$transactionAccountId,'TransactionType'=>(int)($account['TransactionType'] ?? 2),
+            'PersonID'=>(string)($allocation['PersonID'] ?? ''),'RoomAllocationID'=>$roomAllocationId,'AddonID'=>$addonId,
+            'AccountingDate'=>$now->format('Y-m-d\TH:i:s'),'PrintDate'=>$now->format('Y-m-d\T00:00:00'),'Quantity'=>(float)$desired['quantity'],'QuantityChild'=>(float)$desired['childQuantity'],
+            'Tax'=>0,'TaxRate'=>(float)($account['TaxRate'] ?? 0.1),'AmountInc'=>(float)$desired['total'],'Description'=>(string)$desired['name'],'IsNotAllowedToReverse'=>false,'UpdatedLocal'=>0,
+        ];
+    }
+    [$saveStatus, $saveRaw] = pmsCall('POST', 'Accounts/SaveTransactionItemDetails?propertyID=' . rawurlencode($PROPERTY_ID) . '&addChangeLogs=true', $transactions);
+    $saved = json_decode($saveRaw, true);
+    if ($saveStatus < 200 || $saveStatus >= 300 || !is_array($saved)) fail(502, 'GuestPoint rejected the extra account changes. Nothing was charged.', $saveRaw);
+    return $saved;
+}
+
+/** Charge the exact positive extras delta to the saved card, as Phoenix does. */
+function chargePortalSavedCard(array $plan): array {
+    global $PROPERTY_ID, $PMS_USERNAME;
+    $amount = round((float)($plan['ChargeAmount'] ?? 0), 2);
+    if ($amount <= 0) return ['charged'=>false,'amount'=>0.0,'transactionId'=>null];
+    $card = $plan['card'] ?? [];
+    if (empty($card['available'])) fail(409, 'The saved card is unavailable or expired. The extras were not charged.');
+    $proxyPassword = pmsProxyPassword();
+    if ($proxyPassword === '') fail(502, 'GuestPoint did not supply the payment credential. The extras were not charged.');
+    $query = http_build_query([
+        'username'=>$PMS_USERNAME,'password'=>$proxyPassword,'propertyID'=>$PROPERTY_ID,'sourceApplication'=>'GuestPoint',
+        'creditCardPaymentInfo.amount'=>number_format($amount, 2, '.', ''),'creditCardPaymentInfo.reservationNumber'=>$card['reservationNumber'],
+        'creditCardPaymentInfo.isRefund'=>'false','creditCardPaymentInfo.isMotoRefund'=>'false','creditCardPaymentInfo.cCName'=>$card['holder'] ?? '',
+        'creditCardPaymentInfo.cCPartialNumber'=>$card['mask'] ?? '','creditCardPaymentInfo.cCTransactionAccountID'=>$card['accountId'],
+        'creditCardPaymentInfo.cCExpiry'=>$card['expiry'] ?? '','creditCardPaymentInfo.cCNumberToken'=>$card['token'],
+        'creditCardPaymentInfo.isUSedInFutureReservation'=>'false','creditCardPaymentInfo.isEftposTerminal'=>'false','creditCardPaymentInfo.selectedEftposTerminal'=>'','saveOnServer'=>'true',
+    ], '', '&', PHP_QUERY_RFC3986);
+    [$status, $raw] = pmsCall('POST', 'CreditCardVault/ProcessPaymentUsingProxyPost?' . $query);
+    $result = json_decode($raw, true);
+    if ($status < 200 || $status >= 300 || !is_array($result) || ($result['IsPaymentProcessed'] ?? false) !== true || abs((float)($result['Amount'] ?? 0) - $amount) > 0.005) {
+        fail(502, 'GuestPoint did not confirm the saved-card payment. Check the booking account before trying again.', $raw);
+    }
+    return ['charged'=>true,'amount'=>$amount,'transactionId'=>(string)($result['TransactionId'] ?? ''),'authCode'=>(string)($result['AuthCode'] ?? '')];
+}
+
+/** Post the calculated cancellation fee once to the reservation room account. */
+function postPortalCancellationFee(string $reservationId, string $roomAllocationId, array $allocation, float $fee): ?string {
+    global $PROPERTY_ID;
+    $fee = round(max(0.0, $fee), 2);
+    if ($fee <= 0) return null;
+    $transactions = pmsTransactionItems($reservationId);
+    foreach ($transactions as $row) {
+        if ((string)($row['RoomAllocationID'] ?? '') !== $roomAllocationId || !preg_match('/^Cancellation Fees?\b/i', (string)($row['Description'] ?? '')) || !empty($row['IsReversed']) || !empty($row['ReversedTransactionItemID'])) continue;
+        if (abs((float)($row['AmountInc'] ?? 0) - $fee) < 0.005) return (string)($row['TransactionItemID'] ?? '');
+    }
+    [$accountStatus, $accountRaw] = pmsCall('GET', 'Accounts/GetTransactionAccounts?propertyID=' . rawurlencode($PROPERTY_ID));
+    $accounts = json_decode($accountRaw, true);
+    $account = null;
+    if ($accountStatus === 200 && is_array($accounts)) {
+        foreach ($accounts as $candidate) if (is_array($candidate) && preg_match('/^Cancellation Fees?$/i', trim((string)($candidate['Name'] ?? '')))) { $account = $candidate; break; }
+        if ($account === null) foreach ($accounts as $candidate) if (is_array($candidate) && strcasecmp(trim((string)($candidate['Name'] ?? '')), 'Sundry') === 0) { $account = $candidate; break; }
+    }
+    if (!is_array($account) || empty($account['TransactionAccountID'])) fail(409, 'GuestPoint has no Cancellation Fees or Sundry transaction account. The booking was not cancelled.');
+    $now = new DateTimeImmutable('now', new DateTimeZone('Australia/Sydney'));
+    $id = uuidV4();
+    $transactions[] = [
+        'TransactionItemID'=>$id,'PropertyID'=>$PROPERTY_ID,'TransactionAccountID'=>(string)$account['TransactionAccountID'],'TransactionType'=>(int)($account['TransactionType'] ?? 2),
+        'PersonID'=>(string)($allocation['PersonID'] ?? ''),'RoomAllocationID'=>$roomAllocationId,'AccountingDate'=>$now->format('Y-m-d\TH:i:s'),'PrintDate'=>$now->format('Y-m-d\T00:00:00'),
+        'Quantity'=>1,'QuantityChild'=>0,'Tax'=>0,'TaxRate'=>(float)($account['TaxRate'] ?? 0.1),'AmountInc'=>$fee,'Description'=>'Cancellation Fees','IsNotAllowedToReverse'=>false,'UpdatedLocal'=>0,
+    ];
+    [$status, $raw] = pmsCall('POST', 'Accounts/SaveTransactionItemDetails?propertyID=' . rawurlencode($PROPERTY_ID) . '&addChangeLogs=true', $transactions);
+    $saved = json_decode($raw, true);
+    if ($status < 200 || $status >= 300 || !is_array($saved)) fail(502, 'GuestPoint rejected the cancellation fee. The booking was not cancelled.', $raw);
+    return $id;
+}
+
+/** Best-effort compensation when a later GuestPoint step rejects the change. */
+function reversePortalTransaction(string $reservationId, ?string $transactionId): bool {
+    global $PROPERTY_ID;
+    if ($transactionId === null || $transactionId === '') return true;
+    $transactions = pmsTransactionItems($reservationId);
+    $index = null;
+    foreach ($transactions as $i => $row) if ((string)($row['TransactionItemID'] ?? '') === $transactionId) { $index = $i; break; }
+    if ($index === null || !empty($transactions[$index]['IsReversed'])) return true;
+    $original =& $transactions[$index];
+    $original['IsReversed'] = true;
+    $now = new DateTimeImmutable('now', new DateTimeZone('Australia/Sydney'));
+    $transactions[] = [
+        'TransactionItemID'=>uuidV4(),'PropertyID'=>$PROPERTY_ID,'TransactionAccountID'=>(string)$original['TransactionAccountID'],'TransactionType'=>(int)($original['TransactionType'] ?? 2),
+        'PersonID'=>(string)($original['PersonID'] ?? ''),'RoomAllocationID'=>(string)($original['RoomAllocationID'] ?? ''),'AddonID'=>$original['AddonID'] ?? null,
+        'AccountingDate'=>$now->format('Y-m-d\TH:i:s'),'PrintDate'=>$now->format('Y-m-d\T00:00:00'),'Quantity'=>(float)($original['Quantity'] ?? 1),'QuantityChild'=>(float)($original['QuantityChild'] ?? 0),
+        'Tax'=>0,'TaxRate'=>(float)($original['TaxRate'] ?? 0.1),'AmountInc'=>-abs((float)($original['AmountInc'] ?? 0)),'Description'=>(string)($original['Description'] ?? 'Reversal'),
+        'ReversedTransactionItemID'=>$transactionId,'IsNotAllowedToReverse'=>false,'UpdatedLocal'=>0,
+    ];
+    unset($original);
+    [$status, $raw] = pmsCall('POST', 'Accounts/SaveTransactionItemDetails?propertyID=' . rawurlencode($PROPERTY_ID) . '&addChangeLogs=true', $transactions);
+    return $status >= 200 && $status < 300 && is_array(json_decode($raw, true));
+}
+
 // Test-site amendment bridge. Phoenix itself performs the final optimistic
 // concurrency check; we re-read the allocation after saving before claiming
 // success to the guest.
@@ -1242,6 +1577,58 @@ if ($endpoint === 'portal/amend') {
     send(200, ['Updated'=>true,'ConfNum'=>$confNum,'ArrivalDate'=>$verified['ArrivalDate'] ?? null,'NumberOfNights'=>$verified['NumberOfNights'] ?? null,'Adults'=>$adults,'Children'=>$children,'Infants'=>$infants,'AccommodationTotal'=>$priceQuote['total'],'DepartureBalance'=>$verified['DepartureBalance'] ?? null], ['Cache-Control'=>'no-store']);
 }
 
+if ($endpoint === 'portal/extras/quote' || $endpoint === 'portal/extras') {
+    $input = is_array($decodedBody) ? $decodedBody : [];
+    [$confNum, $tokenPayload, $identity] = requirePortalSession($input);
+    $items = is_array($input['Items'] ?? null) ? $input['Items'] : [];
+    if (!$items || count($items) > 20) fail(400, 'Submit the extras shown for this booking.');
+    if ($endpoint === 'portal/extras/quote') {
+        $plan = portalExtrasPlan($confNum, $tokenPayload, $identity, $items);
+        send(200, portalExtrasPublicQuote($plan), ['Cache-Control'=>'no-store']);
+    }
+    if (($input['Acknowledged'] ?? false) !== true) fail(400, 'Accept the displayed extra total and card charge before continuing.');
+    $lockPath = $CACHE_DIR . '/portal-extra-' . hash('sha256', (string)$identity['reservationId']) . '.lock';
+    $lock = @fopen($lockPath, 'c+');
+    if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) {
+        if ($lock) fclose($lock);
+        fail(409, 'Another extra or payment update is already being processed. Wait a moment and refresh the booking.');
+    }
+    $plan = portalExtrasPlan($confNum, $tokenPayload, $identity, $items);
+    if (($plan['CanComplete'] ?? false) !== true) {
+        flock($lock, LOCK_UN); fclose($lock);
+        fail(409, 'GuestPoint did not return a valid saved card for the additional amount. Nothing was changed.');
+    }
+    $saved = savePortalExtraTransactions($plan);
+    $payment = chargePortalSavedCard($plan);
+    if (!empty($payment['charged'])) {
+        $paymentVerified = false;
+        for ($attempt = 0; $attempt < 5 && !$paymentVerified; $attempt++) {
+            if ($attempt > 0) usleep(300000);
+            foreach (pmsTransactionItems((string)$plan['reservationId']) as $transaction) {
+                if ((int)($transaction['TransactionType'] ?? 0) !== 11 || (float)($transaction['AmountInc'] ?? 0) >= 0) continue;
+                if ($payment['transactionId'] !== '' && str_contains((string)($transaction['Description'] ?? ''), (string)$payment['transactionId']) && abs(abs((float)$transaction['AmountInc']) - (float)$payment['amount']) < 0.005) { $paymentVerified = true; break; }
+            }
+        }
+        if (!$paymentVerified) {
+            flock($lock, LOCK_UN); fclose($lock);
+            fail(502, 'GuestPoint approved the card charge but the room-account payment is still being verified. Do not retry this payment.');
+        }
+    }
+    $fresh = portalCurrentExtras((string)$plan['roomAllocationId'], (string)$plan['reservationId']);
+    $freshById = [];
+    foreach ($fresh as $row) if (is_array($row) && !empty($row['Id'])) $freshById[strtolower((string)$row['Id'])] = round((float)($row['Total'] ?? 0), 2);
+    foreach ($plan['items'] as $desired) {
+        if (abs(($freshById[strtolower((string)$desired['id'])] ?? 0.0) - (float)$desired['total']) > 0.005) {
+            flock($lock, LOCK_UN); fclose($lock);
+            fail(502, 'GuestPoint processed the request but the final extra total could not be verified. Check the booking account before retrying.');
+        }
+    }
+    flock($lock, LOCK_UN); fclose($lock);
+    send(200, ['Updated'=>true,'ConfNum'=>$confNum,'ChargeAmount'=>$payment['amount'],'CreditAmount'=>$plan['CreditAmount'],'Charged'=>$payment['charged'],'TransactionId'=>$payment['transactionId'],'CurrentExtras'=>$fresh], ['Cache-Control'=>'no-store']);
+}
+
+// Legacy future-add-on implementation retained temporarily for comparison with
+// older deployments. The authoritative branch above always exits first.
 if ($endpoint === 'portal/extras') {
     $input = is_array($decodedBody) ? $decodedBody : [];
     [$confNum, $tokenPayload, $identity] = requirePortalSession($input);
@@ -1417,6 +1804,57 @@ if ($endpoint === 'portal/update') {
         fail(400, 'Guest details are invalid.');
     }
 
+    // ETA, Car Rego and Dimentions are Phoenix allocation/profile fields. Save
+    // them through the same full-allocation endpoint used by the PMS so direct
+    // and Booking Engine reservations behave identically.
+    $changeKeys = array_keys($changes);
+    $pmsTravelUpdate = $PMS_PRIVATE_WRITES && !array_diff($changeKeys, ['EstimatedArrival','ProfileFields']) && (isset($changes['EstimatedArrival']) || isset($changes['ProfileFields']));
+    if ($pmsTravelUpdate) {
+        $identity = portalPmsIdentity($confNum, $tokenPayload);
+        if (($identity['reservationId'] ?? '') === '' || count($identity['allocations'] ?? []) !== 1) fail(409, 'This booking cannot update vehicle details online.');
+        $reservationId = (string)$identity['reservationId'];
+        $roomAllocationId = (string)$identity['allocations'][0]['RoomAllocationId'];
+        [$detailStatus, $detailRaw] = pmsCall('GET', 'Reservation/GetRoomAllocationDetail?roomAllocationID=' . rawurlencode($roomAllocationId));
+        $allocation = json_decode($detailRaw, true);
+        if ($detailStatus !== 200 || !is_array($allocation) || (int)($allocation['Status'] ?? 0) !== 1) fail(409, 'GuestPoint could not load the editable vehicle details. Nothing was changed.');
+        if (isset($changes['EstimatedArrival'])) {
+            $eta = DateTimeImmutable::createFromFormat('H:i', (string)$changes['EstimatedArrival']);
+            if (!$eta) fail(400, 'Enter a valid estimated arrival time.');
+            $allocation['Eta'] = $eta->format('h:i A');
+        }
+        if (isset($changes['ProfileFields'])) {
+            if (!is_array($changes['ProfileFields']) || count($changes['ProfileFields']) > 12) fail(400, 'Vehicle profile details are invalid.');
+            $profileData = pmsReservationProfiles($reservationId);
+            $allowedDefinitions = [];
+            foreach ($profileData['definitions'] as $definition) $allowedDefinitions[strtolower((string)$definition['Id'])] = $definition;
+            $profiles = is_array($allocation['_Profiles'] ?? null) ? $allocation['_Profiles'] : $profileData['values'];
+            foreach ($changes['ProfileFields'] as $field) {
+                if (!is_array($field)) fail(400, 'Vehicle profile details are invalid.');
+                $fieldId = strtolower(trim((string)($field['Id'] ?? $field['ExternalId'] ?? '')));
+                if (!isset($allowedDefinitions[$fieldId])) fail(400, 'Only Car Rego and vehicle dimensions can be changed here.');
+                $value = trim((string)($field['Value'] ?? ''));
+                if (strlen($value) > 120) fail(400, 'A vehicle detail is too long.');
+                $updated = false;
+                foreach ($profiles as &$profile) {
+                    if (is_array($profile) && strtolower((string)($profile['ProfileFieldID'] ?? '')) === $fieldId) { $profile['Value'] = $value; $updated = true; break; }
+                }
+                unset($profile);
+                if (!$updated) $profiles[] = ['ProfileID'=>uuidV4(),'ReservationID'=>$reservationId,'ProfileFieldID'=>$allowedDefinitions[$fieldId]['Id'],'Value'=>$value,'UpdatedLocal'=>0];
+            }
+            $allocation['_Profiles'] = $profiles;
+        }
+        [$saveStatus, $saveRaw] = pmsCall('POST', 'Reservation/SaveRoomAllocationEditWithVirtualRooms?propertyID=' . rawurlencode($PROPERTY_ID) . '&addChangeLogs=true', $allocation);
+        if ($saveStatus < 200 || $saveStatus >= 300) fail(502, 'GuestPoint rejected the arrival or vehicle details. Nothing was changed.', $saveRaw);
+        $verifiedProfiles = pmsReservationProfiles($reservationId);
+        foreach ($changes['ProfileFields'] ?? [] as $field) {
+            $fieldId = strtolower((string)($field['Id'] ?? $field['ExternalId'] ?? ''));
+            $match = null;
+            foreach ($verifiedProfiles['definitions'] as $candidate) if (strtolower((string)$candidate['Id']) === $fieldId) { $match = $candidate; break; }
+            if (!is_array($match) || (string)$match['Value'] !== trim((string)($field['Value'] ?? ''))) fail(502, 'GuestPoint saved the request but did not verify the vehicle profile values.');
+        }
+        send(200, ['Updated'=>true,'NotificationSent'=>null,'ProfileFields'=>$verifiedProfiles['definitions']], ['Cache-Control'=>'no-store']);
+    }
+
     $notificationText = '';
     if (isset($changes['AppendExtraInfo'])) {
         $notificationText = trim(strip_tags((string)$changes['AppendExtraInfo']));
@@ -1534,6 +1972,8 @@ if ($endpoint === 'portal/cancel') {
             'RoomStays'=>[['Arrival'=>$arrival,'Departure'=>$departure,'RoomTotal'=>$accommodationTotal,'IsCancelled'=>false]],
         ]);
 
+        $cancellationFeeTransactionId = postPortalCancellationFee((string)$identity['reservationId'], $roomAllocationId, $allocation, (float)($quote['fee'] ?? 0));
+
         $allocation['CancellationBookingValue'] = round((float)($quote['fee'] ?? 0), 2);
         $allocation['CancellationReason'] = 'Cancelled by guest through the online portal. Policy fee: $' . number_format((float)($quote['fee'] ?? 0), 2) . '; estimated refund: $' . number_format((float)($quote['refund'] ?? 0), 2) . '.';
         $allocation['CancelledAppuserID'] = (string)($allocation['UpdatedAppuserID'] ?? $allocation['CreatedAppuserID'] ?? '');
@@ -1541,11 +1981,17 @@ if ($endpoint === 'portal/cancel') {
         $allocation['IsDeleted'] = false;
         $allocation['Status'] = 4;
         [$cancelStatus, $cancelResponse, $cancelError] = pmsCall('POST', 'Reservation/SaveRoomAllocationWithVirtualRooms?propertyID=' . rawurlencode($PROPERTY_ID) . '&addChangeLogs=true', $allocation);
-        if ($cancelStatus < 200 || $cancelStatus >= 300) fail(502, 'GuestPoint rejected the cancellation. The booking remains active.', $cancelResponse ?: $cancelError);
+        if ($cancelStatus < 200 || $cancelStatus >= 300) {
+            $reversed = reversePortalTransaction((string)$identity['reservationId'], $cancellationFeeTransactionId);
+            fail(502, $reversed ? 'GuestPoint rejected the cancellation. The cancellation fee was reversed and the booking remains active.' : 'GuestPoint rejected the cancellation. Check the room account before retrying.', $cancelResponse ?: $cancelError);
+        }
         [$verifyStatus, $verifyRaw] = pmsCall('GET', 'Reservation/GetRoomAllocation?roomAllocationID=' . rawurlencode($roomAllocationId));
         $verified = json_decode($verifyRaw, true);
-        if ($verifyStatus !== 200 || !is_array($verified) || (int)($verified['Status'] ?? 0) !== 4) fail(502, 'GuestPoint did not verify the cancellation. Please check the booking in GuestPoint.');
-        send(200, ['Cancelled'=>true,'Message'=>'GuestPoint PMS has cancelled the reservation.','PolicyFee'=>$quote['fee'],'EstimatedRefund'=>$quote['refund'],'BookingValue'=>$bookingValue,'AccountBalance'=>$accountBalance,'DepartureValue'=>$departureValue,'GuestPoint'=>$verified], ['Cache-Control'=>'no-store']);
+        if ($verifyStatus !== 200 || !is_array($verified) || (int)($verified['Status'] ?? 0) !== 4) {
+            $reversed = reversePortalTransaction((string)$identity['reservationId'], $cancellationFeeTransactionId);
+            fail(502, $reversed ? 'GuestPoint did not verify the cancellation. The cancellation fee was reversed.' : 'GuestPoint did not verify the cancellation. Check the room account before retrying.');
+        }
+        send(200, ['Cancelled'=>true,'Message'=>'GuestPoint PMS has cancelled the reservation.','PolicyFee'=>$quote['fee'],'EstimatedRefund'=>$quote['refund'],'CancellationFeeTransactionId'=>$cancellationFeeTransactionId,'BookingValue'=>$bookingValue,'AccountBalance'=>$accountBalance,'DepartureValue'=>$departureValue,'GuestPoint'=>$verified], ['Cache-Control'=>'no-store']);
     }
 
     // Re-read the booking immediately before the destructive action. A valid
