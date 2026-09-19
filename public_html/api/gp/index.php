@@ -839,7 +839,11 @@ function pmsManagedReservationPayload(array $identity, string $surname, string $
         ]],
         'ProfileFields'=>$profiles['definitions'],
     ];
-    $quote = cancellationQuote($reservation);
+    // Quote from Phoenix so the figure the guest accepts is the one the cancel
+    // path will post; fall back to the reservation view only if Phoenix cannot
+    // answer, in which case portal/cancel refuses rather than guessing.
+    $phoenix = phoenixCancellationQuote($reservationId, $roomAllocationId, $allocation);
+    $quote = $phoenix['quote'] ?? cancellationQuote($reservation);
     return [
         'Reservation'=>$reservation,
         'Login'=>['ViewReservation'=>true,'UpdateGuestDetails'=>false,'SpecialRequests'=>false,'PayNow'=>false,'Cancel'=>false,'UpdateStayDates'=>false],
@@ -853,6 +857,58 @@ function pmsManagedReservationPayload(array $identity, string $surname, string $
 }
 
 /** Use the verified identity to fetch GuestPoint's complete management view. */
+/**
+ * The cancellation quote as Phoenix's own numbers produce it.
+ *
+ * The portal used to quote from the Booking Engine's manage view at lookup time
+ * and from these three Phoenix calculations at cancel time. The two disagree —
+ * a guest could accept a $30 fee and have $100 posted to their room account.
+ * Both ends now come through here, so the figure shown is the figure charged.
+ *
+ * Returns null when Phoenix cannot answer; the caller then falls back to the
+ * Booking Engine view, and the guard in portal/cancel refuses the cancellation
+ * rather than charging a number nobody agreed to.
+ */
+function phoenixCancellationQuote(string $reservationId, string $roomAllocationId, array $allocation): ?array {
+    global $PROPERTY_ID;
+    $emptyObject = (object)[];
+    [$bookingValueStatus, $bookingValueRaw] = pmsCall('POST', 'Accounts/CalcBookingValue?propertyID=' . rawurlencode($PROPERTY_ID) . '&roomAllocationID=' . rawurlencode($roomAllocationId), $emptyObject);
+    [$accountBalanceStatus, $accountBalanceRaw] = pmsCall('POST', 'Accounts/CalcRoomAccountBalance?propertyID=' . rawurlencode($PROPERTY_ID) . '&roomAllocationID=' . rawurlencode($roomAllocationId), $emptyObject);
+    [$departureValueStatus, $departureValueRaw] = pmsCall('POST', 'Accounts/CalculateDepartureValue?propertyID=' . rawurlencode($PROPERTY_ID) . '&roomAllocationID=' . rawurlencode($roomAllocationId) . '&reservationnID=' . rawurlencode($reservationId), $emptyObject);
+    $bookingValue = gpNumber(json_decode($bookingValueRaw, true));
+    $accountBalance = gpNumber(json_decode($accountBalanceRaw, true));
+    $departureValue = gpNumber(json_decode($departureValueRaw, true));
+    if ($bookingValueStatus !== 200 || $accountBalanceStatus !== 200 || $departureValueStatus !== 200
+        || $bookingValue === null || $accountBalance === null || $departureValue === null) return null;
+
+    $arrival = substr((string)($allocation['ArrivalDate'] ?? ''), 0, 10);
+    $nights = max(1, (int)($allocation['NumberOfNights'] ?? 1));
+    try { $departure = (new DateTimeImmutable($arrival))->modify('+' . $nights . ' days')->format('Y-m-d'); }
+    catch (Throwable $e) { return null; }
+    $accommodationTotal = portalAccommodationTotal($roomAllocationId) ?? max(0.0, $bookingValue);
+    return [
+        'quote'=>cancellationQuote([
+            'ReservationTotalAfterTax'=>max(0.0, $bookingValue),
+            'PaymentRequired'=>max(0.0, $departureValue),
+            'PayLater'=>max(0.0, $departureValue),
+            'RoomStays'=>[['Arrival'=>$arrival,'Departure'=>$departure,'RoomTotal'=>$accommodationTotal,'IsCancelled'=>false]],
+        ]),
+        'bookingValue'=>$bookingValue,
+        'accountBalance'=>$accountBalance,
+        'departureValue'=>$departureValue,
+        'accommodationTotal'=>$accommodationTotal,
+    ];
+}
+
+/** Do two quotes agree on the money the guest is being asked to accept? */
+function portalQuotesAgree(?array $accepted, array $fresh): bool {
+    if (!is_array($accepted)) return false;
+    foreach (['fee', 'refund'] as $field) {
+        if (abs(round((float)($accepted[$field] ?? 0), 2) - round((float)($fresh[$field] ?? 0), 2)) > 0.005) return false;
+    }
+    return true;
+}
+
 function loadManagedReservation(string $confNum, string $surname, string $email, bool $decorate = true): array {
     global $UPSTREAM, $PROPERTY_ID, $API_KEY;
     $manageBody = json_encode([
@@ -880,6 +936,7 @@ function loadManagedReservation(string $confNum, string $surname, string $email,
     // room balance from Core/Phoenix so a refresh never appears to undo a
     // change that the PMS has already accepted.
     global $PMS_PRIVATE_WRITES;
+    $phoenixQuote = null;
     if ($PMS_PRIVATE_WRITES) {
         $core = resolvePortalCoreReservation($confNum, $surname);
         $coreAllocations = is_array($core['Allocations'] ?? null) ? array_values($core['Allocations']) : [];
@@ -920,9 +977,15 @@ function loadManagedReservation(string $confNum, string $surname, string $email,
             $root['ProfileFieldDefinitions'] = $profiles['definitions'];
             $root['Reservation']['ProfileFields'] = $profiles['definitions'];
             $root['StoredCard'] = array_diff_key(pmsSavedCard($roomAllocationId), ['token'=>true,'accountId'=>true,'reservationNumber'=>true]);
+            if (is_array($pms ?? null)) {
+                $phoenix = phoenixCancellationQuote($coreReservationId, $roomAllocationId, $pms);
+                if (is_array($phoenix)) $phoenixQuote = $phoenix['quote'];
+            }
         }
     }
-    $quote = cancellationQuote($reservation);
+    // See phoenixCancellationQuote: both ends of the cancellation must quote
+    // from the same numbers or the guest accepts one fee and is charged another.
+    $quote = $phoenixQuote ?? cancellationQuote($reservation);
     $root['PortalToken'] = issuePortalToken($confNum, $reservationId, $surname, $email, $quote);
     $root['CancellationQuote'] = $quote;
     if ($PMS_PRIVATE_WRITES) {
@@ -2097,28 +2160,25 @@ if ($endpoint === 'portal/cancel') {
         }
 
         $emptyObject = (object)[];
-        [$bookingValueStatus, $bookingValueRaw] = pmsCall('POST', 'Accounts/CalcBookingValue?propertyID=' . rawurlencode($PROPERTY_ID) . '&roomAllocationID=' . rawurlencode($roomAllocationId), $emptyObject);
-        [$accountBalanceStatus, $accountBalanceRaw] = pmsCall('POST', 'Accounts/CalcRoomAccountBalance?propertyID=' . rawurlencode($PROPERTY_ID) . '&roomAllocationID=' . rawurlencode($roomAllocationId), $emptyObject);
-        [$departureValueStatus, $departureValueRaw] = pmsCall('POST', 'Accounts/CalculateDepartureValue?propertyID=' . rawurlencode($PROPERTY_ID) . '&roomAllocationID=' . rawurlencode($roomAllocationId) . '&reservationnID=' . rawurlencode((string)$identity['reservationId']), $emptyObject);
-        $bookingValue = gpNumber(json_decode($bookingValueRaw, true));
-        $accountBalance = gpNumber(json_decode($accountBalanceRaw, true));
-        $departureValue = gpNumber(json_decode($departureValueRaw, true));
-        if ($bookingValueStatus !== 200 || $accountBalanceStatus !== 200 || $departureValueStatus !== 200
-            || $bookingValue === null || $accountBalance === null || $departureValue === null) {
-            fail(502, 'GuestPoint could not calculate the cancellation values. Nothing was changed.');
-        }
+        $phoenix = phoenixCancellationQuote((string)$identity['reservationId'], $roomAllocationId, $allocation);
+        if ($phoenix === null) fail(502, 'GuestPoint could not calculate the cancellation values. Nothing was changed.');
+        $bookingValue = $phoenix['bookingValue'];
+        $accountBalance = $phoenix['accountBalance'];
+        $departureValue = $phoenix['departureValue'];
+        $fresh = $phoenix['quote'];
 
-        $arrival = substr((string)($allocation['ArrivalDate'] ?? ''), 0, 10);
-        $nights = max(1, (int)($allocation['NumberOfNights'] ?? 1));
-        try { $departure = (new DateTimeImmutable($arrival))->modify('+' . $nights . ' days')->format('Y-m-d'); }
-        catch (Throwable $e) { fail(502, 'GuestPoint returned invalid booking dates. Nothing was changed.'); }
-        $accommodationTotal = portalAccommodationTotal($roomAllocationId) ?? max(0.0, $bookingValue);
-        $quote = cancellationQuote([
-            'ReservationTotalAfterTax'=>max(0.0, $bookingValue),
-            'PaymentRequired'=>max(0.0, $departureValue),
-            'PayLater'=>max(0.0, $departureValue),
-            'RoomStays'=>[['Arrival'=>$arrival,'Departure'=>$departure,'RoomTotal'=>$accommodationTotal,'IsCancelled'=>false]],
-        ]);
+        // The guest ticked a box against specific figures, and those figures
+        // are inside the signed token. If the recalculation no longer matches
+        // them, the honest move is to refuse and re-quote — not to cancel the
+        // booking and post a fee nobody agreed to.
+        if (!portalQuotesAgree($quote, $fresh)) {
+            $money = fn($value) => '$' . number_format((float)$value, 2);
+            fail(409, 'The cancellation cost has changed since this page was opened.'
+                . ' You accepted a fee of ' . $money($quote['fee'] ?? 0) . ' with ' . $money($quote['refund'] ?? 0) . ' refunded;'
+                . ' it is now a fee of ' . $money($fresh['fee'] ?? 0) . ' with ' . $money($fresh['refund'] ?? 0) . ' refunded.'
+                . ' Nothing has been changed or charged. Please look up the booking again to see the current figures.');
+        }
+        $quote = $fresh;
 
         $cancellationFeeTransactionId = postPortalCancellationFee((string)$identity['reservationId'], $roomAllocationId, $allocation, (float)($quote['fee'] ?? 0));
 

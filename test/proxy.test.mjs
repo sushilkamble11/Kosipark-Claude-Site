@@ -16,7 +16,6 @@ import { startHarness } from "./harness/server.mjs";
 import { baseState, postedExtra, FIREWOOD, DRYING_ROOM } from "./harness/fixtures.mjs";
 
 const KNOWN_BROKEN = new Set([
-  "C3-mismatch-rejected",        // the recalculated fee is charged, not the accepted one
   "H2-partial-write-is-honest",  // the ETA persists but the response says nothing changed
   "M1-catalogue-size",           // a catalogue over 20 entries is rejected outright
 ]);
@@ -164,15 +163,28 @@ if (process.env.HARNESS_SLOW === "1") {
   check("C3-fee-posted-once", feeRows(state).length === 1, `${feeRows(state).length} cancellation fee rows`);
 }
 {
-  // The signed quote the guest accepted and the figure the cancel path
-  // recalculates disagree. Charging the recalculated one silently is how a
-  // guest who accepted $30 ends up billed $100.
-  const token = await scenario({ payLater: 300 });
-  h.patchState({ departureValue: 0 });
+  // The booking's money moves between the guest opening the page and ticking
+  // the box — here a deposit lands, which changes the refund. Charging the
+  // recalculated figure silently is how someone who accepted $30 is billed
+  // $100; the portal must refuse and re-quote instead.
+  const token = await scenario({ departureValue: 0 });
+  h.patchState({ departureValue: 300 });
   const { status, body } = await h.post("/portal/cancel", { ConfNum: "R1001", PortalToken: token, Acknowledged: true });
   const state = h.readState();
   check("C3-mismatch-rejected", status === 409 && feeRows(state).length === 0 && !state.cancelled,
     `status=${status} fees=${feeRows(state).length} cancelled=${!!state.cancelled} message=${body?.Error?.Message ?? body?.PolicyFee}`);
+  check("C3-mismatch-explains", /cost has changed/i.test(String(body?.Error?.Message ?? "")) && /Nothing has been changed or charged/i.test(String(body?.Error?.Message ?? "")),
+    "the refusal names both figures and says nothing was charged");
+}
+{
+  // The quote shown at lookup and the one the cancel path recalculates must
+  // come from the same numbers, or the guard above fires on every cancellation.
+  const token = await scenario({ departureValue: 300, payLater: 0 });
+  const lookup = await h.post("/portal/lookup", { ConfNum: "R1001", Surname: "Smith" });
+  const shown = (lookup.body?.data ?? lookup.body)?.CancellationQuote;
+  const { status, body } = await h.post("/portal/cancel", { ConfNum: "R1001", PortalToken: token, Acknowledged: true });
+  check("C3-quote-agrees-end-to-end", status === 200 && Math.abs(Number(body?.PolicyFee) - Number(shown?.fee)) < 0.005,
+    `shown fee=${shown?.fee} charged fee=${body?.PolicyFee}`);
 }
 {
   const token = await scenario({ tx: [{ TransactionItemID: "existing-fee", TransactionAccountID: "ACCT-FEE", TransactionType: 2, RoomAllocationID: baseState().roomAllocationId, AmountInc: 100, Description: "Cancellation Fees", Quantity: 1, QuantityChild: 0 }] });
