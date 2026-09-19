@@ -502,7 +502,9 @@ export function normaliseManagedReservation(payload) {
     bookingContact: r.BookingContact || null,
     permissions: { ViewReservation: true, ...(root.Login || {}) },
     portalCapabilities: root.PortalCapabilities || {},
+    profileFieldDefinitions: Array.isArray(root.ProfileFieldDefinitions) ? root.ProfileFieldDefinitions : [],
     currentExtras: Array.isArray(root.CurrentExtras) ? root.CurrentExtras : [],
+    storedCard: root.StoredCard || null,
     paymentDetails: root.PaymentDetails || null,
     paymentUrl: root.PaymentDetails && root.PaymentDetails.Session ? (root.PaymentDetails.Session.PayUrl || "") : "",
     sample: isUnconfigured(),
@@ -598,9 +600,22 @@ export function amendManagedReservation(confNum, proposal, portalToken, acknowle
 }
 
 /** Add the guest's selected live extras to the existing PMS room allocation. */
-export function addManagedExtras(confNum, items, portalToken, acknowledged = true) {
-  return request("POST", "/portal/extras", {
-    body: { ConfNum: confNum, Items: items, PortalToken: portalToken, Acknowledged: acknowledged === true }
+/**
+ * paymentMethod is the one the guest was shown and accepted ("card" or
+ * "account"). The server refuses the save if it no longer matches, so a card
+ * that appeared or expired between quoting and saving cannot silently change
+ * the deal.
+ */
+export function addManagedExtras(confNum, items, portalToken, acknowledged = true, paymentMethod = "") {
+  const body = { ConfNum: confNum, Items: items, PortalToken: portalToken, Acknowledged: acknowledged === true };
+  if (paymentMethod) body.PaymentMethod = paymentMethod;
+  return request("POST", "/portal/extras", { body });
+}
+
+/** Recalculate an extras change entirely in GuestPoint before showing consent. */
+export function quoteManagedExtras(confNum, items, portalToken) {
+  return request("POST", "/portal/extras/quote", {
+    body: { ConfNum: confNum, Items: items, PortalToken: portalToken }
   });
 }
 
@@ -1402,7 +1417,16 @@ async function mockResponse(method, path, params, body) {
         UpdateStayDates: b.rate === "Standard rate", RequirePhone: true, RequireAddress: false
       },
       PortalToken: "mock-portal-token",
-      CurrentExtras: b.ref === "1" ? [{ Id: "firewood", Name: "PMS firewood", Quantity: 2, ChildQuantity: 0, Total: 40, Dates: [b.arrival] }] : [],
+      PortalCapabilities: { Amend: true, Extras: true, Cancel: true, ChargeCard: true },
+      CurrentExtras: b.ref === "1"
+        ? [{ Id: "firewood", Name: "PMS firewood", Quantity: 2, ChildQuantity: 0, Total: 40, Dates: [b.arrival] }]
+        // KTP-48213 carries a deliberately stale per-person extra: one adult's
+        // worth on a booking of two adults and two children. That is what a
+        // per-person extra looks like after the party has been amended, and
+        // the portal has to offer to reprice it rather than hide the control.
+        : b.ref === "KTP-48213"
+        ? [{ Id: "drying-room", Name: "Drying room access", Quantity: 1, ChildQuantity: 0, Total: 15, Dates: [b.arrival] }]
+        : [],
       PaymentDetails: b.total > b.paid ? { Gateway: "GuestPoint Pay", Session: { PayUrl: "https://payments.example.invalid/pay/" + b.ref } } : null,
       Message: ""
     };
@@ -1410,6 +1434,42 @@ async function mockResponse(method, path, params, body) {
 
   if (path === "/portal/update") {
     return { Updated: true, NotificationSent: body && body.Notify ? true : null, GuestPoint: { Success: true } };
+  }
+
+  if (path === "/portal/extras/quote") {
+    const items = Array.isArray(body && body.Items) ? body.Items : [];
+    const total = items.reduce((sum, item) => sum + Math.max(0, Number(item.total) || 0), 0);
+    // Mirrors the live shape: the proxy always returns PaymentMethod, and
+    // PayableAtReception whenever the booking has no card to charge.
+    const charge = Math.max(0, total - 40);
+    return {
+      CurrentTotal: 40,
+      NewTotal: total,
+      Difference: total - 40,
+      ChargeAmount: charge,
+      CreditAmount: Math.max(0, 40 - total),
+      CanComplete: true,
+      PaymentMethod: charge > 0 ? "card" : "none",
+      PayableAtReception: 0,
+      Card: { Available: true, Mask: "4111******1111", Expiry: "12/30", Name: "Visa" }
+    };
+  }
+
+  if (path === "/portal/extras") {
+    if (!body || !body.PortalToken || !body.Acknowledged) {
+      const err = new Error("Accept the displayed extra total before continuing.");
+      err.status = 403;
+      throw err;
+    }
+    const items = Array.isArray(body.Items) ? body.Items : [];
+    const total = items.reduce((sum, item) => sum + Math.max(0, Number(item.total) || 0), 0);
+    return {
+      Updated: true,
+      Charged: total > 40,
+      ChargeAmount: Math.max(0, total - 40),
+      CreditAmount: Math.max(0, 40 - total),
+      TransactionId: total > 40 ? "mock-payment-transaction" : null
+    };
   }
 
   if (path === "/portal/cancel") {
@@ -1601,9 +1661,9 @@ async function mockResponse(method, path, params, body) {
     return [
       { Id: "drying-room", Name: "Drying room access",
         Description: "Somewhere warm for boots and jackets overnight.",
-        ExtraType: "checkout", CheckoutType: "quantity", MaxItems: 0,
+        ExtraType: "checkout", CheckoutType: "service", MaxItems: 1,
         PriceType: "perPersonPerNight", DisplayOrder: 1, Images: null,
-        Prices: perGuest(5, 3), RatePlans: [] },
+        Prices: perGuest(5, 5), RatePlans: [] },
       { Id: "firewood", Name: "Premium seasoned firewood",
         Description: "A bag of dry hardwood, collected from reception.",
         ExtraType: "checkout", CheckoutType: "quantity", MaxItems: 6,
@@ -1640,6 +1700,7 @@ async function mockResponse(method, path, params, body) {
   if (path === "/beprofilefields") {
     return [
       { ExternalId: "vehicle-rego", Name: "Vehicle registration", FieldType: "text", AppliesTo: "reservation", Required: true },
+      { ExternalId: "vehicle-dimensions", Name: "Dimentions", FieldType: "text", AppliesTo: "reservation", Required: false },
       { ExternalId: "vehicle-make", Name: "Vehicle make and model", FieldType: "text", AppliesTo: "reservation", Required: true },
       { ExternalId: "arrival-time", Name: "Estimated arrival time", FieldType: "text", AppliesTo: "reservation", Required: false },
       { ExternalId: "how-heard", Name: "How did you hear about us?", FieldType: "lookup", AppliesTo: "person", Required: false,

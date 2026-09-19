@@ -64,11 +64,24 @@ await page.getByRole("button", { name: "View extras" }).click();
 await page.getByText("Drying room access").waitFor({ timeout: 5000 });
 pass(await page.getByText("PMS firewood", { exact: true }).isVisible(), "the attached PMS extra name replaces a generic catalogue label");
 pass(await page.getByText(/Already on booking: 2 · \$40/).isVisible(), "existing GuestPoint extras and quantities are shown");
-await page.getByRole("button", { name: /Increase PMS firewood/i }).click();
-await page.getByText(/Selected future extras: \$/).waitFor({ timeout: 3000 });
-pass(await page.getByText(/Selected future extras: \$/).isVisible(), "amended extras show a calculated total");
-await page.getByRole("button", { name: "Remove", exact: true }).nth(1).click();
-pass(await page.getByText(/Selected future extras: \$0/).isVisible(), "an existing extra can be marked for removal");
+await page.getByRole("button", { name: /Add Drying room access/i }).click();
+await page.getByText(/Selected extras: \$/).waitFor({ timeout: 3000 });
+pass(await page.getByText(/Selected extras: \$70/).isVisible(), "per-person-per-night service uses every guest and night");
+await page.getByRole("button", { name: "Review price and payment" }).click();
+await page.getByText("GuestPoint has confirmed this change").waitFor({ timeout: 3000 });
+pass(await page.getByText(/saved card 4111\*+1111/).isVisible(), "the exact saved-card charge is shown before consent");
+// Matched through the <label> rather than the text node's parent: the consent
+// wording is now a binding (it changes when the booking has no saved card), and
+// the renderer wraps interpolated text in its own element. Asserting that one
+// label carries both the wording and the checkbox is the guarantee that matters.
+const extrasCheckbox = page.locator("label").filter({ hasText: /authorise the displayed charge/i }).getByRole("checkbox");
+await extrasCheckbox.check();
+await page.getByRole("button", { name: "Charge card and update extras" }).click();
+await page.getByText("Extras updated in GuestPoint").waitFor({ timeout: 3000 });
+pass(await page.getByText(/charged \$30/).isVisible(), "accepted extras charge is confirmed");
+
+await page.getByRole("button", { name: "Arrival & vehicles" }).click();
+pass(await page.getByPlaceholder("7m x 5m").isVisible(), "vehicle dimensions are captured alongside car registration");
 
 await page.getByRole("button", { name: "Add another stay" }).click();
 pass(await page.getByText("Go to the booking page?").isVisible(), "adding another stay warns before leaving");
@@ -96,6 +109,26 @@ pass(pageErrors.length === 0, "portal interactions have no page errors");
 await page.getByRole("button", { name: "Look up another booking" }).click();
 await page.getByRole("button", { name: "Continue" }).click();
 pass(await page.getByRole("button", { name: "Find my booking" }).isVisible(), "Continue returns to the booking lookup form");
+
+// A per-person extra left over from a smaller party must be offered for
+// repricing without the guest touching a stepper. Deriving both the current
+// and the desired selection from the new party size made them identical, so
+// the review panel stayed hidden — the portal could tell a guest to review
+// their extras after a guest-number change and then show no way to do it.
+await page.getByPlaceholder("Reservation number or channel booking ref").fill("KTP-48213");
+await page.getByPlaceholder("Nguyen").fill("Nguyen");
+await page.getByRole("button", { name: "Find my booking" }).click();
+await page.getByText("Booking reference: KTP-48213").waitFor({ timeout: 8000 });
+await page.getByRole("button", { name: "View extras", exact: true }).click();
+await page.getByText(/Already on booking/i).first().waitFor({ timeout: 8000 });
+const reprice = page.getByRole("button", { name: /Review price and payment/i });
+pass(await reprice.count() > 0, "a stale per-person extra offers a reprice with no stepper interaction");
+await reprice.first().click();
+await page.getByText("GuestPoint has confirmed this change").waitFor({ timeout: 8000 });
+pass(await page.getByText(/Extras already on booking/i).isVisible(), "the reprice quote breaks down current and new extras totals");
+const acceptExtras = page.getByRole("button", { name: /Charge card and update extras|Confirm extra changes/i }).first();
+pass(!(await acceptExtras.isEnabled()), "the extras charge stays locked until the guest accepts it");
+pass(pageErrors.length === 0, "the extras reprice flow has no page errors");
 
 await browser.close();
 server.kill();
