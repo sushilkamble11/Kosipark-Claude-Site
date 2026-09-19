@@ -16,7 +16,6 @@ import { startHarness } from "./harness/server.mjs";
 import { baseState, postedExtra, FIREWOOD, DRYING_ROOM } from "./harness/fixtures.mjs";
 
 const KNOWN_BROKEN = new Set([
-  "C1-pending",                  // a confirmed charge is reported to the guest as a 502
   "C2-reversed",                 // a declined charge leaves the extras posted
   "C2-no-free-extras",           // ...so the retry prices the delta at zero
   "C3-mismatch-rejected",        // the recalculated fee is charged, not the accepted one

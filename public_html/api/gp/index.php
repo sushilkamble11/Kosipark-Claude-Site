@@ -86,6 +86,10 @@ const UPSTREAM_TIMEOUT    = 20;           // seconds
 // booking-management flows.
 const RESERVATION_LIMIT   = 60;           // per IP
 const RESERVATION_WINDOW  = 300;          // seconds
+// How long to wait for GuestPoint to post the room-account row for a charge it
+// has already confirmed. Short on purpose: exceeding it reports the payment as
+// pending verification, never as a failure.
+const PAYMENT_VERIFY_BUDGET = 3.0;        // seconds
 
 // ----------------------------------------------------------- small utils ----
 
@@ -1449,6 +1453,57 @@ function chargePortalSavedCard(array $plan): array {
     return ['charged'=>true,'amount'=>$amount,'transactionId'=>(string)($result['TransactionId'] ?? ''),'authCode'=>(string)($result['AuthCode'] ?? '')];
 }
 
+/**
+ * Identify the room-account payment rows already on a reservation.
+ *
+ * GuestPoint posts its own TransactionType 11 row when ProcessPaymentUsingProxyPost
+ * succeeds, so the proxy must never post one itself — it would double-count the
+ * payment. Verification is therefore "did a new negative type-11 row appear",
+ * which is why we need the set that existed beforehand.
+ *
+ * @return array<string,true> keyed by TransactionItemID
+ */
+function portalPaymentRowIds(array $transactions): array {
+    $ids = [];
+    foreach ($transactions as $row) {
+        if (!is_array($row) || (int)($row['TransactionType'] ?? 0) !== 11) continue;
+        $id = trim((string)($row['TransactionItemID'] ?? ''));
+        if ($id !== '') $ids[$id] = true;
+    }
+    return $ids;
+}
+
+/**
+ * Wait, briefly, for GuestPoint to post the payment row for a charge we already
+ * know succeeded.
+ *
+ * Matching on the gateway reference appearing inside the row description is not
+ * reliable: the description format is not documented anywhere in this repo. A
+ * new row that was not there before, of the right sign and amount, is the
+ * signal we can actually depend on; the reference is accepted as well when it
+ * does show up.
+ *
+ * Returns false only when the row has not appeared yet. That is a reporting
+ * delay, never a reason to tell the guest their payment failed.
+ */
+function awaitPortalPaymentRow(string $reservationId, array $knownPaymentRowIds, float $amount, string $reference, float $deadline): bool {
+    for ($attempt = 0; $attempt < 6; $attempt++) {
+        if ($attempt > 0) {
+            if (microtime(true) >= $deadline) return false;
+            usleep(400000);
+        }
+        foreach (pmsTransactionItems($reservationId) as $row) {
+            if ((int)($row['TransactionType'] ?? 0) !== 11) continue;
+            $rowAmount = (float)($row['AmountInc'] ?? 0);
+            if ($rowAmount >= 0 || abs(abs($rowAmount) - $amount) > 0.005) continue;
+            $id = trim((string)($row['TransactionItemID'] ?? ''));
+            if ($id !== '' && !isset($knownPaymentRowIds[$id])) return true;
+            if ($reference !== '' && str_contains((string)($row['Description'] ?? ''), $reference)) return true;
+        }
+    }
+    return false;
+}
+
 /** Post the calculated cancellation fee once to the reservation room account. */
 function postPortalCancellationFee(string $reservationId, string $roomAllocationId, array $allocation, float $fee): ?string {
     global $PROPERTY_ID;
@@ -1599,32 +1654,44 @@ if ($endpoint === 'portal/extras/quote' || $endpoint === 'portal/extras') {
         fail(409, 'GuestPoint did not return a valid saved card for the additional amount. Nothing was changed.');
     }
     $saved = savePortalExtraTransactions($plan);
+    // The rows already on the account before we charge. GuestPoint posts its
+    // own payment row, so a *new* one appearing is the proof we look for.
+    $knownPaymentRowIds = portalPaymentRowIds(is_array($saved) ? $saved : []);
     $payment = chargePortalSavedCard($plan);
+
+    $paymentPending = false;
     if (!empty($payment['charged'])) {
-        $paymentVerified = false;
-        for ($attempt = 0; $attempt < 5 && !$paymentVerified; $attempt++) {
-            if ($attempt > 0) usleep(300000);
-            foreach (pmsTransactionItems((string)$plan['reservationId']) as $transaction) {
-                if ((int)($transaction['TransactionType'] ?? 0) !== 11 || (float)($transaction['AmountInc'] ?? 0) >= 0) continue;
-                if ($payment['transactionId'] !== '' && str_contains((string)($transaction['Description'] ?? ''), (string)$payment['transactionId']) && abs(abs((float)$transaction['AmountInc']) - (float)$payment['amount']) < 0.005) { $paymentVerified = true; break; }
-            }
-        }
-        if (!$paymentVerified) {
-            flock($lock, LOCK_UN); fclose($lock);
-            fail(502, 'GuestPoint approved the card charge but the room-account payment is still being verified. Do not retry this payment.');
-        }
+        $paymentPending = !awaitPortalPaymentRow(
+            (string)$plan['reservationId'], $knownPaymentRowIds,
+            (float)$payment['amount'], (string)$payment['transactionId'],
+            microtime(true) + PAYMENT_VERIFY_BUDGET
+        );
     }
+
     $fresh = portalCurrentExtras((string)$plan['roomAllocationId'], (string)$plan['reservationId']);
     $freshById = [];
     foreach ($fresh as $row) if (is_array($row) && !empty($row['Id'])) $freshById[strtolower((string)$row['Id'])] = round((float)($row['Total'] ?? 0), 2);
+    $extrasPending = false;
     foreach ($plan['items'] as $desired) {
-        if (abs(($freshById[strtolower((string)$desired['id'])] ?? 0.0) - (float)$desired['total']) > 0.005) {
-            flock($lock, LOCK_UN); fclose($lock);
-            fail(502, 'GuestPoint processed the request but the final extra total could not be verified. Check the booking account before retrying.');
-        }
+        if (abs(($freshById[strtolower((string)$desired['id'])] ?? 0.0) - (float)$desired['total']) > 0.005) { $extrasPending = true; break; }
     }
+    // Once the card has been charged, an unverified read is a reporting delay,
+    // not a failure. Returning an error here is what made a completed payment
+    // look to the guest like nothing had happened.
+    if ($extrasPending && empty($payment['charged'])) {
+        flock($lock, LOCK_UN); fclose($lock);
+        fail(502, 'GuestPoint processed the request but the final extra total could not be verified. Check the booking account before retrying.');
+    }
+
     flock($lock, LOCK_UN); fclose($lock);
-    send(200, ['Updated'=>true,'ConfNum'=>$confNum,'ChargeAmount'=>$payment['amount'],'CreditAmount'=>$plan['CreditAmount'],'Charged'=>$payment['charged'],'TransactionId'=>$payment['transactionId'],'CurrentExtras'=>$fresh], ['Cache-Control'=>'no-store']);
+    send(200, [
+        'Updated'=>true, 'ConfNum'=>$confNum,
+        'ChargeAmount'=>$payment['amount'], 'CreditAmount'=>$plan['CreditAmount'],
+        'Charged'=>$payment['charged'], 'TransactionId'=>$payment['transactionId'],
+        'PaymentPendingVerification'=>$paymentPending,
+        'ExtrasPendingVerification'=>$extrasPending,
+        'CurrentExtras'=>$fresh,
+    ], ['Cache-Control'=>'no-store']);
 }
 
 // Legacy future-add-on implementation retained temporarily for comparison with

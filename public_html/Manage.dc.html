@@ -891,7 +891,19 @@ class Component extends DCLogic {
           const result = await this.gp.addManagedExtras(b.ref, this.extrasItems(), b.portalToken, true);
           if (!result || result.Updated !== true) throw new Error("not-confirmed");
           const charged = Number(result.ChargeAmount || 0);
-          this.setState(x => ({ requestSaving: false, extrasQuote: null, extrasAccepted: false, initialExtras: JSON.parse(JSON.stringify(x.selectedExtras)), confirm: { title: "Extras updated in GuestPoint", body: charged > 0 ? "GuestPoint added the extras and charged " + Component.money(charged) + " to the saved card." : "GuestPoint confirmed the revised extras on this booking." } }));
+          // A charge GuestPoint has confirmed but not yet shown on the room
+          // account is a reporting delay. Say so plainly rather than implying
+          // the guest needs to do anything about it.
+          const pending = result.PaymentPendingVerification === true || result.ExtrasPendingVerification === true;
+          const body = charged > 0
+            ? "GuestPoint added the extras and charged " + Component.money(charged) + " to the saved card."
+              + (pending ? " Reception's copy of the account may take a few minutes to catch up. Do not pay again." : "")
+            : "GuestPoint confirmed the revised extras on this booking."
+              + (pending ? " Reception's copy of the account may take a few minutes to catch up." : "");
+          this.setState(x => ({ requestSaving: false, extrasQuote: null, extrasAccepted: false,
+            booking: { ...x.booking, currentExtras: Array.isArray(result.CurrentExtras) ? result.CurrentExtras : x.booking.currentExtras },
+            initialExtras: JSON.parse(JSON.stringify(x.selectedExtras)),
+            confirm: { title: "Extras updated in GuestPoint", body } }));
         } catch (e) { this.setState({ requestSaving: false, extrasAccepted: false, confirm: { title: "Extras not updated", body: e && e.message ? e.message : "GuestPoint did not verify the extras or payment. Do not retry until the booking account has been checked." } }); }
       },
       addStayUrl,
