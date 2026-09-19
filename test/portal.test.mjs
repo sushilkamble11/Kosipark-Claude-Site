@@ -80,6 +80,7 @@ assert.match(proxySource, /function resolvePortalBookingIdentity/, "portal resol
 assert.match(proxySource, /GetReservationDetailByRoomAllocationWithCurrentPackage/, "portal reads the channel reference behind a PMS reservation number");
 assert.match(proxySource, /'manageReference'\s*=>\s*\$numbers\['bookingReference'\]/, "portal canonicalises lookup to the channel reference required by manage");
 assert.match(proxySource, /function pmsManagedReservationPayload/, "Phoenix-only reservations receive a managed portal view");
+assert.match(proxySource, /A reservation created directly in Phoenix has no Booking Engine[\s\S]*PackageID/, "Phoenix-only reservations use their PMS room and package for server-side amendment repricing");
 assert.match(proxySource, /Phoenix excludes cancelled allocations[\s\S]*GetRoomAllocation\?roomAllocationID=/, "cancelled Phoenix bookings fall back to the read-only allocation endpoint");
 assert.match(proxySource, /function portalCurrentExtras/, "existing Phoenix add-ons are returned to the portal");
 assert.match(proxySource, /function portalAccommodationTotal/, "cancellation fees use accommodation charges without optional extras");
