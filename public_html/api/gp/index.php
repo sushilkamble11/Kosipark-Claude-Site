@@ -995,20 +995,43 @@ function managedRoot(array $payload): array {
  * plan, capacity, closures and nightly prices are all resolved server-side.
  */
 function portalStayQuote(string $confNum, array $tokenPayload, string $arrival, string $departure, int $adults, int $children, bool $requireInventory): array {
-    global $UPSTREAM, $PROPERTY_ID, $API_KEY;
+    global $UPSTREAM, $PROPERTY_ID, $API_KEY, $PMS_PRIVATE_WRITES;
     [$manageStatus, $managePayload] = loadManagedReservation(
         $confNum,
         (string)($tokenPayload['sn'] ?? ''),
         (string)($tokenPayload['em'] ?? ''),
         false
     );
-    if ($manageStatus < 200 || $manageStatus >= 300 || !is_array($managePayload)) {
-        fail(502, 'GuestPoint could not load the original room and rate. Nothing was changed.');
+    $stays = [];
+    if ($manageStatus >= 200 && $manageStatus < 300 && is_array($managePayload)) {
+        $root = managedRoot($managePayload);
+        $reservation = is_array($root['Reservation'] ?? null) ? $root['Reservation'] : [];
+        $stays = array_values(array_filter($reservation['RoomStays'] ?? [], fn($s) => is_array($s) && empty($s['IsCancelled'])));
+    } elseif ($PMS_PRIVATE_WRITES) {
+        // A reservation created directly in Phoenix has no Booking Engine
+        // management record. Its signed portal session has already been
+        // verified against Core, so use the authoritative Phoenix allocation
+        // to identify the original room type and package before re-pricing.
+        $identity = portalPmsIdentity($confNum, $tokenPayload);
+        $reservationId = (string)($identity['reservationId'] ?? '');
+        if ($reservationId !== '' && count($identity['allocations'] ?? []) === 1) {
+            [$detailsStatus, $detailsRaw] = pmsCall('GET', 'Reservation/GetRoomAllocationDetail2sByReservation?reservationID=' . rawurlencode($reservationId));
+            $details = json_decode($detailsRaw, true);
+            if ($detailsStatus === 200 && is_array($details) && count($details) === 1 && is_array($details[0])) {
+                $allocation = $details[0];
+                $roomType = is_array($allocation['_RoomType'] ?? null) ? $allocation['_RoomType'] : [];
+                $stays = [[
+                    'RoomTypeId'=>(string)($allocation['RoomTypeID'] ?? ''),
+                    'RoomTypeName'=>(string)($roomType['Name'] ?? $roomType['RoomType'] ?? ''),
+                    'RateDetails'=>[[
+                        'RatePlanId'=>(string)($allocation['PackageID'] ?? ''),
+                        'RatePlanName'=>'',
+                    ]],
+                ]];
+            }
+        }
     }
-    $root = managedRoot($managePayload);
-    $reservation = is_array($root['Reservation'] ?? null) ? $root['Reservation'] : [];
-    $stays = array_values(array_filter($reservation['RoomStays'] ?? [], fn($s) => is_array($s) && empty($s['IsCancelled'])));
-    if (count($stays) !== 1) fail(409, 'This portal can only re-price a booking with one accommodation. Nothing was changed.');
+    if (count($stays) !== 1) fail(502, 'GuestPoint could not load the original room and rate. Nothing was changed.');
     $stay = $stays[0];
     $roomTypeId = (string)($stay['RoomTypeId'] ?? '');
     $roomTypeName = strtolower(trim((string)($stay['RoomTypeName'] ?? '')));

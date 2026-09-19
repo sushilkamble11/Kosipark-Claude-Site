@@ -695,7 +695,7 @@ class Component extends DCLogic {
           this.setState(x => ({ requestSaving: false, mode: null, policyAccepted: false,
             booking: { ...x.booking, checkIn: q.proposal.checkIn, checkOut: q.proposal.checkOut },
             confirm: { title: "Dates changed in GuestPoint", body: "GuestPoint PMS confirmed the new arrival date and stay length. The room account remains visible for payment and reconciliation." } }));
-        } catch (e) { this.setState({ requestSaving: false, confirm: { title: "Dates not changed", body: "GuestPoint did not verify the amendment. Nothing has been claimed as complete." } }); }
+        } catch (e) { this.setState({ requestSaving: false, confirm: { title: "Dates not changed", body: e && e.message ? e.message : "GuestPoint did not verify the amendment. Nothing has been claimed as complete." } }); }
       },
 
       partyFields: [
@@ -730,7 +730,7 @@ class Component extends DCLogic {
           this.setState(x => ({ requestSaving: false, mode: null, policyAccepted: false,
             booking: { ...x.booking, adults: s.adults, children: s.children, infants: s.infants },
             confirm: { title: "Guest numbers changed in GuestPoint", body: "GuestPoint PMS confirmed the revised adults, children and infants for this room." } }));
-        } catch (e) { this.setState({ requestSaving: false, confirm: { title: "Guest numbers not changed", body: "GuestPoint did not verify the amendment. Nothing has been claimed as complete." } }); }
+        } catch (e) { this.setState({ requestSaving: false, confirm: { title: "Guest numbers not changed", body: e && e.message ? e.message : "GuestPoint did not verify the amendment. Nothing has been claimed as complete." } }); }
       },
 
       guestFields: [
