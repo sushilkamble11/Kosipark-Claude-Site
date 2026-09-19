@@ -15,9 +15,7 @@
 import { startHarness } from "./harness/server.mjs";
 import { baseState, postedExtra, FIREWOOD, DRYING_ROOM } from "./harness/fixtures.mjs";
 
-const KNOWN_BROKEN = new Set([
-  "M1-catalogue-size",           // a catalogue over 20 entries is rejected outright
-]);
+const KNOWN_BROKEN = new Set([]);
 
 const results = { pass: 0, fail: 0, xfail: 0, xpass: 0 };
 const failures = [];
@@ -219,11 +217,24 @@ if (process.env.HARNESS_SLOW === "1") {
 
 // ------------------------------------------ catalogue size (M1) -------------
 {
-  const token = await scenario();
-  const big = Array.from({ length: 24 }, (_, i) => ({ id: `aaaaaaaa-aaaa-4aaa-8aaa-${String(i).padStart(12, "0")}`, quantity: 0, childQuantity: 0, total: 0 }));
-  big.push(firewood(1, 20));
-  const { status } = await h.post("/portal/extras/quote", { ConfNum: "R1001", PortalToken: token, Items: big });
-  check("M1-catalogue-size", status !== 400, `a 25-entry catalogue selection returned ${status}`);
+  // The portal sends one entry per displayed extra, zeros included, because an
+  // extra left out of the list reads as removed. A fixed cap of 20 therefore
+  // killed the feature outright the moment the catalogue outgrew it.
+  const base = baseState();
+  const wide = Array.from({ length: 25 }, (_, i) => ({
+    Id: `bbbbbbbb-bbbb-4bbb-8bbb-${String(i).padStart(12, "0")}`,
+    Name: `Extra ${i}`, Description: "", ExtraType: "checkout", CheckoutType: "quantity",
+    MaxItems: 4, PriceType: "perBooking", DisplayOrder: i, Images: null,
+    Prices: [{ Id: "p1", Name: "", Price: 10 }], RatePlans: [],
+  }));
+  const token = await scenario({
+    catalog: [...base.catalog, ...wide],
+    addons: [...base.addons, ...wide.map(x => ({ AddonID: x.Id, Name: x.Name, TransactionAccountID: "ACCT-1", IsPerNight: false }))],
+  });
+  const selection = [firewood(0, 0), dryingRoom(false), ...wide.map((x, i) => ({ id: x.Id, quantity: i === 0 ? 1 : 0, childQuantity: 0, total: i === 0 ? 10 : 0 }))];
+  const { status, body } = await h.post("/portal/extras/quote", { ConfNum: "R1001", PortalToken: token, Items: selection });
+  check("M1-catalogue-size", status === 200 && body?.NewTotal === 10,
+    `a ${selection.length}-entry selection over a 27-extra catalogue returned ${status} / NewTotal ${body?.NewTotal}`);
 }
 
 // ------------------------------------------ session security ----------------

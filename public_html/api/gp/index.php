@@ -90,6 +90,9 @@ const RESERVATION_WINDOW  = 300;          // seconds
 // has already confirmed. Short on purpose: exceeding it reports the payment as
 // pending verification, never as a failure.
 const PAYMENT_VERIFY_BUDGET = 3.0;        // seconds
+// Abuse guard only. The meaningful limit is the size of the eligible extras
+// catalogue, which portalExtrasPlan checks once it has fetched it.
+const MAX_EXTRAS_ITEMS    = 200;
 
 // ----------------------------------------------------------- small utils ----
 
@@ -1379,6 +1382,9 @@ function portalExtrasPlan(string $confNum, array $tokenPayload, array $identity,
         if (!isset($eligible[$key])) fail(409, 'One of the selected extras is no longer offered for this booking.');
         $requested[$key] = $item;
     }
+    // Every id has just been checked against the catalogue, so this can only
+    // trip on a payload padded with duplicates.
+    if (count($requested) > count($eligible)) fail(400, 'Submit the extras shown for this booking.');
     $currentRows = portalCurrentExtras($roomAllocationId, $reservationId);
     $current = [];
     foreach ($currentRows as $row) if (is_array($row) && !empty($row['Id'])) $current[strtolower((string)$row['Id'])] = $row;
@@ -1760,7 +1766,12 @@ if ($endpoint === 'portal/extras/quote' || $endpoint === 'portal/extras') {
     $input = is_array($decodedBody) ? $decodedBody : [];
     [$confNum, $tokenPayload, $identity] = requirePortalSession($input);
     $items = is_array($input['Items'] ?? null) ? $input['Items'] : [];
-    if (!$items || count($items) > 20) fail(400, 'Submit the extras shown for this booking.');
+    // The portal sends an entry for every extra it displayed, including the
+    // ones set to zero, because an extra left out of the list is treated as
+    // removed. A fixed cap of 20 therefore broke the whole feature the moment
+    // the catalogue outgrew it. The real bound is the eligible catalogue
+    // itself, enforced in portalExtrasPlan; this is only an abuse guard.
+    if (!$items || count($items) > MAX_EXTRAS_ITEMS) fail(400, 'Submit the extras shown for this booking.');
     if ($endpoint === 'portal/extras/quote') {
         $plan = portalExtrasPlan($confNum, $tokenPayload, $identity, $items);
         send(200, portalExtrasPublicQuote($plan), ['Cache-Control'=>'no-store']);
