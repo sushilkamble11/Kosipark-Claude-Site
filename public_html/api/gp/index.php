@@ -606,6 +606,33 @@ function nestedScalar(array $value, string $key): ?string {
     return null;
 }
 
+/**
+ * The person a charge or payment is posted against.
+ *
+ * Not on the room allocation: that record carries RoomAllocationID, RoomID,
+ * ReservationID and the occupancy counts, but no PersonID. Phoenix takes it
+ * from the financial detail's _Persons list, so this walks the same path
+ * explicitly rather than letting nestedScalar() return the first PersonID it
+ * meets — the _TransactionItems in the same response each carry one, and an
+ * older row's person is not necessarily the account holder.
+ */
+function pmsAccountPersonId(string $roomAllocationId): string {
+    return pmsMemo('person:' . $roomAllocationId, function () use ($roomAllocationId) {
+        $detail = pmsReservationFinancialDetail($roomAllocationId);
+        if (!is_array($detail)) return '';
+        foreach ($detail['_RoomAllocations'] ?? [] as $allocation) {
+            if (!is_array($allocation)) continue;
+            if ((string)($allocation['RoomAllocationID'] ?? '') !== '' && !hash_equals(strtolower($roomAllocationId), strtolower((string)$allocation['RoomAllocationID']))) continue;
+            foreach ($allocation['_Persons'] ?? [] as $person) {
+                if (!is_array($person)) continue;
+                $id = trim((string)($person['PersonID'] ?? ($person['_Person']['PersonID'] ?? '')));
+                if ($id !== '') return $id;
+            }
+        }
+        return '';
+    });
+}
+
 /** Server-only saved-card information. The token is never returned to a browser. */
 function pmsSavedCard(string $roomAllocationId): array {
     return pmsMemo('card:' . $roomAllocationId, fn() => pmsSavedCardUncached($roomAllocationId));
@@ -1589,7 +1616,7 @@ function savePortalExtraTransactions(array $plan, bool $fatal = true): ?array {
             $original['IsReversed'] = true;
             $transactions[] = [
                 'TransactionItemID'=>uuidV4(),'PropertyID'=>$PROPERTY_ID,'TransactionAccountID'=>(string)$original['TransactionAccountID'],'TransactionType'=>(int)($original['TransactionType'] ?? 2),
-                'PersonID'=>(string)($original['PersonID'] ?? $allocation['PersonID'] ?? ''),'RoomAllocationID'=>$roomAllocationId,'AddonID'=>$addonId,
+                'PersonID'=>(string)($original['PersonID'] ?? pmsAccountPersonId($roomAllocationId)),'RoomAllocationID'=>$roomAllocationId,'AddonID'=>$addonId,
                 'AccountingDate'=>$now->format('Y-m-d\TH:i:s'),'PrintDate'=>$now->format('Y-m-d\T00:00:00'),'Quantity'=>(float)($original['Quantity'] ?? 0),'QuantityChild'=>(float)($original['QuantityChild'] ?? 0),
                 'Tax'=>0,'TaxRate'=>(float)($original['TaxRate'] ?? 0.1),'AmountInc'=>-abs((float)$original['AmountInc']),'Description'=>(string)($original['Description'] ?? $desired['name']),
                 'ReversedTransactionItemID'=>(string)$original['TransactionItemID'],'IsNotAllowedToReverse'=>false,'UpdatedLocal'=>0,
@@ -1606,7 +1633,7 @@ function savePortalExtraTransactions(array $plan, bool $fatal = true): ?array {
         $account = $accounts[strtolower($transactionAccountId)] ?? [];
         $transactions[] = [
             'TransactionItemID'=>uuidV4(),'PropertyID'=>$PROPERTY_ID,'TransactionAccountID'=>$transactionAccountId,'TransactionType'=>(int)($account['TransactionType'] ?? 2),
-            'PersonID'=>(string)($allocation['PersonID'] ?? ''),'RoomAllocationID'=>$roomAllocationId,'AddonID'=>$addonId,
+            'PersonID'=>pmsAccountPersonId($roomAllocationId),'RoomAllocationID'=>$roomAllocationId,'AddonID'=>$addonId,
             'AccountingDate'=>$now->format('Y-m-d\TH:i:s'),'PrintDate'=>$now->format('Y-m-d\T00:00:00'),'Quantity'=>(float)$desired['quantity'],'QuantityChild'=>(float)$desired['childQuantity'],
             'Tax'=>0,'TaxRate'=>(float)($account['TaxRate'] ?? 0.1),'AmountInc'=>(float)$desired['total'],'Description'=>(string)$desired['name'],'IsNotAllowedToReverse'=>false,'UpdatedLocal'=>0,
         ];
@@ -1666,7 +1693,7 @@ function chargePortalSavedCard(array $plan): array {
     $accountId = (string)$card['accountId'];
     $accountName = trim((string)(pmsTransactionAccounts()[strtolower($accountId)]['Name'] ?? ''));
     $body = [
-        'CompanyID'=>'', 'PersonID'=>(string)($allocation['PersonID'] ?? ''), 'GroupID'=>'',
+        'CompanyID'=>'', 'PersonID'=>pmsAccountPersonId((string)($plan['roomAllocationId'] ?? '')), 'GroupID'=>'',
         'RoomAllocationID'=>(string)($plan['roomAllocationId'] ?? ''), 'NonResidentialID'=>'',
         'AppuserID'=>pmsProxyAppuserId(),
         'Description'=>$accountName !== '' ? $accountName : 'Card payment',
@@ -1770,7 +1797,7 @@ function postPortalCancellationFee(string $reservationId, string $roomAllocation
     $id = uuidV4();
     $transactions[] = [
         'TransactionItemID'=>$id,'PropertyID'=>$PROPERTY_ID,'TransactionAccountID'=>(string)$account['TransactionAccountID'],'TransactionType'=>(int)($account['TransactionType'] ?? 2),
-        'PersonID'=>(string)($allocation['PersonID'] ?? ''),'RoomAllocationID'=>$roomAllocationId,'AccountingDate'=>$now->format('Y-m-d\TH:i:s'),'PrintDate'=>$now->format('Y-m-d\T00:00:00'),
+        'PersonID'=>pmsAccountPersonId($roomAllocationId),'RoomAllocationID'=>$roomAllocationId,'AccountingDate'=>$now->format('Y-m-d\TH:i:s'),'PrintDate'=>$now->format('Y-m-d\T00:00:00'),
         'Quantity'=>1,'QuantityChild'=>0,'Tax'=>0,'TaxRate'=>(float)($account['TaxRate'] ?? 0.1),'AmountInc'=>$fee,'Description'=>'Cancellation Fees','IsNotAllowedToReverse'=>false,'UpdatedLocal'=>0,
     ];
     [$status, $raw] = pmsCall('POST', 'Accounts/SaveTransactionItemDetails?propertyID=' . rawurlencode($PROPERTY_ID) . '&addChangeLogs=true', $transactions);

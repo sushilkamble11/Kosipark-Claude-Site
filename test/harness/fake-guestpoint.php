@@ -134,7 +134,11 @@ if (str_starts_with($path, '/pms/')) {
 
     if (str_starts_with($p, 'Reservation/GetRoomAllocationDetail') || str_starts_with($p, 'Reservation/GetRoomAllocation'))
         reply([
-            'RoomAllocationID' => $RA, 'PersonID' => 'P1',
+            // No PersonID here on purpose: the real allocation record has
+            // none. Supplying one let the proxy read a field that does not
+            // exist upstream and still pass. It comes from the financial
+            // detail's _Persons list instead.
+            'RoomAllocationID' => $RA,
             'Status' => !empty($s['cancelled']) ? 4 : 1,
             'ArrivalDate' => $s['arrival'], 'DepartureDate' => $s['departure'],
             'NumberOfNights' => $s['nights'], 'NumberAdults' => $s['adults'],
@@ -144,12 +148,21 @@ if (str_starts_with($path, '/pms/')) {
         ]);
 
     if (str_starts_with($p, 'Reservation/GetReservationDetailByRoomAllocationWithCurrentPackage')) {
-        if ($mode === 'no-card') reply(['ReservationNumber' => $s['reservationNumber'] ?? 'R1001']);
-        reply([
+        // The person a charge or payment is posted against lives here, nested
+        // under _RoomAllocations[]._Persons[] — NOT on the room allocation
+        // record, which has no PersonID at all. Modelled from the Phoenix wire
+        // capture so the proxy cannot pass a test by reading a flat field the
+        // real API never returns.
+        $persons = ['_RoomAllocations' => [[
+            'RoomAllocationID' => $RA,
+            '_Persons' => [['PersonID' => $s['personId'] ?? 'P1']],
+        ]]];
+        if ($mode === 'no-card') reply(array_merge(['ReservationNumber' => $s['reservationNumber'] ?? 'R1001'], $persons));
+        reply(array_merge([
             'ReservationNumber' => $s['reservationNumber'] ?? 'R1001',
             'CCNumberToken' => 'CCMAP-HARNESS', 'CCPartialNumber' => '411111****1111',
             'CCExpiry' => '12/30', 'CCTransactionAccountID' => 'ACCT-CC', 'CCName' => 'A SMITH',
-        ]);
+        ], $persons));
     }
 
     if (str_starts_with($p, 'Reservation/ValidateCancellation')) reply(true);
