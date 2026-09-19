@@ -19,7 +19,8 @@
  * MODES
  *   (empty)          everything succeeds
  *   declined         ProxyPost answers IsPaymentProcessed:false  (definitive)
- *   gateway-500      ProxyPost answers HTTP 500                  (definitive)
+ *   rollback-reject  the card declines and the rollback save is refused too
+ *   gateway-500      ProxyPost answers HTTP 500                  (indeterminate)
  *   gateway-timeout  ProxyPost never answers                     (indeterminate)
  *   no-postback      charge succeeds, Phoenix posts no payment row
  *   slow-postback    charge succeeds, payment row appears on a later read
@@ -179,7 +180,7 @@ if (str_starts_with($path, '/pms/')) {
         $s['paymentAttempts'][] = ['amount' => $amount, 'mode' => $mode];
         if ($mode === 'gateway-timeout') { save($s); sleep(120); exit; }
         if ($mode === 'gateway-500') { save($s); reply(['Message' => 'gateway error'], 500); }
-        if ($mode === 'declined') { save($s); reply(['IsPaymentProcessed' => false, 'Amount' => 0, 'ErrorMessage' => 'Declined']); }
+        if ($mode === 'declined' || $mode === 'rollback-reject') { save($s); reply(['IsPaymentProcessed' => false, 'Amount' => 0, 'ErrorMessage' => 'The card was declined.']); }
         $reference = 'GP' . str_pad((string)count($s['paymentAttempts']), 6, '0', STR_PAD_LEFT);
         $s['payments'][] = ['amount' => $amount, 'reference' => $reference];
         // Phoenix posts its own payment line on the room account. The harness
@@ -222,6 +223,8 @@ if (str_starts_with($path, '/pms/')) {
 
     if (str_starts_with($p, 'Accounts/SaveTransactionItemDetails')) {
         if ($mode === 'account-reject') reply(['Message' => 'rejected'], 500);
+        // The extras post succeeds, the rollback that follows a decline does not.
+        if ($mode === 'rollback-reject' && ($s['accountSaves'] ?? 0) >= 1) reply(['Message' => 'rejected'], 500);
         $body = json_decode($raw, true);
         if (!is_array($body)) reply(['Message' => 'bad payload'], 400);
         $s['tx'] = $body;

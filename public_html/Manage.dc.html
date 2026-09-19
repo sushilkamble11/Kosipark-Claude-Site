@@ -904,7 +904,15 @@ class Component extends DCLogic {
             booking: { ...x.booking, currentExtras: Array.isArray(result.CurrentExtras) ? result.CurrentExtras : x.booking.currentExtras },
             initialExtras: JSON.parse(JSON.stringify(x.selectedExtras)),
             confirm: { title: "Extras updated in GuestPoint", body } }));
-        } catch (e) { this.setState({ requestSaving: false, extrasAccepted: false, confirm: { title: "Extras not updated", body: e && e.message ? e.message : "GuestPoint did not verify the extras or payment. Do not retry until the booking account has been checked." } }); }
+        } catch (e) {
+          // 402 means the card was declined and the booking was put back as it
+          // was. Anything else may have moved money, so the title must not
+          // imply it is safe to simply try again.
+          const declined = e && e.status === 402;
+          this.setState({ requestSaving: false, extrasAccepted: false, confirm: {
+            title: declined ? "Card declined — nothing changed" : "Extras not updated",
+            body: e && e.message ? e.message : "GuestPoint did not verify the extras or payment. Do not retry until the booking account has been checked." } });
+        }
       },
       addStayUrl,
       openAddStayWarning: () => this.setState({ leaveAction: "add-stay" }),

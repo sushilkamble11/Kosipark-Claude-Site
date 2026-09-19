@@ -1359,6 +1359,10 @@ function portalExtrasPlan(string $confNum, array $tokenPayload, array $identity,
             'quantity'=>$quantity, 'childQuantity'=>$childQuantity, 'rate'=>$rate, 'childRate'=>$childRate,
             'perNight'=>$perNight, 'nights'=>$nights, 'total'=>$total,
             'currentTotal'=>round(max(0, (float)($currentRow['Total'] ?? 0)), 2),
+            // Captured so a failed charge can put the account back exactly as
+            // it was, rather than leaving the guest's selection posted unpaid.
+            'currentQuantity'=>max(0, (int)round((float)($currentRow['Quantity'] ?? 0))),
+            'currentChildQuantity'=>max(0, (int)round((float)($currentRow['ChildQuantity'] ?? 0))),
             'master'=>$masters[$key] ?? null,
         ];
     }
@@ -1371,14 +1375,38 @@ function portalExtrasPlan(string $confNum, array $tokenPayload, array $identity,
         'card'=>$card,'CanComplete'=>$difference <= 0 || !empty($card['available'])];
 }
 
+/**
+ * The same plan, rewound: every item back to the quantities and totals that
+ * were on the account before this request touched it.
+ *
+ * Feeding this to savePortalExtraTransactions undoes the change through the
+ * ordinary reversal path, leaving a complete audit trail rather than trying to
+ * delete rows.
+ */
+function portalExtrasRestorePlan(array $plan): array {
+    foreach ($plan['items'] as $index => $item) {
+        $plan['items'][$index]['quantity'] = (int)($item['currentQuantity'] ?? 0);
+        $plan['items'][$index]['childQuantity'] = (int)($item['currentChildQuantity'] ?? 0);
+        $plan['items'][$index]['total'] = round((float)($item['currentTotal'] ?? 0), 2);
+    }
+    return $plan;
+}
+
 function portalExtrasPublicQuote(array $plan): array {
     $card = is_array($plan['card'] ?? null) ? $plan['card'] : [];
     return ['CurrentTotal'=>$plan['CurrentTotal'],'NewTotal'=>$plan['NewTotal'],'Difference'=>$plan['Difference'],'ChargeAmount'=>$plan['ChargeAmount'],'CreditAmount'=>$plan['CreditAmount'],
         'CanComplete'=>$plan['CanComplete'],'Card'=>['Available'=>!empty($card['available']),'Mask'=>(string)($card['mask'] ?? ''),'Expiry'=>(string)($card['expiry'] ?? ''),'Name'=>(string)($card['holder'] ?? '')]];
 }
 
-/** Post/reverse GuestPoint room-account extras and return the fresh rows. */
-function savePortalExtraTransactions(array $plan): array {
+/**
+ * Post/reverse GuestPoint room-account extras and return the fresh rows.
+ *
+ * $fatal is false when this is being used to roll a failed change back: a
+ * rollback must never end the request with "nothing was charged", because by
+ * then something already has been. It returns null instead so the caller can
+ * tell the guest what really happened.
+ */
+function savePortalExtraTransactions(array $plan, bool $fatal = true): ?array {
     global $PROPERTY_ID;
     $reservationId = (string)$plan['reservationId'];
     $roomAllocationId = (string)$plan['roomAllocationId'];
@@ -1413,7 +1441,10 @@ function savePortalExtraTransactions(array $plan): array {
         if ((float)$desired['total'] <= 0) continue;
         $master = is_array($desired['master']) ? $desired['master'] : [];
         $transactionAccountId = (string)($master['TransactionAccountID'] ?? '');
-        if ($transactionAccountId === '') fail(409, 'GuestPoint has not assigned a transaction account to ' . $desired['name'] . '.');
+        if ($transactionAccountId === '') {
+            if (!$fatal) return null;
+            fail(409, 'GuestPoint has not assigned a transaction account to ' . $desired['name'] . '.');
+        }
         $account = $accounts[strtolower($transactionAccountId)] ?? [];
         $transactions[] = [
             'TransactionItemID'=>uuidV4(),'PropertyID'=>$PROPERTY_ID,'TransactionAccountID'=>$transactionAccountId,'TransactionType'=>(int)($account['TransactionType'] ?? 2),
@@ -1424,19 +1455,37 @@ function savePortalExtraTransactions(array $plan): array {
     }
     [$saveStatus, $saveRaw] = pmsCall('POST', 'Accounts/SaveTransactionItemDetails?propertyID=' . rawurlencode($PROPERTY_ID) . '&addChangeLogs=true', $transactions);
     $saved = json_decode($saveRaw, true);
-    if ($saveStatus < 200 || $saveStatus >= 300 || !is_array($saved)) fail(502, 'GuestPoint rejected the extra account changes. Nothing was charged.', $saveRaw);
+    if ($saveStatus < 200 || $saveStatus >= 300 || !is_array($saved)) {
+        if (!$fatal) return null;
+        fail(502, 'GuestPoint rejected the extra account changes. Nothing was charged.', $saveRaw);
+    }
     return $saved;
 }
 
-/** Charge the exact positive extras delta to the saved card, as Phoenix does. */
+/**
+ * Charge the exact positive extras delta to the saved card, as Phoenix does.
+ *
+ * This never exits on failure, because by the time it runs the extras are
+ * already on the room account and the caller has to decide whether to unwind
+ * them. The distinction that matters is whether we *know* no money moved:
+ *
+ *   blocked        nothing was attempted           — safe to unwind
+ *   declined       the gateway said it did not process — safe to unwind
+ *   indeterminate  no answer, a 5xx, or a different amount than we asked for
+ *                  — money may well have moved, so never unwind
+ *   success        confirmed for the exact amount
+ *
+ * An HTTP 500 from a payment endpoint is deliberately *not* treated as a
+ * decline. Unwinding on one risks handing back extras the guest has paid for.
+ */
 function chargePortalSavedCard(array $plan): array {
     global $PROPERTY_ID, $PMS_USERNAME;
     $amount = round((float)($plan['ChargeAmount'] ?? 0), 2);
-    if ($amount <= 0) return ['charged'=>false,'amount'=>0.0,'transactionId'=>null];
+    if ($amount <= 0) return ['charged'=>false,'outcome'=>'skipped','amount'=>0.0,'transactionId'=>null,'detail'=>null];
     $card = $plan['card'] ?? [];
-    if (empty($card['available'])) fail(409, 'The saved card is unavailable or expired. The extras were not charged.');
+    if (empty($card['available'])) return ['charged'=>false,'outcome'=>'blocked','amount'=>$amount,'transactionId'=>null,'detail'=>'The saved card is unavailable or expired.'];
     $proxyPassword = pmsProxyPassword();
-    if ($proxyPassword === '') fail(502, 'GuestPoint did not supply the payment credential. The extras were not charged.');
+    if ($proxyPassword === '') return ['charged'=>false,'outcome'=>'blocked','amount'=>$amount,'transactionId'=>null,'detail'=>'GuestPoint did not supply the payment credential.'];
     $query = http_build_query([
         'username'=>$PMS_USERNAME,'password'=>$proxyPassword,'propertyID'=>$PROPERTY_ID,'sourceApplication'=>'GuestPoint',
         'creditCardPaymentInfo.amount'=>number_format($amount, 2, '.', ''),'creditCardPaymentInfo.reservationNumber'=>$card['reservationNumber'],
@@ -1447,10 +1496,22 @@ function chargePortalSavedCard(array $plan): array {
     ], '', '&', PHP_QUERY_RFC3986);
     [$status, $raw] = pmsCall('POST', 'CreditCardVault/ProcessPaymentUsingProxyPost?' . $query);
     $result = json_decode($raw, true);
-    if ($status < 200 || $status >= 300 || !is_array($result) || ($result['IsPaymentProcessed'] ?? false) !== true || abs((float)($result['Amount'] ?? 0) - $amount) > 0.005) {
-        fail(502, 'GuestPoint did not confirm the saved-card payment. Check the booking account before trying again.', $raw);
+    if ($status >= 200 && $status < 300 && is_array($result) && ($result['IsPaymentProcessed'] ?? false) === true) {
+        // Processed, but for a different amount than we asked for. Nobody
+        // should unwind anything automatically on that.
+        if (abs((float)($result['Amount'] ?? 0) - $amount) > 0.005) {
+            return ['charged'=>true,'outcome'=>'indeterminate','amount'=>round((float)($result['Amount'] ?? 0), 2),
+                    'transactionId'=>(string)($result['TransactionId'] ?? ''),'detail'=>'The gateway processed a different amount than the one quoted.'];
+        }
+        return ['charged'=>true,'outcome'=>'success','amount'=>$amount,
+                'transactionId'=>(string)($result['TransactionId'] ?? ''),'authCode'=>(string)($result['AuthCode'] ?? ''),'detail'=>null];
     }
-    return ['charged'=>true,'amount'=>$amount,'transactionId'=>(string)($result['TransactionId'] ?? ''),'authCode'=>(string)($result['AuthCode'] ?? '')];
+    // A parseable answer saying it was not processed is a real decline. Any
+    // other shape — a 5xx, an empty body, a connection that never completed —
+    // leaves us unable to say whether the card was charged.
+    $declined = $status >= 200 && $status < 500 && is_array($result) && ($result['IsPaymentProcessed'] ?? null) === false;
+    return ['charged'=>false,'outcome'=>$declined ? 'declined' : 'indeterminate','amount'=>$amount,'transactionId'=>null,
+            'detail'=>$declined ? (string)($result['ErrorMessage'] ?? 'The card was declined.') : 'GuestPoint did not answer the payment request.','raw'=>$raw];
 }
 
 /**
@@ -1658,6 +1719,26 @@ if ($endpoint === 'portal/extras/quote' || $endpoint === 'portal/extras') {
     // own payment row, so a *new* one appearing is the proof we look for.
     $knownPaymentRowIds = portalPaymentRowIds(is_array($saved) ? $saved : []);
     $payment = chargePortalSavedCard($plan);
+
+    // The extras are on the account by now. If the charge definitively did not
+    // happen, put the account back before answering — otherwise the guest keeps
+    // the extras for nothing, and because posted extras then count as
+    // "current", a retry prices the delta at zero and never asks for the money.
+    if (in_array($payment['outcome'], ['blocked', 'declined'], true)) {
+        $restored = savePortalExtraTransactions(portalExtrasRestorePlan($plan), false) !== null;
+        flock($lock, LOCK_UN); fclose($lock);
+        $reason = trim((string)($payment['detail'] ?? 'The card was not charged.'));
+        fail($payment['outcome'] === 'declined' ? 402 : 409, $restored
+            ? $reason . ' Nothing was changed on your booking and no payment was taken.'
+            : $reason . ' The extras could not be rolled back automatically — please call reception on 02 6456 2224 before trying again.',
+            $payment['raw'] ?? null);
+    }
+    // Unknown outcome: the card may or may not have been charged, so unwinding
+    // would risk taking back something already paid for. Leave it and say so.
+    if ($payment['outcome'] === 'indeterminate') {
+        flock($lock, LOCK_UN); fclose($lock);
+        fail(502, 'GuestPoint did not confirm the payment, and it may still have gone through. Do not retry — please call reception on 02 6456 2224 so the booking account can be checked.', $payment['raw'] ?? null);
+    }
 
     $paymentPending = false;
     if (!empty($payment['charged'])) {

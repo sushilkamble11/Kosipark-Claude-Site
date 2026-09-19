@@ -16,8 +16,6 @@ import { startHarness } from "./harness/server.mjs";
 import { baseState, postedExtra, FIREWOOD, DRYING_ROOM } from "./harness/fixtures.mjs";
 
 const KNOWN_BROKEN = new Set([
-  "C2-reversed",                 // a declined charge leaves the extras posted
-  "C2-no-free-extras",           // ...so the retry prices the delta at zero
   "C3-mismatch-rejected",        // the recalculated fee is charged, not the accepted one
   "H2-partial-write-is-honest",  // the ETA persists but the response says nothing changed
   "M1-catalogue-size",           // a catalogue over 20 entries is rejected outright
@@ -128,6 +126,25 @@ const feeRows = state => (state.tx ?? []).filter(t => /^Cancellation Fees?\b/i.t
   h.setMode("");
   const requote = await h.post("/portal/extras/quote", { ConfNum: "R1001", PortalToken: token, Items: items(firewood(2, 40)) });
   check("C2-no-free-extras", requote.body?.ChargeAmount === 40, `re-quote after a declined charge asks for ${requote.body?.ChargeAmount}, expected 40`);
+}
+{
+  // When the rollback itself is refused, the guest must be told the booking
+  // needs a human — not that nothing changed.
+  const token = await scenario({}, "rollback-reject");
+  const { status, body } = await h.post("/portal/extras", { ConfNum: "R1001", PortalToken: token, Acknowledged: true, Items: items(firewood(2, 40)) });
+  check("C2-rollback-failure-is-honest", status >= 400 && /call reception/i.test(String(body?.Error?.Message ?? "")) && !/nothing was changed/i.test(String(body?.Error?.Message ?? "")),
+    `message=${body?.Error?.Message}`);
+}
+{
+  // A 5xx from a payment endpoint is not a decline. Unwinding here could hand
+  // back extras the guest has actually paid for.
+  const token = await scenario({}, "gateway-500");
+  const { status, body } = await h.post("/portal/extras", { ConfNum: "R1001", PortalToken: token, Acknowledged: true, Items: items(firewood(2, 40)) });
+  const state = h.readState();
+  check("C2-5xx-not-reversed", status >= 400 && /may still have gone through/i.test(String(body?.Error?.Message ?? "")),
+    `status=${status} message=${body?.Error?.Message}`);
+  check("C2-5xx-extras-left-alone", Math.abs(netAddonTotal(state) - 40) < 0.005,
+    `net addon total ${netAddonTotal(state)} — an unknown payment outcome must not be unwound`);
 }
 if (process.env.HARNESS_SLOW === "1") {
   // Indeterminate: the gateway never answered, so we cannot know whether money
