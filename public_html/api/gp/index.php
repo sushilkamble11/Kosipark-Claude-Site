@@ -736,6 +736,48 @@ function pmsAddonDefinitions(): array {
     });
 }
 
+/**
+ * Put the name reception configured onto the Booking Engine's extras catalogue.
+ *
+ * The catalogue carries the *web* fields: `Name` is the add-on's web name and
+ * `Description` its web description, and both are optional. Live, Drying Room
+ * comes back with `Name: ""` and Firewood with `Name: "Firewood Desc"` — so the
+ * site showed "Optional extra" for one and a description for the other, while
+ * reception, the room account and the guest's invoice all say "Drying Room" and
+ * "Firewood".
+ *
+ * Phoenix's add-on master is the name everyone else sees, so it wins whenever
+ * the PMS bridge is available. Without it (no credentials, public booking flow
+ * on a property that has not enabled private writes) the catalogue is returned
+ * untouched, which is the old behaviour.
+ */
+function overlayAddonNames(string $raw): string {
+    $payload = json_decode($raw, true);
+    if (!is_array($payload)) return $raw;
+    $masters = pmsAddonDefinitions();
+    if (!$masters) return $raw;
+
+    $rows = array_is_list($payload) ? $payload : ($payload['data'] ?? $payload['Extras'] ?? null);
+    if (!is_array($rows) || !array_is_list($rows)) return $raw;
+
+    $changed = false;
+    foreach ($rows as $index => $row) {
+        if (!is_array($row) || empty($row['Id'])) continue;
+        $master = $masters[strtolower((string)$row['Id'])] ?? null;
+        $name = is_array($master) ? trim((string)($master['Name'] ?? '')) : '';
+        if ($name === '' || $name === (string)($row['Name'] ?? '')) continue;
+        $rows[$index]['Name'] = $name;
+        $changed = true;
+    }
+    if (!$changed) return $raw;
+
+    if (array_is_list($payload)) $payload = $rows;
+    elseif (isset($payload['data'])) $payload['data'] = $rows;
+    else $payload['Extras'] = $rows;
+    $encoded = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    return $encoded === false ? $raw : $encoded;
+}
+
 /** Return reservation-scoped Phoenix profile definitions and their current values. */
 function pmsReservationProfiles(string $reservationId): array {
     return pmsMemo('profiles:' . $reservationId, fn() => pmsReservationProfilesUncached($reservationId));
@@ -2358,6 +2400,12 @@ curl_close($ch);
 if ($response === false || $status === 0) {
     fail(502, 'The booking system is not responding. Please try again shortly, or call 02 6456 2224.', $curlErr);
 }
+
+// Names come from Phoenix, not from the web catalogue, so the guest sees the
+// same wording as reception and the room account. Done before caching so the
+// cached copy is already correct: the add-on master is property configuration,
+// identical for every guest.
+if ($status === 200 && $endpoint === 'extras') $response = overlayAddonNames((string)$response);
 
 // Only 200s are worth caching. Everything else goes straight back.
 if ($status === 200 && $cacheFile !== null) {

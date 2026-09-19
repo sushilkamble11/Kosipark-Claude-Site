@@ -51,6 +51,22 @@ const netAddonTotal = state => (state.tx ?? []).filter(t => t.AddonID).reduce((s
 const paymentRows = state => (state.tx ?? []).filter(t => Number(t.TransactionType) === 11);
 const feeRows = state => (state.tx ?? []).filter(t => /^Cancellation Fees?\b/i.test(String(t.Description || "")) && !t.IsReversed && !t.ReversedTransactionItemID);
 
+// ------------------------------------- extras are named as GuestPoint names --
+// The Booking Engine catalogue carries the web fields, which live are a
+// description ("Firewood Desc") or nothing at all. Reception, the room account
+// and the guest's invoice all use the Phoenix add-on name, so the catalogue the
+// site renders has to say the same thing.
+{
+  await scenario();
+  const { status, body } = await h.post("/extras", { RoomStays: [{ Arrival: "2026-07-01", Departure: "2026-07-03", RoomTypeId: "RT1", RatePlanId: "RP1" }] });
+  const rows = Array.isArray(body) ? body : (body?.data ?? body?.Extras ?? []);
+  const byId = Object.fromEntries(rows.map(r => [String(r.Id).toLowerCase(), r]));
+  check("extras-name-from-pms", status === 200 && byId[FIREWOOD.toLowerCase()]?.Name === "Firewood",
+    `catalogue said "Firewood Desc", GuestPoint says "Firewood", site shows ${JSON.stringify(byId[FIREWOOD.toLowerCase()]?.Name)}`);
+  check("extras-blank-name-replaced", byId[DRYING_ROOM.toLowerCase()]?.Name === "Drying room",
+    `catalogue name was empty, site shows ${JSON.stringify(byId[DRYING_ROOM.toLowerCase()]?.Name)}`);
+}
+
 // -------------------------------------- no saved card: post to the account --
 // Plenty of bookings have no card. Refusing the extra outright was a dead end;
 // the charge belongs on the room account, settled at reception. What must never
