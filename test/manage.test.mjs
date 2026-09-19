@@ -28,6 +28,23 @@ await page.getByRole("button", { name: "Find my booking" }).click();
 await page.getByText("Booking reference: 1").waitFor({ timeout: 5000 });
 pass(await page.getByText("Booking reference: 1").isVisible(), "1 / 1 / 1 opens the demo booking without OTP");
 
+// The summary listed dates, nights, guest counts, rate and money, but never
+// said whose booking it was — the one detail a guest checks first to be sure
+// they are looking at their own reservation.
+{
+  const summary = await page.locator("body").innerText();
+  pass(/\bGuest\b/.test(summary), "the booking summary has a guest row");
+  // Read the <dd> beside the "GUEST" <dt> rather than parsing the whole page:
+  // "Guest numbers" elsewhere on the screen also contains the word.
+  const guestRow = (await page.locator("dl div", { has: page.locator("dt", { hasText: /^GUEST$/i }) }).locator("dd").first().innerText()).trim();
+  pass(guestRow === "Alex 1", `the summary names the lead guest, got ${JSON.stringify(guestRow)}`);
+  // The edit form must name the same person as the summary.
+  await page.getByRole("button", { name: "Guest details" }).click();
+  const first = await page.getByLabel("First name").inputValue();
+  const last = await page.getByLabel("Surname").inputValue();
+  pass(`${first} ${last}`.trim() === "Alex 1", `the guest details form agrees with the summary: "${first} ${last}"`);
+}
+
 for (const section of ["Amend booking", "Guest numbers", "Guest details", "Arrival & vehicles", "View extras", "Special request"]) {
   await page.getByRole("button", { name: section, exact: true }).click();
   const visiblePortalText = await page.locator("body").innerText();

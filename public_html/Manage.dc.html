@@ -354,6 +354,25 @@ class Component extends DCLogic {
     return out;
   }
 
+  /**
+   * The person the booking is in the name of: the guest GuestPoint marks as
+   * the booking contact, else the first guest on the reservation, else the
+   * contact record itself. Shared so the booking summary and the edit form can
+   * never name two different people.
+   */
+  static leadGuest(b) {
+    const guests = (b && b.guests) || [];
+    const contact = b && b.bookingContact;
+    return guests.find(g => contact && g.ID === contact.ID) || guests[0] || contact || {};
+  }
+
+  /** "Priyanka Gaikwad", or "" when GuestPoint holds no name at all. */
+  static leadGuestName(b) {
+    const lead = Component.leadGuest(b);
+    return [lead.FirstName, lead.LastName].filter(Boolean).join(" ").trim()
+      || String(lead.Name || "").trim();
+  }
+
   static profileValue(fields, matcher) {
     const row = (Array.isArray(fields) ? fields : []).find(f => matcher.test(String(f.Name || f.FieldName || "")));
     return row ? String(row.Value || "") : "";
@@ -390,7 +409,7 @@ class Component extends DCLogic {
   openBooking(found) {
     const b = this.gp.normaliseManagedReservation(found);
     if (!b.ref || !b.permissions.ViewReservation) throw new Error("not-viewable");
-    const lead = (b.guests || []).find(g => b.bookingContact && g.ID === b.bookingContact.ID) || (b.guests || [])[0] || b.bookingContact || {};
+    const lead = Component.leadGuest(b);
     const profileFields = (b.raw && b.raw.ProfileFields) || [];
     this.setState({ booking: b, error: "", mode: null, confirm: null, loading: false, selectedExtras: {}, initialExtras: {}, extrasQuote: null, extrasAccepted: false, partyQuote: null, policyAccepted: false,
       adults: b.adults, children: b.children, infants: b.infants,
@@ -688,6 +707,8 @@ class Component extends DCLogic {
         room: b.room,
         status,
         rows: [
+          // The booking is in someone's name and the summary never said whose.
+          { k: "Guest", v: Component.leadGuestName(b) || "Not supplied" },
           { k: "Dates", v: Component.fmt(b.checkIn) + " → " + Component.fmt(b.checkOut) },
           { k: "Nights", v: this.nights(b) + (this.nights(b) === 1 ? " night" : " nights") + (p.snow ? " · snow season" : "") },
           { k: "Guests", v: b.adults + " adults, " + b.children + " children" + (b.infants ? ", " + b.infants + " infant" : "") },
