@@ -148,6 +148,21 @@ class Component extends DCLogic {
     return Math.max(0, Math.round((b - a) / 86400000));
   }
 
+  /**
+   * monthOffset counts months forward from this month, clamped at 0 so the
+   * calendar can never page into the past. Opening the picker on a stay in
+   * October while it is September should show October, not this month with the
+   * chosen dates off-screen, so seek to the month of the date being edited.
+   */
+  monthOffsetFor(iso) {
+    if (!iso) return 0;
+    const target = Component.parse(iso);
+    if (!target || isNaN(target.getTime())) return 0;
+    const now = Component.today();
+    const months = (target.getFullYear() - now.getFullYear()) * 12 + (target.getMonth() - now.getMonth());
+    return Math.max(0, Math.min(23, months));
+  }
+
   pickDay(iso) {
     const s = this.state;
     if (s.openField === "out" && s.checkIn && iso > s.checkIn) {
@@ -155,6 +170,9 @@ class Component extends DCLogic {
     } else {
       const next = { checkIn: iso, openField: "out", searched: false };
       if (!s.checkOut || s.checkOut <= iso) next.checkOut = "";
+      // Stay on the month the arrival was just chosen in; the departure is
+      // almost always in the same month or the next one.
+      next.monthOffset = this.monthOffsetFor(iso);
       this.setState(next);
     }
   }
@@ -240,8 +258,8 @@ class Component extends DCLogic {
         outLabel: this.fmt(s.checkOut),
         inStyle: "flex:1 1 155px; min-width:0; " + fieldBase + (s.openField === "in" ? on : off),
         outStyle: "flex:1 1 155px; min-width:0; " + fieldBase + (s.openField === "out" ? on : off) + rule,
-        openIn: () => this.setState({ openField: "in", guestsOpen: false, monthOffset: 0 }),
-        openOut: () => this.setState({ openField: s.checkIn ? "out" : "in", guestsOpen: false }),
+        openIn: () => this.setState({ openField: "in", guestsOpen: false, monthOffset: this.monthOffsetFor(s.checkIn) }),
+        openOut: () => this.setState({ openField: s.checkIn ? "out" : "in", guestsOpen: false, monthOffset: this.monthOffsetFor(s.checkIn ? (s.checkOut || s.checkIn) : "") }),
         close: () => this.setState({ openField: null }),
         clear: () => this.setState({ checkIn: "", checkOut: "", openField: "in", searched: false }),
         prev: () => this.setState(p => ({ monthOffset: Math.max(0, p.monthOffset - 1) })),
