@@ -51,6 +51,69 @@ const netAddonTotal = state => (state.tx ?? []).filter(t => t.AddonID).reduce((s
 const paymentRows = state => (state.tx ?? []).filter(t => Number(t.TransactionType) === 11);
 const feeRows = state => (state.tx ?? []).filter(t => /^Cancellation Fees?\b/i.test(String(t.Description || "")) && !t.IsReversed && !t.ReversedTransactionItemID);
 
+// ------------------------------------------------ amendment (transfer) fee --
+// The conditions attach a transfer fee to a date change inside 15 days, and to
+// any snow-season move. It was shown to the guest and never reached GuestPoint:
+// the booking moved and the fee was simply lost. It now posts to the room
+// account like an extra, and is charged when a card is on file.
+const dayOffset = n => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+const feeStay = (n) => ({ arrival: dayOffset(n), departure: dayOffset(n + 3), nights: 3 });
+// Snow season (Jun-Sep) forbids a change inside 14 days, so an arrival 12 days
+// out carries a fee only off-peak. Asserting the right one keeps this stable
+// whatever today's date is.
+const snowAt = iso => { const m = Number(iso.slice(5, 7)); return m >= 6 && m <= 9; };
+const amendFeeRows = state => (state.tx ?? []).filter(t => /^Amendment Fee\b/i.test(String(t.Description || "")) && !t.IsReversed && !t.ReversedTransactionItemID);
+{
+  const stay = feeStay(12);
+  const expectFee = !snowAt(stay.arrival);
+  const token = await scenario(stay);
+  const { status, body } = await h.post("/portal/amend", {
+    ConfNum: "R1001", PortalToken: token, Acknowledged: true,
+    Proposal: { checkIn: dayOffset(20), checkOut: dayOffset(23), adults: 2, children: 0, infants: 0 },
+  });
+  const state = h.readState();
+  // roomTotal 300 over 3 nights: max($50, 10% of 300, one night 100) = 100.
+  check("amend-fee-posted", status === 200 && Number(body?.AmendmentFee || 0) === (expectFee ? 100 : 0),
+    `arrival ${stay.arrival} (${expectFee ? "off-peak" : "snow, change not permitted inside 14 days"}) fee=${body?.AmendmentFee}`);
+  check("amend-fee-on-account", amendFeeRows(state).length === (expectFee ? 1 : 0),
+    `${amendFeeRows(state).length} unreversed "Amendment Fee" rows on the account`);
+  if (expectFee) {
+    check("amend-fee-charged", body?.AmendmentFeeCharged === true && (state.payments ?? []).length === 1,
+      `charged=${body?.AmendmentFeeCharged} gatewayCharges=${(state.payments ?? []).length}`);
+    check("amend-fee-not-double-posted", paymentRows(state).length === 1,
+      `${paymentRows(state).length} payment rows (GuestPoint posts its own; the proxy must not add another)`);
+  }
+}
+{
+  // No card: the fee still belongs on the account, and the guest is told it is
+  // payable at reception rather than being refused the change.
+  const stay = feeStay(12);
+  const expectFee = !snowAt(stay.arrival);
+  const token = await scenario(stay, "no-card");
+  const { status, body } = await h.post("/portal/amend", {
+    ConfNum: "R1001", PortalToken: token, Acknowledged: true,
+    Proposal: { checkIn: dayOffset(20), checkOut: dayOffset(23), adults: 2, children: 0, infants: 0 },
+  });
+  const state = h.readState();
+  check("amend-fee-no-card-posted", status === 200 && amendFeeRows(state).length === (expectFee ? 1 : 0),
+    `status=${status} rows=${amendFeeRows(state).length}`);
+  check("amend-fee-no-card-not-charged", body?.AmendmentFeeCharged !== true && (state.payments ?? []).length === 0,
+    `charged=${body?.AmendmentFeeCharged} gatewayCharges=${(state.payments ?? []).length}`);
+  check("amend-fee-no-card-payable", Number(body?.PayableAtReception || 0) === (expectFee ? 100 : 0),
+    `payableAtReception=${body?.PayableAtReception}`);
+}
+{
+  // Inside 8 days no change is permitted, so no fee may be invented for one.
+  const token = await scenario(feeStay(3));
+  const { body } = await h.post("/portal/amend", {
+    ConfNum: "R1001", PortalToken: token, Acknowledged: true,
+    Proposal: { adults: 2, children: 0, infants: 0 },
+  });
+  const state = h.readState();
+  check("amend-fee-none-inside-8-days", Number(body?.AmendmentFee || 0) === 0 && amendFeeRows(state).length === 0,
+    `fee=${body?.AmendmentFee} rows=${amendFeeRows(state).length}`);
+}
+
 // ------------------------------------- extras are named as GuestPoint names --
 // The Booking Engine catalogue carries the web fields, which live are a
 // description ("Firewood Desc") or nothing at all. Reception, the room account

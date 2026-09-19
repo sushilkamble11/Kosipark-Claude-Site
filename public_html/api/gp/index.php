@@ -258,7 +258,28 @@ function cancellationQuote(array $reservation): array {
                 : 'Within 7 days of arrival, the booking is non-refundable.');
     }
     $fee = min($policyTotal, max(0.0, $fee));
+
+    // Amendment (transfer) fee, from the same figures as the cancellation fee
+    // so the two can never drift apart. Mirrors the published conditions:
+    //   non-refundable rate      no amendment, no fee
+    //   inside 8 days            no amendment, no fee
+    //   snow season (Jun-Sep)    transfer fee, and no amendment inside 14 days
+    //   8-14 days out            transfer fee
+    //   15+ days out, off-peak   like-for-like change is free
+    // where the transfer fee is the greater of $50, 10% of the tariff, or one
+    // night. Computed here rather than trusted from the browser: it is money.
+    try {
+        $arrivalMonth = (int)(new DateTimeImmutable($arrival, new DateTimeZone('Australia/Sydney')))->format('n');
+    } catch (Throwable $e) { $arrivalMonth = 0; }
+    $snowSeason = $arrivalMonth >= 6 && $arrivalMonth <= 9;
+    $transferFee = round(max(50.0, $policyTotal * 0.1, $oneNight), 2);
+    $amendAllowed = $nonRefundable === null && $days >= 8 && !($snowSeason && $days <= 14);
+    $amendFee = $amendAllowed && ($snowSeason || $days < 15) ? $transferFee : 0.0;
+
     return [
+        'amendAllowed' => $amendAllowed,
+        'amendFee' => round($amendFee, 2),
+        'snowSeason' => $snowSeason,
         'fee' => round($fee, 2),
         'refund' => round(max(0.0, $paid - $fee), 2),
         'amountDue' => round(max(0.0, $fee - $paid), 2),
@@ -1805,6 +1826,10 @@ function awaitPortalPaymentRow(string $reservationId, array $knownPaymentRowIds,
             if (microtime(true) >= $deadline) return false;
             usleep(400000);
         }
+        // Reads are memoised per request, so without this the loop would ask
+        // the same cached array six times and could never see a row that lands
+        // after the charge — reporting a completed payment as unverified.
+        pmsForgetTransactions($reservationId);
         foreach (pmsTransactionItems($reservationId) as $row) {
             if ((int)($row['TransactionType'] ?? 0) !== 11) continue;
             $rowAmount = (float)($row['AmountInc'] ?? 0);
@@ -1819,12 +1844,36 @@ function awaitPortalPaymentRow(string $reservationId, array $knownPaymentRowIds,
 
 /** Post the calculated cancellation fee once to the reservation room account. */
 function postPortalCancellationFee(string $reservationId, string $roomAllocationId, array $allocation, float $fee): ?string {
+    return postPortalPolicyFee($reservationId, $roomAllocationId, $fee, 'Cancellation Fees', 'The booking was not cancelled.');
+}
+
+/**
+ * Post an amendment (transfer) fee once to the reservation room account.
+ *
+ * Same account as a cancellation fee, because that is where the park books
+ * both, but its own description so the two are distinguishable on the guest's
+ * account and neither is mistaken for the other when checking whether a fee has
+ * already been posted.
+ */
+function postPortalAmendmentFee(string $reservationId, string $roomAllocationId, float $fee): ?string {
+    return postPortalPolicyFee($reservationId, $roomAllocationId, $fee, 'Amendment Fee', 'The booking was not amended.');
+}
+
+/**
+ * Post a policy fee to the room account, once.
+ *
+ * Idempotent on (room allocation, description, amount): an unreversed row that
+ * already matches is returned rather than posted twice, so a retry after a
+ * timeout cannot charge the guest the fee again.
+ */
+function postPortalPolicyFee(string $reservationId, string $roomAllocationId, float $fee, string $description, string $failureSuffix): ?string {
     global $PROPERTY_ID;
     $fee = round(max(0.0, $fee), 2);
     if ($fee <= 0) return null;
     $transactions = pmsTransactionItems($reservationId);
+    $pattern = '/^' . preg_quote($description, '/') . 's?\b/i';
     foreach ($transactions as $row) {
-        if ((string)($row['RoomAllocationID'] ?? '') !== $roomAllocationId || !preg_match('/^Cancellation Fees?\b/i', (string)($row['Description'] ?? '')) || !empty($row['IsReversed']) || !empty($row['ReversedTransactionItemID'])) continue;
+        if ((string)($row['RoomAllocationID'] ?? '') !== $roomAllocationId || !preg_match($pattern, (string)($row['Description'] ?? '')) || !empty($row['IsReversed']) || !empty($row['ReversedTransactionItemID'])) continue;
         if (abs((float)($row['AmountInc'] ?? 0) - $fee) < 0.005) return (string)($row['TransactionItemID'] ?? '');
     }
     [$accountStatus, $accountRaw] = pmsCall('GET', 'Accounts/GetTransactionAccounts?propertyID=' . rawurlencode($PROPERTY_ID));
@@ -1834,18 +1883,18 @@ function postPortalCancellationFee(string $reservationId, string $roomAllocation
         foreach ($accounts as $candidate) if (is_array($candidate) && preg_match('/^Cancellation Fees?$/i', trim((string)($candidate['Name'] ?? '')))) { $account = $candidate; break; }
         if ($account === null) foreach ($accounts as $candidate) if (is_array($candidate) && strcasecmp(trim((string)($candidate['Name'] ?? '')), 'Sundry') === 0) { $account = $candidate; break; }
     }
-    if (!is_array($account) || empty($account['TransactionAccountID'])) fail(409, 'GuestPoint has no Cancellation Fees or Sundry transaction account. The booking was not cancelled.');
+    if (!is_array($account) || empty($account['TransactionAccountID'])) fail(409, 'GuestPoint has no Cancellation Fees or Sundry transaction account. ' . $failureSuffix);
     $now = new DateTimeImmutable('now', new DateTimeZone('Australia/Sydney'));
     $id = uuidV4();
     $transactions[] = [
         'TransactionItemID'=>$id,'PropertyID'=>$PROPERTY_ID,'TransactionAccountID'=>(string)$account['TransactionAccountID'],'TransactionType'=>(int)($account['TransactionType'] ?? 2),
         'PersonID'=>pmsAccountPersonId($roomAllocationId),'RoomAllocationID'=>$roomAllocationId,'AccountingDate'=>$now->format('Y-m-d\TH:i:s'),'PrintDate'=>$now->format('Y-m-d\T00:00:00'),
-        'Quantity'=>1,'QuantityChild'=>0,'Tax'=>0,'TaxRate'=>(float)($account['TaxRate'] ?? 0.1),'AmountInc'=>$fee,'Description'=>'Cancellation Fees','IsNotAllowedToReverse'=>false,'UpdatedLocal'=>0,
+        'Quantity'=>1,'QuantityChild'=>0,'Tax'=>0,'TaxRate'=>(float)($account['TaxRate'] ?? 0.1),'AmountInc'=>$fee,'Description'=>$description,'IsNotAllowedToReverse'=>false,'UpdatedLocal'=>0,
     ];
     [$status, $raw] = pmsCall('POST', 'Accounts/SaveTransactionItemDetails?propertyID=' . rawurlencode($PROPERTY_ID) . '&addChangeLogs=true', $transactions);
     pmsForgetTransactions($reservationId);
     $saved = json_decode($raw, true);
-    if ($status < 200 || $status >= 300 || !is_array($saved)) fail(502, 'GuestPoint rejected the cancellation fee. The booking was not cancelled.', $raw);
+    if ($status < 200 || $status >= 300 || !is_array($saved)) fail(502, 'GuestPoint rejected the ' . strtolower($description) . '. ' . $failureSuffix, $raw);
     return $id;
 }
 
@@ -1903,6 +1952,16 @@ if ($endpoint === 'portal/amend') {
 
     $arrival = trim((string)($proposal['checkIn'] ?? ''));
     $departure = trim((string)($proposal['checkOut'] ?? ''));
+    // The transfer fee is set by how close to the ORIGINAL arrival the guest is
+    // making the change — that is the figure the conditions describe and the
+    // portal showed them. Quote it before the allocation is mutated, or a move
+    // from "next week" to "next month" would price itself as a month away and
+    // come out free.
+    $amendFeeDue = 0.0;
+    if ($arrival !== '' || $departure !== '') {
+        $preAmendQuote = phoenixCancellationQuote($reservationId, $roomAllocationId, $allocation);
+        $amendFeeDue = is_array($preAmendQuote) ? round((float)($preAmendQuote['quote']['amendFee'] ?? 0), 2) : 0.0;
+    }
     if ($arrival !== '' || $departure !== '') {
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $arrival) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $departure)) fail(400, 'Choose valid arrival and departure dates.');
         try {
@@ -1944,7 +2003,43 @@ if ($endpoint === 'portal/amend') {
         || ($arrival !== '' && substr((string)($verified['ArrivalDate'] ?? ''), 0, 10) !== $arrival)) {
         fail(502, 'GuestPoint did not verify the amendment. Please check the booking in GuestPoint.');
     }
-    send(200, ['Updated'=>true,'ConfNum'=>$confNum,'ArrivalDate'=>$verified['ArrivalDate'] ?? null,'NumberOfNights'=>$verified['NumberOfNights'] ?? null,'Adults'=>$adults,'Children'=>$children,'Infants'=>$infants,'AccommodationTotal'=>$priceQuote['total'],'DepartureBalance'=>$verified['DepartureBalance'] ?? null], ['Cache-Control'=>'no-store']);
+
+    // The amendment is saved. Now the transfer fee the conditions attach to it:
+    // posted to the room account exactly like an extra, and charged to the
+    // saved card when there is one. The amount is the figure this server
+    // computes from the policy, never one supplied by the browser.
+    $feeCharge = ['posted'=>0.0, 'charged'=>false, 'transactionId'=>null, 'payableAtReception'=>0.0, 'pending'=>false];
+    // A transfer fee is for moving the dates. Changing the number of guests is
+    // not a transfer and carries none, which is also the only case the portal
+    // shows the guest a fee for.
+    $datesChanged = $targetArrival !== $currentArrival || $targetDeparture !== $currentDeparture;
+    $amendFee = $datesChanged ? $amendFeeDue : 0.0;
+    if ($amendFee > 0) {
+        $feeRowId = postPortalAmendmentFee($reservationId, $roomAllocationId, $amendFee);
+        $feeCharge['posted'] = $amendFee;
+        $card = pmsSavedCard($roomAllocationId);
+        if (!empty($card['available'])) {
+            $knownPaymentRowIds = portalPaymentRowIds(pmsTransactionItems($reservationId));
+            $payment = chargePortalSavedCard(['ChargeAmount'=>$amendFee, 'card'=>$card, 'roomAllocationId'=>$roomAllocationId, 'allocation'=>$verified]);
+            if ($payment['outcome'] === 'success') {
+                $feeCharge['charged'] = true;
+                $feeCharge['transactionId'] = $payment['transactionId'];
+                $feeCharge['pending'] = !awaitPortalPaymentRow($reservationId, $knownPaymentRowIds, (float)$payment['amount'], (string)$payment['transactionId'], microtime(true) + PAYMENT_VERIFY_BUDGET);
+            } else {
+                // The dates have already moved in GuestPoint and unwinding that
+                // is not something to attempt behind the guest's back. The fee
+                // simply stays on the account for reception to take.
+                $feeCharge['payableAtReception'] = $amendFee;
+            }
+        } else {
+            $feeCharge['payableAtReception'] = $amendFee;
+        }
+        if ($feeRowId === null && $feeCharge['posted'] > 0) $feeCharge['posted'] = $amendFee;
+    }
+
+    send(200, ['Updated'=>true,'ConfNum'=>$confNum,'ArrivalDate'=>$verified['ArrivalDate'] ?? null,'NumberOfNights'=>$verified['NumberOfNights'] ?? null,'Adults'=>$adults,'Children'=>$children,'Infants'=>$infants,'AccommodationTotal'=>$priceQuote['total'],'DepartureBalance'=>$verified['DepartureBalance'] ?? null,
+        'AmendmentFee'=>$feeCharge['posted'], 'AmendmentFeeCharged'=>$feeCharge['charged'], 'TransactionId'=>$feeCharge['transactionId'],
+        'PayableAtReception'=>$feeCharge['payableAtReception'], 'PaymentPendingVerification'=>$feeCharge['pending']], ['Cache-Control'=>'no-store']);
 }
 
 if ($endpoint === 'portal/extras/quote' || $endpoint === 'portal/extras') {

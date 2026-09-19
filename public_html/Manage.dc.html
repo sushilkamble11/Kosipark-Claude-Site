@@ -752,9 +752,19 @@ class Component extends DCLogic {
         try {
           const result = await this.gp.amendManagedReservation(b.ref, { ...q.proposal, adults: b.adults, children: b.children, infants: b.infants, quotedTotal: q.newTotal }, b.portalToken, true);
           if (!result || result.Updated !== true) throw new Error("not-confirmed");
+          // The transfer fee the guest accepted is posted to the room account
+          // and charged when a card is on file. Say which happened — a fee
+          // that appears on their account unannounced is the complaint.
+          const fee = Number(result.AmendmentFee || 0);
+          const feeAtReception = Number(result.PayableAtReception || 0);
+          const feeWord = fee <= 0 ? ""
+            : result.AmendmentFeeCharged === true
+              ? " The " + Component.money(fee) + " transfer fee has been charged to your saved card."
+                + (result.PaymentPendingVerification === true ? " Reception's copy of the account may take a few minutes to catch up. Do not pay again." : "")
+              : " The " + Component.money(feeAtReception || fee) + " transfer fee has been added to your booking account and is payable at reception.";
           this.setState(x => ({ requestSaving: false, mode: null, policyAccepted: false,
             booking: { ...x.booking, checkIn: q.proposal.checkIn, checkOut: q.proposal.checkOut },
-            confirm: { title: "Dates changed in GuestPoint", body: "GuestPoint PMS confirmed the new arrival date and stay length. The room account remains visible for payment and reconciliation." } }));
+            confirm: { title: "Dates changed in GuestPoint", body: "GuestPoint PMS confirmed the new arrival date and stay length." + feeWord + " The room account remains visible for payment and reconciliation." } }));
         } catch (e) { this.setState({ requestSaving: false, confirm: { title: "Dates not changed", body: e && e.message ? e.message : "GuestPoint did not verify the amendment. Nothing has been claimed as complete." } }); }
       },
 
