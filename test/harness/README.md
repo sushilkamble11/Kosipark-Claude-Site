@@ -43,7 +43,13 @@ temp directory, so a run never leaves anything behind.
 | `account-reject` | `SaveTransactionItemDetails` answers HTTP 500 |
 
 `HARNESS_SLOW=1` adds the `gateway-timeout` case, which waits out the proxy's
-20-second upstream timeout.
+20-second upstream timeout. The fake runs with `PHP_CLI_SERVER_WORKERS` set,
+because a single-threaded server would still be inside that hang when the next
+scenario starts.
+
+Every portal write counts against the proxy's per-IP rate limit and the whole
+suite shares one IP, so `scenario()` clears the limiter between cases. Without
+that a long enough run starts failing with 429 on a call unrelated to the test.
 
 ## Payload shapes
 

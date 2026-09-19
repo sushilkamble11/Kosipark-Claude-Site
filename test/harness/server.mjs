@@ -8,7 +8,7 @@
  */
 import { spawn } from "node:child_process";
 import { setTimeout as sleep } from "node:timers/promises";
-import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync, renameSync, mkdirSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync, renameSync, mkdirSync, readdirSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -33,7 +33,10 @@ export async function startHarness({ upstreamPort = 9911, proxyPort = 9912 } = {
   const template = readFileSync(join(HARNESS, "config.harness.php"), "utf8");
   writeFileSync(LIVE_CONFIG, template.replace(/\{\{PORT\}\}/g, String(upstreamPort)).replace(/\{\{CACHE\}\}/g, cacheDir));
 
-  const env = { ...process.env, HARNESS_DIR: dir };
+  // The fake needs workers: one scenario deliberately hangs a request past the
+  // proxy's upstream timeout, and a single-threaded server would block every
+  // test that follows it.
+  const env = { ...process.env, HARNESS_DIR: dir, PHP_CLI_SERVER_WORKERS: "8" };
   const upstream = spawn("php", ["-S", `127.0.0.1:${upstreamPort}`, join(HARNESS, "fake-guestpoint.php")], { cwd: HARNESS, env, stdio: "ignore" });
   const proxy = spawn("php", ["-S", `127.0.0.1:${proxyPort}`, "-t", join(ROOT, "public_html"), join(HARNESS, "router.php")], { cwd: ROOT, env, stdio: "ignore" });
 
@@ -72,6 +75,14 @@ export async function startHarness({ upstreamPort = 9911, proxyPort = 9912 } = {
 
   return {
     dir, base, api, stop, readState,
+    // Every portal write counts against the proxy's per-IP rate limit, and the
+    // whole suite shares one IP. Without this a long enough run starts failing
+    // with 429 on a call that has nothing to do with the test.
+    clearRateLimit: () => {
+      for (const name of readdirSync(cacheDir)) {
+        if (name.startsWith("rl_")) { try { unlinkSync(join(cacheDir, name)); } catch { /* raced */ } }
+      }
+    },
     setState: next => writeFileSync(join(dir, "state.json"), JSON.stringify(next, null, 1)),
     patchState: patch => {
       const next = { ...readState(), ...patch };
@@ -91,9 +102,17 @@ export async function startHarness({ upstreamPort = 9911, proxyPort = 9912 } = {
       return { status: response.status, body: payload };
     },
     async portalToken(confNum = "R1001", surname = "Smith") {
-      const { body } = await this.post("/portal/lookup", { ConfNum: confNum, Surname: surname });
+      const { status, body } = await this.post("/portal/lookup", { ConfNum: confNum, Surname: surname });
       const root = body?.data ?? body?.Data ?? body;
-      return root?.PortalToken ?? null;
+      const token = root?.PortalToken ?? null;
+      if (!token) {
+        // Carry the proxy's own answer up; "no token" on its own tells the
+        // reader nothing, and a 429 from the shared per-IP limit looks
+        // identical to a genuine lookup failure.
+        const reason = body?.Error?.Message ?? JSON.stringify(body)?.slice(0, 200);
+        throw new Error(`portal lookup for ${confNum}/${surname} returned ${status}: ${reason}`);
+      }
+      return token;
     },
   };
 }

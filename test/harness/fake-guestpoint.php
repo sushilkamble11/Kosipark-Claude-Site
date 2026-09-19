@@ -178,7 +178,9 @@ if (str_starts_with($path, '/pms/')) {
     if (str_starts_with($p, 'CreditCardVault/ProcessPaymentUsingProxyPost')) {
         $amount = (float)($q['creditCardPaymentInfo.amount'] ?? 0);
         $s['paymentAttempts'][] = ['amount' => $amount, 'mode' => $mode];
-        if ($mode === 'gateway-timeout') { save($s); sleep(120); exit; }
+        // Long enough to blow the proxy's 20s UPSTREAM_TIMEOUT, short enough
+        // that the run is not held hostage if a worker is still in it.
+        if ($mode === 'gateway-timeout') { save($s); sleep(30); exit; }
         if ($mode === 'gateway-500') { save($s); reply(['Message' => 'gateway error'], 500); }
         if ($mode === 'declined' || $mode === 'rollback-reject') { save($s); reply(['IsPaymentProcessed' => false, 'Amount' => 0, 'ErrorMessage' => 'The card was declined.']); }
         $reference = 'GP' . str_pad((string)count($s['paymentAttempts']), 6, '0', STR_PAD_LEFT);

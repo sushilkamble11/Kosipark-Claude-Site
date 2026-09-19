@@ -42,9 +42,8 @@ async function scenario(overrides = {}, mode = "") {
   h.setMode(mode);
   h.setState(baseState(overrides));
   h.resetCallLog();
-  const token = await h.portalToken();
-  if (!token) throw new Error("harness could not issue a portal token");
-  return token;
+  h.clearRateLimit();
+  return h.portalToken();
 }
 
 const activeExtras = state => (state.tx ?? []).filter(t => t.AddonID && !t.IsReversed && !t.ReversedTransactionItemID);
