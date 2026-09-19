@@ -42,8 +42,6 @@ $SMTP_USERNAME = trim((string)($config['smtp_username'] ?? ''));
 $SMTP_PASSWORD = (string)($config['smtp_password'] ?? '');
 $OTP_FROM_EMAIL = trim((string)($config['otp_from_email'] ?? $SMTP_USERNAME));
 $OTP_FROM_NAME = trim((string)($config['otp_from_name'] ?? 'Kosciuszko Tourist Park'));
-$OTP_TTL = max(300, min(900, (int)($config['otp_ttl'] ?? 600)));
-$OTP_MAX_ATTEMPTS = max(3, min(8, (int)($config['otp_max_attempts'] ?? 5)));
 $DEBUG       = (bool)($config['debug'] ?? false);
 
 $CACHE_DIR = (string)($config['cache_dir'] ?? '');
@@ -421,33 +419,6 @@ function smtpSendText(string $to, string $subject, string $message): bool {
     @smtpCommand($socket, 'QUIT', [221]);
     fclose($socket);
     return $dataCode === 250;
-}
-
-function otpDirectory(): string {
-    global $CACHE_DIR;
-    $dir = $CACHE_DIR . '/portal-otp';
-    if (!is_dir($dir)) @mkdir($dir, 0700, true);
-    return $dir;
-}
-
-function otpChallengePath(string $id): string {
-    return otpDirectory() . '/challenge_' . hash('sha256', $id) . '.json';
-}
-
-/** Limit code requests by IP and entered booking identity. */
-function allowOtpRequest(string $identity): bool {
-    $path = otpDirectory() . '/request_' . hash('sha256', clientIp() . '|' . $identity) . '.json';
-    $now = time();
-    $record = ['window' => $now, 'last' => 0, 'count' => 0];
-    if (is_file($path)) {
-        $loaded = json_decode((string)@file_get_contents($path), true);
-        if (is_array($loaded)) $record = array_merge($record, $loaded);
-    }
-    if ($now - (int)$record['window'] >= 900) $record = ['window' => $now, 'last' => 0, 'count' => 0];
-    if ($now - (int)$record['last'] < 60 || (int)$record['count'] >= 4) return false;
-    $record['last'] = $now;
-    $record['count'] = (int)$record['count'] + 1;
-    return @file_put_contents($path, json_encode($record), LOCK_EX) !== false;
 }
 
 /** Return Core reservation rows for a documented reservation search. */
@@ -1849,156 +1820,6 @@ if ($endpoint === 'portal/extras/quote' || $endpoint === 'portal/extras') {
     ], ['Cache-Control'=>'no-store']);
 }
 
-// Legacy future-add-on implementation retained temporarily for comparison with
-// older deployments. The authoritative branch above always exits first.
-if ($endpoint === 'portal/extras') {
-    $input = is_array($decodedBody) ? $decodedBody : [];
-    [$confNum, $tokenPayload, $identity] = requirePortalSession($input);
-    if (($input['Acknowledged'] ?? false) !== true) fail(400, 'Confirm the selected extras before adding them.');
-    $items = is_array($input['Items'] ?? null) ? $input['Items'] : [];
-    if (!$items || count($items) > 12) fail(400, 'Submit the extras shown for this booking.');
-    $catalog = portalExtrasCatalog($confNum, $tokenPayload);
-    $eligible = [];
-    foreach ($catalog as $extra) if (is_array($extra) && !empty($extra['Id'])) $eligible[strtolower((string)$extra['Id'])] = $extra;
-    $roomAllocationId = (string)$identity['allocations'][0]['RoomAllocationId'];
-    [$allocationStatus, $allocationRaw] = pmsCall('GET', 'Reservation/GetRoomAllocation?roomAllocationID=' . rawurlencode($roomAllocationId));
-    $allocation = json_decode($allocationRaw, true);
-    if ($allocationStatus !== 200 || !is_array($allocation) || (int)($allocation['Status'] ?? 0) !== 1) fail(409, 'This booking can no longer accept extras.');
-    [$existingStatus, $existingRaw] = pmsCall('GET', 'Reservation/GetRoomAllocationAddons?propertyID=' . rawurlencode($PROPERTY_ID) . '&roomAllocationID=' . rawurlencode($roomAllocationId));
-    $addons = json_decode($existingRaw, true);
-    if ($existingStatus !== 200 || !is_array($addons)) $addons = [];
-    $arrival = new DateTimeImmutable(substr((string)$allocation['ArrivalDate'], 0, 10), new DateTimeZone('Australia/Sydney'));
-    $nights = max(1, (int)($allocation['NumberOfNights'] ?? 1));
-    $departure = $arrival->modify('+' . $nights . ' days');
-    $today = new DateTimeImmutable('today', new DateTimeZone('Australia/Sydney'));
-    $effectiveStart = $today > $arrival ? $today : $arrival;
-    if ($effectiveStart >= $departure) fail(409, 'This stay has ended, so its extras can no longer be changed online.');
-    $requestedIds = [];
-    $desiredRows = [];
-    foreach ($items as $item) {
-        if (!is_array($item) || !preg_match('/^[a-f0-9-]{36}$/i', (string)($item['id'] ?? ''))) fail(400, 'One of the selected extras is invalid.');
-        $addonId = (string)$item['id'];
-        $addonKey = strtolower($addonId);
-        $requestedIds[$addonKey] = true;
-        $definition = $eligible[strtolower($addonId)] ?? null;
-        if (!is_array($definition)) fail(409, 'One of the selected extras is no longer offered for this booking. Nothing was added.');
-        $priceType = (string)($definition['PriceType'] ?? 'perBooking');
-        $perPerson = in_array($priceType, ['perPerson', 'perPersonPerNight'], true);
-        $perNight = in_array($priceType, ['perNight', 'perPersonPerNight'], true);
-        $quantity = max(0, min(12, (int)($item['quantity'] ?? 0)));
-        $childQuantity = max(0, min(12, (int)($item['childQuantity'] ?? 0)));
-        if ($perPerson) {
-            if ($quantity > (int)($allocation['NumberAdults'] ?? 0) || $childQuantity > (int)($allocation['NumberChildren'] ?? 0)) fail(409, 'Extra quantities cannot exceed the guests on this booking.');
-        } else {
-            $maxItems = (int)($definition['MaxItems'] ?? 0);
-            if ($maxItems > 0 && $quantity + $childQuantity > $maxItems) fail(409, 'That extra exceeds GuestPoint’s quantity limit.');
-        }
-        $rate = 0.0; $childRate = 0.0;
-        foreach (($definition['Prices'] ?? []) as $price) {
-            if (!is_array($price)) continue;
-            $name = strtolower((string)($price['Name'] ?? ''));
-            $value = round(max(0, (float)($price['Price'] ?? 0)), 2);
-            if (str_contains($name, 'child')) $childRate = $value;
-            elseif ($rate === 0.0 || str_contains($name, 'adult')) $rate = $value;
-        }
-        if ($childRate === 0.0) $childRate = $rate;
-        if ($rate <= 0 && $childRate <= 0) fail(409, 'GuestPoint did not return a valid price for that extra. Nothing was added.');
-        // A one-off extra already charged on a past date cannot be erased or
-        // charged again. Only the increase above that locked quantity is new.
-        if (!$perNight) {
-            $lockedQuantity = 0; $lockedChildQuantity = 0;
-            foreach ($addons as $existingAddon) {
-                if (!is_array($existingAddon) || strcasecmp((string)($existingAddon['AddonID'] ?? ''), $addonId) !== 0) continue;
-                $existingDate = substr((string)($existingAddon['Date'] ?? ''), 0, 10);
-                if ($existingDate !== '' && $existingDate < $effectiveStart->format('Y-m-d')) {
-                    $lockedQuantity = max($lockedQuantity, (int)($existingAddon['Quantity'] ?? 0));
-                    $lockedChildQuantity = max($lockedChildQuantity, (int)($existingAddon['QuantityChild'] ?? 0));
-                }
-            }
-            $quantity = max(0, $quantity - $lockedQuantity);
-            $childQuantity = max(0, $childQuantity - $lockedChildQuantity);
-        }
-        if ($quantity + $childQuantity < 1) continue;
-        $repeat = $perNight ? max(1, (int)$effectiveStart->diff($departure)->days) : 1;
-        for ($i = 0; $i < $repeat; $i++) {
-            $date = $effectiveStart->modify('+' . $i . ' days')->format('Y-m-d') . 'T00:00:00';
-            $rowKey = $addonKey . '|' . substr($date, 0, 10);
-            $desiredRows[$rowKey] = true;
-            $found = false;
-            foreach ($addons as &$addon) {
-                if (strcasecmp((string)($addon['AddonID'] ?? ''), $addonId) === 0 && substr((string)($addon['Date'] ?? ''), 0, 10) === substr($date, 0, 10)) {
-                    $addon['Quantity'] = $quantity; $addon['QuantityChild'] = $childQuantity; $addon['Rate'] = $rate; $addon['ChildRate'] = $childRate; $addon['Total'] = round($quantity*$rate + $childQuantity*$childRate, 2); $found = true; break;
-                }
-            }
-            unset($addon);
-            if (!$found) $addons[] = ['RoomAllocationAddonID'=>uuidV4(),'RoomAllocationID'=>$roomAllocationId,'AddonID'=>$addonId,'Date'=>$date,'Quantity'=>$quantity,'QuantityChild'=>$childQuantity,'Rate'=>$rate,'ChildRate'=>$childRate,'Total'=>round($quantity*$rate+$childQuantity*$childRate,2),'UpdatedLocal'=>0];
-        }
-    }
-    // The submitted catalogue is the desired future state. Remove future rows
-    // that were reduced to zero or no longer match the selected quantity, but
-    // retain past charges so a guest cannot undo an extra already delivered.
-    $cutoff = $effectiveStart->format('Y-m-d');
-    $addons = array_values(array_filter($addons, function($addon) use ($requestedIds, $desiredRows, $cutoff) {
-        if (!is_array($addon)) return false;
-        $id = strtolower((string)($addon['AddonID'] ?? ''));
-        if (!isset($requestedIds[$id])) return true;
-        $date = substr((string)($addon['Date'] ?? ''), 0, 10);
-        if ($date !== '' && $date < $cutoff) return true;
-        return isset($desiredRows[$id . '|' . $date]);
-    }));
-    [$saveStatus, $saveRaw] = pmsCall('POST', 'Reservation/SaveRoomAllocationAddons', $addons);
-    $saved = json_decode($saveRaw, true);
-    if ($saveStatus < 200 || $saveStatus >= 300 || !is_array($saved)) fail(502, 'GuestPoint rejected the extras. Nothing was added.', $saveRaw);
-    send(200, ['Updated'=>true,'ConfNum'=>$confNum,'AddonCount'=>count($saved),'GuestPoint'=>$saved], ['Cache-Control'=>'no-store']);
-}
-
-// Step 2: atomically count attempts and return the booking only after the code
-// succeeds. The challenge is single-use and deleted before GuestPoint is called.
-if ($endpoint === 'portal/otp/verify') {
-    $input = is_array($decodedBody) ? $decodedBody : [];
-    $challengeId = strtolower(trim((string)($input['ChallengeId'] ?? '')));
-    $code = trim((string)($input['Code'] ?? ''));
-    if (!preg_match('/^[a-f0-9]{48}$/', $challengeId) || !preg_match('/^\d{6}$/', $code)) {
-        fail(400, 'Enter the six-digit verification code.');
-    }
-    $path = otpChallengePath($challengeId);
-    $handle = @fopen($path, 'r+');
-    if (!$handle || !flock($handle, LOCK_EX)) {
-        if ($handle) fclose($handle);
-        fail(403, 'That code is invalid or has expired. Request a new code.');
-    }
-    $challenge = json_decode((string)stream_get_contents($handle), true);
-    if (!is_array($challenge) || (int)($challenge['expires'] ?? 0) < time()) {
-        flock($handle, LOCK_UN); fclose($handle); @unlink($path);
-        fail(403, 'That code is invalid or has expired. Request a new code.');
-    }
-    $attempts = (int)($challenge['attempts'] ?? 0) + 1;
-    $challenge['attempts'] = $attempts;
-    $accepted = !empty($challenge['matched'])
-        && $attempts <= $OTP_MAX_ATTEMPTS
-        && password_verify($code, (string)($challenge['code_hash'] ?? ''));
-    if (!$accepted) {
-        if ($attempts >= $OTP_MAX_ATTEMPTS) {
-            flock($handle, LOCK_UN); fclose($handle); @unlink($path);
-        } else {
-            ftruncate($handle, 0); rewind($handle);
-            fwrite($handle, json_encode($challenge)); fflush($handle);
-            flock($handle, LOCK_UN); fclose($handle);
-        }
-        fail(403, $attempts >= $OTP_MAX_ATTEMPTS
-            ? 'Too many incorrect attempts. Request a new code.'
-            : 'That code is invalid or has expired. Request a new code if needed.');
-    }
-    flock($handle, LOCK_UN); fclose($handle); @unlink($path);
-
-    [$status, $payload, $detail] = loadManagedReservation(
-        (string)$challenge['conf_num'],
-        (string)$challenge['surname'],
-        (string)$challenge['email']
-    );
-    if (!is_array($payload)) fail(502, 'The booking system is not responding. Please try again shortly.', (string)$detail);
-    send($status, $payload, ['Cache-Control' => 'no-store']);
-}
 
 // All portal mutations are made through this authenticated wrapper. It accepts
 // only fields documented by PartialUpdateInput and never trusts the booking

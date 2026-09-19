@@ -94,7 +94,18 @@ assert.match(proxySource, /GetHasCcMapExpired/, "the saved card is checked befor
 assert.match(proxySource, /SaveTransactionItemDetails/, "extras and cancellation fees are posted to the GuestPoint room account");
 assert.match(proxySource, /SaveRoomAllocationEditWithVirtualRooms/, "car rego and vehicle dimensions use Phoenix reservation profile fields");
 assert.match(proxySource, /function portalAccommodationTotal/, "cancellation fees use accommodation charges without optional extras");
-assert.match(proxySource, /charges already delivered are protected|retain past charges/i, "past add-on charges cannot be removed by the guest");
+// NOTE: the "past add-on charges are protected" assertion that lived here
+// matched a comment in the legacy future-add-on handler, which was unreachable
+// dead code and has been removed. The guarantee itself was already lost in
+// 8071572: portalCurrentExtras now reports posted account transactions, which
+// carry no service date, so savePortalExtraTransactions cannot tell a delivered
+// charge from a future one and will reverse either. Restoring it needs the
+// per-night service dates from Reservation/GetRoomAllocationAddons carried into
+// the plan — tracked as a finding, deliberately not guessed at here.
+assert.match(proxySource, /function portalExtrasRestorePlan/, "a failed charge can put the room account back as it was");
+assert.match(proxySource, /function awaitPortalPaymentRow/, "a confirmed charge is verified against a new GuestPoint payment row");
+assert.match(proxySource, /function portalQuotesAgree/, "cancellation compares the accepted quote with the recalculated one");
+assert.doesNotMatch(proxySource, /TransactionType'\s*=>\s*11/, "the proxy never posts its own payment row — GuestPoint posts one and a second would double-count it");
 assert.match(proxySource, /guestPointConfirmed\(\$cancelResponse\)/, "cancellation requires GuestPoint success confirmation");
 assert.match(proxySource, /\$reservationId = trim\(\(string\)\$tokenPayload\['rid'\]\)/, "PMS UUID cancellation id remains a string from the signed portal token");
 assert.match(proxySource, /Reservation\/ValidateCancellation/, "Phoenix cancellation is validated before mutation");

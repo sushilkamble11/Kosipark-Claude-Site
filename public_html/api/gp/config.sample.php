@@ -49,10 +49,9 @@ return [
     'smtp_password' => getenv('KOSIPARK_SMTP_PASSWORD') ?: '',
     'otp_from_email'=> getenv('KOSIPARK_OTP_FROM_EMAIL') ?: (getenv('KOSIPARK_SMTP_USERNAME') ?: ''),
     'otp_from_name' => 'Kosciuszko Tourist Park',
-    'otp_ttl'       => 10 * 60,
-    'otp_max_attempts' => 5,
-    // Access currently uses booking reference + surname + mobile only.
-    // Set true later if the park decides to restore email verification.
+    // Access uses booking reference + surname only; there is no email
+    // verification step, so otp_ttl and otp_max_attempts are gone with it.
+    // The otp_from_* values still name the sender of portal notification mail.
 
     // Server-side cache directory. Must be writable and OUTSIDE public_html.
     // Falls back to the system temp dir when this path is not writable.
