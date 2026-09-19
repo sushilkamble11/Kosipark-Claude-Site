@@ -18,6 +18,15 @@ Thumbs.db
 test/shots/
 node_modules/
 
+# Proxy runtime cache. Holds live GuestPoint responses — guest names, emails
+# and reservation ids — so it must never reach the repo. The proxy recreates
+# it on demand and falls back to the system temp dir when it cannot.
+gp-cache/
+
+# Per-developer Claude Code settings (permission rules for the local proxy).
+# The shared .claude/settings.json, if one is ever added, stays tracked.
+.claude/settings.local.json
+
 # Added through GitHub"'s web UI: a PAT cannot push workflow files
 # without the workflow scope, and this one is deliberately minimal.
 .github/
