@@ -114,6 +114,42 @@ const amendFeeRows = state => (state.tx ?? []).filter(t => /^Amendment Fee\b/i.t
     `fee=${body?.AmendmentFee} rows=${amendFeeRows(state).length}`);
 }
 
+// ------------------------- per-person extras follow the party they are for --
+// Drying Room is per person per night. A booking that adds or drops guests has
+// to reprice it: 2 guests over 3 nights is not the same money as 4, and leaving
+// the old figure posted either short-changes the park or overcharges the guest.
+{
+  const token = await scenario({ adults: 2, children: 0 });
+  const { body } = await h.post("/portal/extras/quote", { ConfNum: "R1001", PortalToken: token, Items: items(dryingRoom(true)) });
+  // service + perPersonPerNight: 2 adults x 3 nights x $5.
+  check("per-person-priced-for-party", Number(body?.NewTotal) === 30, `2 adults, 3 nights, $5 each = $30, got ${body?.NewTotal}`);
+}
+{
+  const token = await scenario({ adults: 4, children: 0 });
+  const { body } = await h.post("/portal/extras/quote", { ConfNum: "R1001", PortalToken: token, Items: items(dryingRoom(true)) });
+  check("per-person-follows-more-guests", Number(body?.NewTotal) === 60, `4 adults, 3 nights, $5 each = $60, got ${body?.NewTotal}`);
+}
+{
+  // Children are priced on their own rate, not the adult one.
+  const token = await scenario({ adults: 2, children: 2 });
+  const { body } = await h.post("/portal/extras/quote", { ConfNum: "R1001", PortalToken: token, Items: items(dryingRoom(true)) });
+  check("per-person-uses-child-rate", Number(body?.NewTotal) === 48, `(2 x $5 + 2 x $3) x 3 nights = $48, got ${body?.NewTotal}`);
+}
+{
+  // A longer stay costs more per head: the "per night" half of the rule.
+  const token = await scenario({ adults: 2, children: 0, nights: 5, departure: "2026-12-06" });
+  const { body } = await h.post("/portal/extras/quote", { ConfNum: "R1001", PortalToken: token, Items: items(dryingRoom(true)) });
+  check("per-person-follows-nights", Number(body?.NewTotal) === 50, `2 adults, 5 nights, $5 each = $50, got ${body?.NewTotal}`);
+}
+{
+  // Dropping guests must reprice down, and the difference is a credit rather
+  // than a new charge.
+  const token = await scenario({ adults: 2, children: 0, tx: [postedExtra(DRYING_ROOM, { amount: 60, quantity: 4, description: "Drying room" })] });
+  const { body } = await h.post("/portal/extras/quote", { ConfNum: "R1001", PortalToken: token, Items: items(dryingRoom(true)) });
+  check("per-person-reprices-down", Number(body?.NewTotal) === 30 && Number(body?.CreditAmount) === 30 && Number(body?.ChargeAmount) === 0,
+    `posted $60 for 4, party is now 2: new=${body?.NewTotal} credit=${body?.CreditAmount} charge=${body?.ChargeAmount}`);
+}
+
 // ------------------------------------- extras are named as GuestPoint names --
 // The Booking Engine catalogue carries the web fields, which live are a
 // description ("Firewood Desc") or nothing at all. Reception, the room account

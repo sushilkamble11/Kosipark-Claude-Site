@@ -808,9 +808,16 @@ class Component extends DCLogic {
               ? " The " + Component.money(fee) + " transfer fee has been charged to your saved card."
                 + (result.PaymentPendingVerification === true ? " Reception's copy of the account may take a few minutes to catch up. Do not pay again." : "")
               : " The " + Component.money(feeAtReception || fee) + " transfer fee has been added to your booking account and is payable at reception.";
-          this.setState(x => ({ requestSaving: false, mode: null, policyAccepted: false,
+          // A per-night extra priced for the old stay length is now wrong: a
+          // Drying Room bought for four nights is still posted at four after
+          // the stay becomes seven. Guest numbers already prompted for this;
+          // changing the dates has exactly the same effect and did not.
+          const mustReviewExtras = Array.isArray(b.currentExtras) && b.currentExtras.length > 0;
+          this.setState(x => ({ requestSaving: false, mode: mustReviewExtras ? "extras" : null, policyAccepted: false,
             booking: { ...x.booking, checkIn: q.proposal.checkIn, checkOut: q.proposal.checkOut },
-            confirm: { title: "Dates changed in GuestPoint", body: "GuestPoint PMS confirmed the new arrival date and stay length." + feeWord + " The room account remains visible for payment and reconciliation." } }));
+            confirm: { title: "Dates changed in GuestPoint", body: "GuestPoint PMS confirmed the new arrival date and stay length." + feeWord
+              + (mustReviewExtras ? " Review the extras below now: per-night and per-person items are repriced for the new stay." : " The room account remains visible for payment and reconciliation.") } }));
+          if (mustReviewExtras) setTimeout(() => this.loadExtras(), 0);
         } catch (e) { this.setState({ requestSaving: false, confirm: { title: "Dates not changed", body: e && e.message ? e.message : "GuestPoint did not verify the amendment. Nothing has been claimed as complete." } }); }
       },
 
