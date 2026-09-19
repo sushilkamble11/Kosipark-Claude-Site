@@ -150,7 +150,7 @@
                       <sc-for list="{{ extrasQuoteRows }}" as="r" hint-placeholder-count="3"><div style="display:flex; justify-content:space-between; gap:18px"><dt style="font:500 13.5px/1.5 Figtree,sans-serif; color:#6C6862">{{ r.k }}</dt><dd style="margin:0; font:600 13.5px/1.5 Figtree,sans-serif; color:#292724">{{ r.v }}</dd></div></sc-for>
                     </dl>
                     <p style="font:400 13.5px/1.6 Figtree,sans-serif; color:#56534C; margin:12px 0 0">{{ extrasPaymentText }}</p>
-                    <label style="display:flex; align-items:flex-start; gap:10px; margin-top:14px; cursor:pointer"><input type="checkbox" checked="{{ extrasAccepted }}" onChange="{{ onExtrasAccepted }}" style="width:19px; height:19px; margin-top:2px; accent-color:#1D3730" /><span style="font:500 14px/1.55 Figtree,sans-serif; color:#1D3730">I accept this extra total and authorise the displayed charge to the saved card.</span></label>
+                    <label style="display:flex; align-items:flex-start; gap:10px; margin-top:14px; cursor:pointer"><input type="checkbox" checked="{{ extrasAccepted }}" onChange="{{ onExtrasAccepted }}" style="width:19px; height:19px; margin-top:2px; accent-color:#1D3730" /><span style="font:500 14px/1.55 Figtree,sans-serif; color:#1D3730">{{ extrasConsentLabel }}</span></label>
                     <button type="button" onClick="{{ saveExtras }}" disabled="{{ extrasFinalLocked }}" style="{{ extrasFinalStyle }}">{{ extrasSaveLabel }}</button>
                   </div>
                 </div>
@@ -880,7 +880,10 @@ class Component extends DCLogic {
       extrasReviewStyle: extrasChanged ? "margin-top:14px; background:#E9EEE3; border-radius:14px; padding:18px" : "display:none",
       extrasSaving: s.requestSaving,
       extrasReviewLabel: s.requestSaving ? "Checking GuestPoint…" : "Review price and payment",
-      extrasSaveLabel: s.requestSaving ? "Processing in GuestPoint…" : (s.extrasQuote && Number(s.extrasQuote.ChargeAmount) > 0 ? "Charge card and update extras" : "Confirm extra changes"),
+      extrasSaveLabel: s.requestSaving ? "Processing in GuestPoint…"
+        : (s.extrasQuote && Number(s.extrasQuote.ChargeAmount) > 0
+            ? (s.extrasQuote.PaymentMethod === "account" ? "Add to booking account" : "Charge card and update extras")
+            : "Confirm extra changes"),
       extrasQuoteStyle: s.extrasQuote ? "margin-top:14px; border-top:1px solid rgba(29,55,48,.12); padding-top:15px" : "display:none",
       extrasQuoteTitle: s.extrasQuote ? "GuestPoint has confirmed this change" : "",
       extrasQuoteRows: s.extrasQuote ? [
@@ -888,9 +891,21 @@ class Component extends DCLogic {
         { k: "New extras total", v: Component.money(s.extrasQuote.NewTotal) },
         { k: Number(s.extrasQuote.Difference) >= 0 ? "Additional charge" : "Account credit", v: Component.money(Math.abs(Number(s.extrasQuote.Difference) || 0)) }
       ] : [],
+      // Not every booking has a card. Without one the extra still goes on the
+      // room account and is settled at reception, so the guest has to be told
+      // which of the two is about to happen before they accept it.
       extrasPaymentText: !s.extrasQuote ? "" : Number(s.extrasQuote.ChargeAmount) > 0
-        ? (s.extrasQuote.Card && s.extrasQuote.Card.Available ? "The additional " + Component.money(s.extrasQuote.ChargeAmount) + " will be charged to the saved card " + (s.extrasQuote.Card.Mask || "") + "." : "GuestPoint did not return a valid saved card. This change cannot be completed online.")
+        ? (s.extrasQuote.PaymentMethod === "account"
+            ? "There is no saved card on this booking, so nothing will be charged now. The additional " + Component.money(s.extrasQuote.ChargeAmount) + " will be added to your booking account and is payable at reception."
+            : "The additional " + Component.money(s.extrasQuote.ChargeAmount) + " will be charged to the saved card " + ((s.extrasQuote.Card && s.extrasQuote.Card.Mask) || "") + ".")
         : Number(s.extrasQuote.CreditAmount) > 0 ? "GuestPoint will place a " + Component.money(s.extrasQuote.CreditAmount) + " credit on the booking account. A card refund is not included in this step." : "No card charge is required.",
+      // The consent has to name what is actually being agreed to. Promising a
+      // card charge on a booking with no card is a claim the site cannot keep.
+      extrasConsentLabel: !s.extrasQuote || Number(s.extrasQuote.ChargeAmount) <= 0
+        ? "I accept this change to my extras."
+        : (s.extrasQuote.PaymentMethod === "account"
+            ? "I accept this extra total and that it will be added to my booking account, payable at reception."
+            : "I accept this extra total and authorise the displayed charge to the saved card."),
       extrasAccepted: s.extrasAccepted,
       onExtrasAccepted: e => this.setState({ extrasAccepted: !!e.target.checked, confirm: null }),
       extrasFinalLocked: !s.extrasAccepted || s.requestSaving || !!(s.extrasQuote && s.extrasQuote.CanComplete === false),
@@ -907,9 +922,12 @@ class Component extends DCLogic {
         if (!s.extrasAccepted || !s.extrasQuote || s.requestSaving) return;
         this.setState({ requestSaving: true, confirm: null });
         try {
-          const result = await this.gp.addManagedExtras(b.ref, this.extrasItems(), b.portalToken, true);
+          // The method the guest agreed to travels with the save, so the server
+          // can refuse if a card appeared or vanished in between.
+          const result = await this.gp.addManagedExtras(b.ref, this.extrasItems(), b.portalToken, true, s.extrasQuote && s.extrasQuote.PaymentMethod);
           if (!result || result.Updated !== true) throw new Error("not-confirmed");
           const charged = Number(result.ChargeAmount || 0);
+          const onAccount = Number(result.PayableAtReception || 0);
           // A charge GuestPoint has confirmed but not yet shown on the room
           // account is a reporting delay. Say so plainly rather than implying
           // the guest needs to do anything about it.
@@ -917,6 +935,9 @@ class Component extends DCLogic {
           const body = charged > 0
             ? "GuestPoint added the extras and charged " + Component.money(charged) + " to the saved card."
               + (pending ? " Reception's copy of the account may take a few minutes to catch up. Do not pay again." : "")
+            : onAccount > 0
+            ? "GuestPoint added the extras to your booking account. Nothing has been charged — " + Component.money(onAccount) + " is payable at reception."
+              + (pending ? " Reception's copy of the account may take a few minutes to catch up." : "")
             : "GuestPoint confirmed the revised extras on this booking."
               + (pending ? " Reception's copy of the account may take a few minutes to catch up." : "");
           this.setState(x => ({ requestSaving: false, extrasQuote: null, extrasAccepted: false,

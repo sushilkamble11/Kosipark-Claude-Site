@@ -606,6 +606,33 @@ function nestedScalar(array $value, string $key): ?string {
     return null;
 }
 
+/**
+ * The person a charge or payment is posted against.
+ *
+ * Not on the room allocation: that record carries RoomAllocationID, RoomID,
+ * ReservationID and the occupancy counts, but no PersonID. Phoenix takes it
+ * from the financial detail's _Persons list, so this walks the same path
+ * explicitly rather than letting nestedScalar() return the first PersonID it
+ * meets — the _TransactionItems in the same response each carry one, and an
+ * older row's person is not necessarily the account holder.
+ */
+function pmsAccountPersonId(string $roomAllocationId): string {
+    return pmsMemo('person:' . $roomAllocationId, function () use ($roomAllocationId) {
+        $detail = pmsReservationFinancialDetail($roomAllocationId);
+        if (!is_array($detail)) return '';
+        foreach ($detail['_RoomAllocations'] ?? [] as $allocation) {
+            if (!is_array($allocation)) continue;
+            if ((string)($allocation['RoomAllocationID'] ?? '') !== '' && !hash_equals(strtolower($roomAllocationId), strtolower((string)$allocation['RoomAllocationID']))) continue;
+            foreach ($allocation['_Persons'] ?? [] as $person) {
+                if (!is_array($person)) continue;
+                $id = trim((string)($person['PersonID'] ?? ($person['_Person']['PersonID'] ?? '')));
+                if ($id !== '') return $id;
+            }
+        }
+        return '';
+    });
+}
+
 /** Server-only saved-card information. The token is never returned to a browser. */
 function pmsSavedCard(string $roomAllocationId): array {
     return pmsMemo('card:' . $roomAllocationId, fn() => pmsSavedCardUncached($roomAllocationId));
@@ -627,24 +654,53 @@ function pmsSavedCardUncached(string $roomAllocationId): array {
     return ['available'=>!$expired,'token'=>$token,'mask'=>$mask,'expiry'=>$expiry,'accountId'=>$accountId,'reservationNumber'=>$reservationNumber,'holder'=>$name];
 }
 
-/** Phoenix supplies the encrypted proxy-post credential on the signed-in app-user record. */
-function pmsProxyPassword(): string {
-    global $PROPERTY_ID, $PMS_USERNAME;
+/**
+ * The signed-in app-user record. Phoenix hangs two things off it that the
+ * payment path needs: the encrypted proxy-post credential, and the AppuserID
+ * that ProcessPaymentUsingProxyPost wants in its body so the payment is
+ * attributed to a user rather than to nobody.
+ */
+function pmsProxyAppuser(): array {
     // Memoised: this pulls every app user's stored credential, so doing it once
     // per request rather than once per charge keeps that exposure to a minimum.
-    return pmsMemo('proxypw', fn() => pmsProxyPasswordUncached());
+    return pmsMemo('proxyuser', fn() => pmsProxyAppuserUncached());
 }
 
-function pmsProxyPasswordUncached(): string {
+function pmsProxyAppuserUncached(): array {
     global $PROPERTY_ID, $PMS_USERNAME;
     [$status, $raw] = pmsCall('GET', 'User/GetAllAppusersByProperty?propertyID=' . rawurlencode($PROPERTY_ID));
     $users = json_decode($raw, true);
-    if ($status !== 200 || !is_array($users)) return '';
+    if ($status !== 200 || !is_array($users)) return [];
     foreach ($users as $user) {
         if (!is_array($user) || !hash_equals(strtolower($PMS_USERNAME), strtolower(trim((string)($user['Username'] ?? ''))))) continue;
-        return trim((string)($user['Password'] ?? ''));
+        return $user;
     }
-    return '';
+    return [];
+}
+
+function pmsProxyPassword(): string {
+    return trim((string)(pmsProxyAppuser()['Password'] ?? ''));
+}
+
+/** The id Phoenix stamps on the payment it posts for a successful charge. */
+function pmsProxyAppuserId(): string {
+    return trim((string)(pmsProxyAppuser()['AppuserID'] ?? ''));
+}
+
+/** Transaction accounts by lowercased id. The card's account carries the name
+ *  Phoenix uses as the payment description ("Visa"). */
+function pmsTransactionAccounts(): array {
+    global $PROPERTY_ID;
+    return pmsMemo('accounts', function () {
+        global $PROPERTY_ID;
+        [$status, $raw] = pmsCall('GET', 'Accounts/GetTransactionAccounts?propertyID=' . rawurlencode($PROPERTY_ID));
+        $rows = json_decode($raw, true);
+        $byId = [];
+        if ($status === 200 && is_array($rows)) foreach ($rows as $row) {
+            if (is_array($row) && !empty($row['TransactionAccountID'])) $byId[strtolower((string)$row['TransactionAccountID'])] = $row;
+        }
+        return $byId;
+    });
 }
 
 function pmsTransactionItems(string $reservationId): array {
@@ -1485,7 +1541,19 @@ function portalExtrasPlan(string $confNum, array $tokenPayload, array $identity,
     $card = pmsSavedCard($roomAllocationId);
     return ['roomAllocationId'=>$roomAllocationId,'reservationId'=>$reservationId,'allocation'=>$allocation,'items'=>$planItems,
         'CurrentTotal'=>$currentTotal,'NewTotal'=>$newTotal,'Difference'=>$difference,'ChargeAmount'=>max(0.0,$difference),'CreditAmount'=>max(0.0,-$difference),
-        'card'=>$card,'CanComplete'=>$difference <= 0 || !empty($card['available'])];
+        // How the extra gets paid for, decided once here so the quote the guest
+        // accepts and the save that follows can never disagree:
+        //   none    — nothing more to pay (a removal, or no change)
+        //   card    — a usable saved card, charged when they save
+        //   account — no usable card, so the charge is posted to the room
+        //             account and settled at reception. Plenty of bookings
+        //             have no card; refusing them the extra entirely was a
+        //             dead end, not a safeguard.
+        'card'=>$card,
+        'PaymentMethod'=>$difference <= 0 ? 'none' : (!empty($card['available']) ? 'card' : 'account'),
+        // Kept for the browser contract. Every priced change can now be
+        // applied; only the way it is paid for varies.
+        'CanComplete'=>true];
 }
 
 /**
@@ -1507,8 +1575,13 @@ function portalExtrasRestorePlan(array $plan): array {
 
 function portalExtrasPublicQuote(array $plan): array {
     $card = is_array($plan['card'] ?? null) ? $plan['card'] : [];
+    $method = (string)($plan['PaymentMethod'] ?? 'none');
     return ['CurrentTotal'=>$plan['CurrentTotal'],'NewTotal'=>$plan['NewTotal'],'Difference'=>$plan['Difference'],'ChargeAmount'=>$plan['ChargeAmount'],'CreditAmount'=>$plan['CreditAmount'],
-        'CanComplete'=>$plan['CanComplete'],'Card'=>['Available'=>!empty($card['available']),'Mask'=>(string)($card['mask'] ?? ''),'Expiry'=>(string)($card['expiry'] ?? ''),'Name'=>(string)($card['holder'] ?? '')]];
+        'CanComplete'=>$plan['CanComplete'],'PaymentMethod'=>$method,
+        // The guest has to know which of the two they are agreeing to before
+        // they accept, not after the account has already moved.
+        'PayableAtReception'=>$method === 'account' ? $plan['ChargeAmount'] : 0.0,
+        'Card'=>['Available'=>!empty($card['available']),'Mask'=>(string)($card['mask'] ?? ''),'Expiry'=>(string)($card['expiry'] ?? ''),'Name'=>(string)($card['holder'] ?? '')]];
 }
 
 /**
@@ -1525,10 +1598,9 @@ function savePortalExtraTransactions(array $plan, bool $fatal = true): ?array {
     $roomAllocationId = (string)$plan['roomAllocationId'];
     $allocation = $plan['allocation'];
     $transactions = pmsTransactionItems($reservationId);
-    $accounts = [];
-    [$accountStatus, $accountRaw] = pmsCall('GET', 'Accounts/GetTransactionAccounts?propertyID=' . rawurlencode($PROPERTY_ID));
-    $accountRows = json_decode($accountRaw, true);
-    if ($accountStatus === 200 && is_array($accountRows)) foreach ($accountRows as $account) if (is_array($account) && !empty($account['TransactionAccountID'])) $accounts[strtolower((string)$account['TransactionAccountID'])] = $account;
+    // Memoised, so the payment path's lookup of the card account's name reuses
+    // this read rather than spending another call against the request budget.
+    $accounts = pmsTransactionAccounts();
     $now = new DateTimeImmutable('now', new DateTimeZone('Australia/Sydney'));
     foreach ($plan['items'] as $desired) {
         $addonId = (string)$desired['id'];
@@ -1544,7 +1616,7 @@ function savePortalExtraTransactions(array $plan, bool $fatal = true): ?array {
             $original['IsReversed'] = true;
             $transactions[] = [
                 'TransactionItemID'=>uuidV4(),'PropertyID'=>$PROPERTY_ID,'TransactionAccountID'=>(string)$original['TransactionAccountID'],'TransactionType'=>(int)($original['TransactionType'] ?? 2),
-                'PersonID'=>(string)($original['PersonID'] ?? $allocation['PersonID'] ?? ''),'RoomAllocationID'=>$roomAllocationId,'AddonID'=>$addonId,
+                'PersonID'=>(string)($original['PersonID'] ?? pmsAccountPersonId($roomAllocationId)),'RoomAllocationID'=>$roomAllocationId,'AddonID'=>$addonId,
                 'AccountingDate'=>$now->format('Y-m-d\TH:i:s'),'PrintDate'=>$now->format('Y-m-d\T00:00:00'),'Quantity'=>(float)($original['Quantity'] ?? 0),'QuantityChild'=>(float)($original['QuantityChild'] ?? 0),
                 'Tax'=>0,'TaxRate'=>(float)($original['TaxRate'] ?? 0.1),'AmountInc'=>-abs((float)$original['AmountInc']),'Description'=>(string)($original['Description'] ?? $desired['name']),
                 'ReversedTransactionItemID'=>(string)$original['TransactionItemID'],'IsNotAllowedToReverse'=>false,'UpdatedLocal'=>0,
@@ -1561,7 +1633,7 @@ function savePortalExtraTransactions(array $plan, bool $fatal = true): ?array {
         $account = $accounts[strtolower($transactionAccountId)] ?? [];
         $transactions[] = [
             'TransactionItemID'=>uuidV4(),'PropertyID'=>$PROPERTY_ID,'TransactionAccountID'=>$transactionAccountId,'TransactionType'=>(int)($account['TransactionType'] ?? 2),
-            'PersonID'=>(string)($allocation['PersonID'] ?? ''),'RoomAllocationID'=>$roomAllocationId,'AddonID'=>$addonId,
+            'PersonID'=>pmsAccountPersonId($roomAllocationId),'RoomAllocationID'=>$roomAllocationId,'AddonID'=>$addonId,
             'AccountingDate'=>$now->format('Y-m-d\TH:i:s'),'PrintDate'=>$now->format('Y-m-d\T00:00:00'),'Quantity'=>(float)$desired['quantity'],'QuantityChild'=>(float)$desired['childQuantity'],
             'Tax'=>0,'TaxRate'=>(float)($account['TaxRate'] ?? 0.1),'AmountInc'=>(float)$desired['total'],'Description'=>(string)$desired['name'],'IsNotAllowedToReverse'=>false,'UpdatedLocal'=>0,
         ];
@@ -1600,15 +1672,39 @@ function chargePortalSavedCard(array $plan): array {
     if (empty($card['available'])) return ['charged'=>false,'outcome'=>'blocked','amount'=>$amount,'transactionId'=>null,'detail'=>'The saved card is unavailable or expired.'];
     $proxyPassword = pmsProxyPassword();
     if ($proxyPassword === '') return ['charged'=>false,'outcome'=>'blocked','amount'=>$amount,'transactionId'=>null,'detail'=>'GuestPoint did not supply the payment credential.'];
+    // Phoenix sends the amount the way JSON would ("20", "20.5"), not padded to
+    // two decimals. Matching the client GuestPoint already accepts costs nothing.
+    $amountParam = rtrim(rtrim(number_format($amount, 2, '.', ''), '0'), '.');
     $query = http_build_query([
         'username'=>$PMS_USERNAME,'password'=>$proxyPassword,'propertyID'=>$PROPERTY_ID,'sourceApplication'=>'GuestPoint',
-        'creditCardPaymentInfo.amount'=>number_format($amount, 2, '.', ''),'creditCardPaymentInfo.reservationNumber'=>$card['reservationNumber'],
+        'creditCardPaymentInfo.amount'=>$amountParam,'creditCardPaymentInfo.reservationNumber'=>$card['reservationNumber'],
         'creditCardPaymentInfo.isRefund'=>'false','creditCardPaymentInfo.isMotoRefund'=>'false','creditCardPaymentInfo.cCName'=>$card['holder'] ?? '',
         'creditCardPaymentInfo.cCPartialNumber'=>$card['mask'] ?? '','creditCardPaymentInfo.cCTransactionAccountID'=>$card['accountId'],
         'creditCardPaymentInfo.cCExpiry'=>$card['expiry'] ?? '','creditCardPaymentInfo.cCNumberToken'=>$card['token'],
         'creditCardPaymentInfo.isUSedInFutureReservation'=>'false','creditCardPaymentInfo.isEftposTerminal'=>'false','creditCardPaymentInfo.selectedEftposTerminal'=>'','saveOnServer'=>'true',
     ], '', '&', PHP_QUERY_RFC3986);
-    [$status, $raw] = pmsCall('POST', 'CreditCardVault/ProcessPaymentUsingProxyPost?' . $query);
+    // The query string says "charge this card this much". The body says which
+    // room account the money lands on. Without it GuestPoint has nothing to
+    // attach its own TransactionType 11 row to, so the charge can succeed at the
+    // gateway while the booking account never shows the payment — which is
+    // exactly what portalPaymentRowIds() below is waiting to see. Captured from
+    // the Phoenix client against this property; the WebAPI has no spec here.
+    $allocation = is_array($plan['allocation'] ?? null) ? $plan['allocation'] : [];
+    $accountId = (string)$card['accountId'];
+    $accountName = trim((string)(pmsTransactionAccounts()[strtolower($accountId)]['Name'] ?? ''));
+    $body = [
+        'CompanyID'=>'', 'PersonID'=>pmsAccountPersonId((string)($plan['roomAllocationId'] ?? '')), 'GroupID'=>'',
+        'RoomAllocationID'=>(string)($plan['roomAllocationId'] ?? ''), 'NonResidentialID'=>'',
+        'AppuserID'=>pmsProxyAppuserId(),
+        'Description'=>$accountName !== '' ? $accountName : 'Card payment',
+        'PrintDate'=>(new DateTimeImmutable('now', new DateTimeZone('Australia/Sydney')))->format('Y-m-d\T00:00:00'),
+        'Surcharge'=>0, 'SelectedTransactionAccountID'=>$accountId,
+    ];
+    if ($body['PersonID'] === '' || $body['RoomAllocationID'] === '' || $body['AppuserID'] === '') {
+        return ['charged'=>false,'outcome'=>'blocked','amount'=>$amount,'transactionId'=>null,
+                'detail'=>'GuestPoint did not supply the account details the payment has to be posted against.'];
+    }
+    [$status, $raw] = pmsCall('POST', 'CreditCardVault/ProcessPaymentUsingProxyPost?' . $query, $body);
     $result = json_decode($raw, true);
     if ($status >= 200 && $status < 300 && is_array($result) && ($result['IsPaymentProcessed'] ?? false) === true) {
         // Processed, but for a different amount than we asked for. Nobody
@@ -1701,7 +1797,7 @@ function postPortalCancellationFee(string $reservationId, string $roomAllocation
     $id = uuidV4();
     $transactions[] = [
         'TransactionItemID'=>$id,'PropertyID'=>$PROPERTY_ID,'TransactionAccountID'=>(string)$account['TransactionAccountID'],'TransactionType'=>(int)($account['TransactionType'] ?? 2),
-        'PersonID'=>(string)($allocation['PersonID'] ?? ''),'RoomAllocationID'=>$roomAllocationId,'AccountingDate'=>$now->format('Y-m-d\TH:i:s'),'PrintDate'=>$now->format('Y-m-d\T00:00:00'),
+        'PersonID'=>pmsAccountPersonId($roomAllocationId),'RoomAllocationID'=>$roomAllocationId,'AccountingDate'=>$now->format('Y-m-d\TH:i:s'),'PrintDate'=>$now->format('Y-m-d\T00:00:00'),
         'Quantity'=>1,'QuantityChild'=>0,'Tax'=>0,'TaxRate'=>(float)($account['TaxRate'] ?? 0.1),'AmountInc'=>$fee,'Description'=>'Cancellation Fees','IsNotAllowedToReverse'=>false,'UpdatedLocal'=>0,
     ];
     [$status, $raw] = pmsCall('POST', 'Accounts/SaveTransactionItemDetails?propertyID=' . rawurlencode($PROPERTY_ID) . '&addChangeLogs=true', $transactions);
@@ -1823,7 +1919,7 @@ if ($endpoint === 'portal/extras/quote' || $endpoint === 'portal/extras') {
         $plan = portalExtrasPlan($confNum, $tokenPayload, $identity, $items);
         send(200, portalExtrasPublicQuote($plan), ['Cache-Control'=>'no-store']);
     }
-    if (($input['Acknowledged'] ?? false) !== true) fail(400, 'Accept the displayed extra total and card charge before continuing.');
+    if (($input['Acknowledged'] ?? false) !== true) fail(400, 'Accept the displayed extra total before continuing.');
     $lockPath = $CACHE_DIR . '/portal-extra-' . hash('sha256', (string)$identity['reservationId']) . '.lock';
     $lock = @fopen($lockPath, 'c+');
     if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) {
@@ -1831,9 +1927,14 @@ if ($endpoint === 'portal/extras/quote' || $endpoint === 'portal/extras') {
         fail(409, 'Another extra or payment update is already being processed. Wait a moment and refresh the booking.');
     }
     $plan = portalExtrasPlan($confNum, $tokenPayload, $identity, $items);
-    if (($plan['CanComplete'] ?? false) !== true) {
+    $payOnAccount = ($plan['PaymentMethod'] ?? 'none') === 'account';
+    // The quote the guest accepted must be the deal they get. If a card
+    // appeared or disappeared between quoting and saving, the amount is right
+    // but the way it is paid is not what they agreed to.
+    $acceptedMethod = trim((string)($input['PaymentMethod'] ?? ''));
+    if ($acceptedMethod !== '' && $acceptedMethod !== (string)$plan['PaymentMethod']) {
         flock($lock, LOCK_UN); fclose($lock);
-        fail(409, 'GuestPoint did not return a valid saved card for the additional amount. Nothing was changed.');
+        fail(409, 'The way this extra would be paid for has changed since this page was opened. Nothing has been changed or charged. Please look up the booking again.');
     }
     $saved = savePortalExtraTransactions($plan);
     // The rows already on the account before we charge. GuestPoint posts its
@@ -1844,7 +1945,7 @@ if ($endpoint === 'portal/extras/quote' || $endpoint === 'portal/extras') {
     // Shared hosting stops a long request without warning, and being stopped
     // between the gateway call and the room-account read is the one state
     // nobody can reconstruct afterwards.
-    if (round((float)($plan['ChargeAmount'] ?? 0), 2) > 0 && portalTimeLeft() < PAYMENT_VERIFY_BUDGET + 8.0) {
+    if (!$payOnAccount && round((float)($plan['ChargeAmount'] ?? 0), 2) > 0 && portalTimeLeft() < PAYMENT_VERIFY_BUDGET + 8.0) {
         $restored = savePortalExtraTransactions(portalExtrasRestorePlan($plan), false) !== null;
         flock($lock, LOCK_UN); fclose($lock);
         fail(503, $restored
@@ -1852,7 +1953,12 @@ if ($endpoint === 'portal/extras/quote' || $endpoint === 'portal/extras') {
             : 'GuestPoint is responding too slowly to complete this safely. No payment was taken, but please call reception on 02 6456 2224 to confirm the booking extras.');
     }
 
-    $payment = chargePortalSavedCard($plan);
+    // No usable card: the extra is on the room account and that is the whole
+    // transaction. Nothing is charged, nothing is pending, and the guest is
+    // told the amount is payable at reception.
+    $payment = $payOnAccount
+        ? ['charged'=>false,'outcome'=>'on-account','amount'=>0.0,'transactionId'=>null,'detail'=>null]
+        : chargePortalSavedCard($plan);
 
     // The extras are on the account by now. If the charge definitively did not
     // happen, put the account back before answering — otherwise the guest keeps
@@ -1903,6 +2009,8 @@ if ($endpoint === 'portal/extras/quote' || $endpoint === 'portal/extras') {
         'Updated'=>true, 'ConfNum'=>$confNum,
         'ChargeAmount'=>$payment['amount'], 'CreditAmount'=>$plan['CreditAmount'],
         'Charged'=>$payment['charged'], 'TransactionId'=>$payment['transactionId'],
+        'PaymentMethod'=>$plan['PaymentMethod'],
+        'PayableAtReception'=>$payOnAccount ? $plan['ChargeAmount'] : 0.0,
         'PaymentPendingVerification'=>$paymentPending,
         'ExtrasPendingVerification'=>$extrasPending,
         'CurrentExtras'=>$fresh,
