@@ -91,6 +91,12 @@ const PAYMENT_VERIFY_BUDGET = 3.0;        // seconds
 // Abuse guard only. The meaningful limit is the size of the eligible extras
 // catalogue, which portalExtrasPlan checks once it has fetched it.
 const MAX_EXTRAS_ITEMS    = 200;
+// Wall-clock budget for one request. Hostinger's shared PHP and LiteSpeed both
+// stop a long request without warning, and the dangerous place to be stopped is
+// between charging a card and recording it. Work that moves money checks there
+// is time left to finish before it starts.
+const REQUEST_BUDGET      = 45.0;         // seconds
+$REQUEST_STARTED = microtime(true);
 
 // ----------------------------------------------------------- small utils ----
 
@@ -340,6 +346,40 @@ function pmsCall(string $method, string $path, array|object|null $payload = null
     return [$status, $response === false ? '' : (string)$response, $error];
 }
 
+/** Seconds left in this request's self-imposed budget. */
+function portalTimeLeft(): float {
+    global $REQUEST_STARTED;
+    return REQUEST_BUDGET - (microtime(true) - (float)$REQUEST_STARTED);
+}
+
+/**
+ * Per-request memo for GuestPoint reads.
+ *
+ * One extras save used to make twenty upstream calls — four of them the same
+ * transaction list, three the same add-on catalogue — each with a 20 second
+ * timeout, inside a single PHP request on shared hosting. Reads that cannot
+ * change mid-request are answered once. Anything a write invalidates is
+ * dropped explicitly by that writer; nothing is cached across a write blindly.
+ */
+function &pmsMemoStore(): array {
+    static $store = [];
+    return $store;
+}
+
+function pmsMemo(string $key, callable $load) {
+    $store =& pmsMemoStore();
+    if (!array_key_exists($key, $store)) $store[$key] = $load();
+    return $store[$key];
+}
+
+/** Drop every memo under a prefix. Blunt on purpose: re-reading is the safe side. */
+function pmsMemoForget(string $prefix): void {
+    $store =& pmsMemoStore();
+    foreach (array_keys($store) as $key) {
+        if (str_starts_with($key, $prefix)) unset($store[$key]);
+    }
+}
+
 function uuidV4(): string {
     $data = random_bytes(16); $data[6] = chr((ord($data[6]) & 0x0f) | 0x40); $data[8] = chr((ord($data[8]) & 0x3f) | 0x80);
     return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
@@ -458,12 +498,9 @@ function pmsBookingNumbers(array $reservation): array {
     }
     if ($primary === null) return $numbers;
 
-    [$status, $raw] = pmsCall(
-        'GET',
-        'Reservation/GetReservationDetailByRoomAllocationWithCurrentPackage?roomAllocationID=' .
-            rawurlencode((string)$primary['RoomAllocationId']) . '&allCharges=false'
-    );
-    $detail = $status === 200 ? json_decode($raw, true) : null;
+    // Same read pmsSavedCard needs, so share the memo rather than fetching the
+    // reservation detail twice in one request.
+    $detail = pmsReservationFinancialDetail((string)$primary['RoomAllocationId']);
     if (!is_array($detail)) return $numbers;
     $sources = [$detail];
     if (is_array($detail['_Reservation'] ?? null)) $sources[] = $detail['_Reservation'];
@@ -551,9 +588,11 @@ function resolvePortalEmail(string $confNum, string $surname): string {
 
 /** Read the complete Phoenix reservation/card record for one room allocation. */
 function pmsReservationFinancialDetail(string $roomAllocationId): ?array {
-    [$status, $raw] = pmsCall('GET', 'Reservation/GetReservationDetailByRoomAllocationWithCurrentPackage?roomAllocationID=' . rawurlencode($roomAllocationId) . '&allCharges=false');
-    $detail = json_decode($raw, true);
-    return $status === 200 && is_array($detail) ? $detail : null;
+    return pmsMemo('fin:' . $roomAllocationId, function () use ($roomAllocationId) {
+        [$status, $raw] = pmsCall('GET', 'Reservation/GetReservationDetailByRoomAllocationWithCurrentPackage?roomAllocationID=' . rawurlencode($roomAllocationId) . '&allCharges=false');
+        $detail = json_decode($raw, true);
+        return $status === 200 && is_array($detail) ? $detail : null;
+    });
 }
 
 /** Find a named scalar anywhere in GuestPoint's nested reservation response. */
@@ -569,6 +608,10 @@ function nestedScalar(array $value, string $key): ?string {
 
 /** Server-only saved-card information. The token is never returned to a browser. */
 function pmsSavedCard(string $roomAllocationId): array {
+    return pmsMemo('card:' . $roomAllocationId, fn() => pmsSavedCardUncached($roomAllocationId));
+}
+
+function pmsSavedCardUncached(string $roomAllocationId): array {
     global $PROPERTY_ID;
     $detail = pmsReservationFinancialDetail($roomAllocationId);
     if (!is_array($detail)) return ['available'=>false];
@@ -587,6 +630,13 @@ function pmsSavedCard(string $roomAllocationId): array {
 /** Phoenix supplies the encrypted proxy-post credential on the signed-in app-user record. */
 function pmsProxyPassword(): string {
     global $PROPERTY_ID, $PMS_USERNAME;
+    // Memoised: this pulls every app user's stored credential, so doing it once
+    // per request rather than once per charge keeps that exposure to a minimum.
+    return pmsMemo('proxypw', fn() => pmsProxyPasswordUncached());
+}
+
+function pmsProxyPasswordUncached(): string {
+    global $PROPERTY_ID, $PMS_USERNAME;
     [$status, $raw] = pmsCall('GET', 'User/GetAllAppusersByProperty?propertyID=' . rawurlencode($PROPERTY_ID));
     $users = json_decode($raw, true);
     if ($status !== 200 || !is_array($users)) return '';
@@ -598,25 +648,49 @@ function pmsProxyPassword(): string {
 }
 
 function pmsTransactionItems(string $reservationId): array {
-    [$status, $raw] = pmsCall('GET', 'Accounts/GetTransactionItemDetailsByReservation?reservationID=' . rawurlencode($reservationId));
-    $items = json_decode($raw, true);
-    return $status === 200 && is_array($items) ? array_values(array_filter($items, 'is_array')) : [];
+    // Invalidated by pmsForgetTransactions after every account write, so a
+    // verification read never sees a stale copy of what we just posted.
+    return pmsMemo('tx:' . $reservationId, function () use ($reservationId) {
+        [$status, $raw] = pmsCall('GET', 'Accounts/GetTransactionItemDetailsByReservation?reservationID=' . rawurlencode($reservationId));
+        $items = json_decode($raw, true);
+        return $status === 200 && is_array($items) ? array_values(array_filter($items, 'is_array')) : [];
+    });
+}
+
+/** Call after any Accounts/SaveTransactionItemDetails for this reservation. */
+function pmsForgetTransactions(string $reservationId): void {
+    pmsMemoForget('tx:' . $reservationId);
+    pmsMemoForget('extras:');
+    pmsMemoForget('addonrows:');
 }
 
 function pmsAddonDefinitions(): array {
     global $PROPERTY_ID;
-    [$status, $raw] = pmsCall('GET', 'Rates/GetAddons?propertyID=' . rawurlencode($PROPERTY_ID));
-    $rows = json_decode($raw, true);
-    $out = [];
-    if ($status === 200 && is_array($rows)) foreach ($rows as $row) {
-        if (!is_array($row) || empty($row['AddonID'])) continue;
-        $out[strtolower((string)$row['AddonID'])] = $row;
-    }
-    return $out;
+    // The add-on master is property configuration; it cannot change under us
+    // inside one request.
+    return pmsMemo('addons', function () use ($PROPERTY_ID) {
+        [$status, $raw] = pmsCall('GET', 'Rates/GetAddons?propertyID=' . rawurlencode($PROPERTY_ID));
+        $rows = json_decode($raw, true);
+        $out = [];
+        if ($status === 200 && is_array($rows)) foreach ($rows as $row) {
+            if (!is_array($row) || empty($row['AddonID'])) continue;
+            $out[strtolower((string)$row['AddonID'])] = $row;
+        }
+        return $out;
+    });
 }
 
 /** Return reservation-scoped Phoenix profile definitions and their current values. */
 function pmsReservationProfiles(string $reservationId): array {
+    return pmsMemo('profiles:' . $reservationId, fn() => pmsReservationProfilesUncached($reservationId));
+}
+
+/** Call after any allocation save that carries profile values. */
+function pmsForgetProfiles(string $reservationId): void {
+    pmsMemoForget('profiles:' . $reservationId);
+}
+
+function pmsReservationProfilesUncached(string $reservationId): array {
     global $PROPERTY_ID;
     [$definitionStatus, $definitionRaw] = pmsCall('GET', 'Property/GetProfileFieldDetails?propertyID=' . rawurlencode($PROPERTY_ID));
     [$valueStatus, $valueRaw] = pmsCall('GET', 'Property/GetProfilesByReservation?reservationID=' . rawurlencode($reservationId));
@@ -640,27 +714,26 @@ function pmsReservationProfiles(string $reservationId): array {
 
 /** Collapse future add-ons and posted account charges into the guest-facing state. */
 function portalCurrentExtras(string $roomAllocationId, string $reservationId = ''): array {
+    return pmsMemo('extras:' . $roomAllocationId . '|' . $reservationId,
+        fn() => portalCurrentExtrasUncached($roomAllocationId, $reservationId));
+}
+
+function portalCurrentExtrasUncached(string $roomAllocationId, string $reservationId = ''): array {
     global $PROPERTY_ID;
-    [$status, $raw] = pmsCall('GET', 'Reservation/GetRoomAllocationAddons?propertyID=' . rawurlencode($PROPERTY_ID) . '&roomAllocationID=' . rawurlencode($roomAllocationId));
-    $rows = json_decode($raw, true);
-    if ($status !== 200 || !is_array($rows)) return [];
+    $rows = pmsMemo('addonrows:' . $roomAllocationId, function () use ($PROPERTY_ID, $roomAllocationId) {
+        [$status, $raw] = pmsCall('GET', 'Reservation/GetRoomAllocationAddons?propertyID=' . rawurlencode($PROPERTY_ID) . '&roomAllocationID=' . rawurlencode($roomAllocationId));
+        $decoded = json_decode($raw, true);
+        return $status === 200 && is_array($decoded) ? $decoded : null;
+    });
+    if (!is_array($rows)) return [];
     // Allocation rows contain only the AddonID. Resolve the guest-facing PMS
     // name from the add-on master so the portal does not have to display the
     // Booking Engine's generic fallback such as "Optional extra".
     $addonNames = [];
-    $addonDefinitions = [];
-    [$catalogStatus, $catalogRaw] = pmsCall('GET', 'Rates/GetAddons?propertyID=' . rawurlencode($PROPERTY_ID));
-    $catalog = json_decode($catalogRaw, true);
-    if ($catalogStatus === 200 && is_array($catalog)) {
-        foreach ($catalog as $addon) {
-            if (!is_array($addon)) continue;
-            $addonId = strtolower(trim((string)($addon['AddonID'] ?? '')));
-            $addonName = trim((string)($addon['Name'] ?? ''));
-            if ($addonId !== '') {
-                $addonDefinitions[$addonId] = $addon;
-                if ($addonName !== '') $addonNames[$addonId] = $addonName;
-            }
-        }
+    $addonDefinitions = pmsAddonDefinitions();
+    foreach ($addonDefinitions as $addonId => $addon) {
+        $addonName = trim((string)($addon['Name'] ?? ''));
+        if ($addonName !== '') $addonNames[$addonId] = $addonName;
     }
     $grouped = [];
     foreach ($rows as $row) {
@@ -1494,6 +1567,7 @@ function savePortalExtraTransactions(array $plan, bool $fatal = true): ?array {
         ];
     }
     [$saveStatus, $saveRaw] = pmsCall('POST', 'Accounts/SaveTransactionItemDetails?propertyID=' . rawurlencode($PROPERTY_ID) . '&addChangeLogs=true', $transactions);
+    pmsForgetTransactions($reservationId);
     $saved = json_decode($saveRaw, true);
     if ($saveStatus < 200 || $saveStatus >= 300 || !is_array($saved)) {
         if (!$fatal) return null;
@@ -1631,6 +1705,7 @@ function postPortalCancellationFee(string $reservationId, string $roomAllocation
         'Quantity'=>1,'QuantityChild'=>0,'Tax'=>0,'TaxRate'=>(float)($account['TaxRate'] ?? 0.1),'AmountInc'=>$fee,'Description'=>'Cancellation Fees','IsNotAllowedToReverse'=>false,'UpdatedLocal'=>0,
     ];
     [$status, $raw] = pmsCall('POST', 'Accounts/SaveTransactionItemDetails?propertyID=' . rawurlencode($PROPERTY_ID) . '&addChangeLogs=true', $transactions);
+    pmsForgetTransactions($reservationId);
     $saved = json_decode($raw, true);
     if ($status < 200 || $status >= 300 || !is_array($saved)) fail(502, 'GuestPoint rejected the cancellation fee. The booking was not cancelled.', $raw);
     return $id;
@@ -1656,6 +1731,7 @@ function reversePortalTransaction(string $reservationId, ?string $transactionId)
     ];
     unset($original);
     [$status, $raw] = pmsCall('POST', 'Accounts/SaveTransactionItemDetails?propertyID=' . rawurlencode($PROPERTY_ID) . '&addChangeLogs=true', $transactions);
+    pmsForgetTransactions($reservationId);
     return $status >= 200 && $status < 300 && is_array(json_decode($raw, true));
 }
 
@@ -1763,6 +1839,19 @@ if ($endpoint === 'portal/extras/quote' || $endpoint === 'portal/extras') {
     // The rows already on the account before we charge. GuestPoint posts its
     // own payment row, so a *new* one appearing is the proof we look for.
     $knownPaymentRowIds = portalPaymentRowIds(is_array($saved) ? $saved : []);
+
+    // Never start a card charge we might not live long enough to record.
+    // Shared hosting stops a long request without warning, and being stopped
+    // between the gateway call and the room-account read is the one state
+    // nobody can reconstruct afterwards.
+    if (round((float)($plan['ChargeAmount'] ?? 0), 2) > 0 && portalTimeLeft() < PAYMENT_VERIFY_BUDGET + 8.0) {
+        $restored = savePortalExtraTransactions(portalExtrasRestorePlan($plan), false) !== null;
+        flock($lock, LOCK_UN); fclose($lock);
+        fail(503, $restored
+            ? 'GuestPoint is responding too slowly to complete this safely. Nothing was changed and no payment was taken — please try again in a few minutes.'
+            : 'GuestPoint is responding too slowly to complete this safely. No payment was taken, but please call reception on 02 6456 2224 to confirm the booking extras.');
+    }
+
     $payment = chargePortalSavedCard($plan);
 
     // The extras are on the account by now. If the charge definitively did not
@@ -1887,6 +1976,7 @@ if ($endpoint === 'portal/update') {
             $allocation['_Profiles'] = $profiles;
         }
         [$saveStatus, $saveRaw] = pmsCall('POST', 'Reservation/SaveRoomAllocationEditWithVirtualRooms?propertyID=' . rawurlencode($PROPERTY_ID) . '&addChangeLogs=true', $allocation);
+        pmsForgetProfiles($reservationId);
         if ($saveStatus < 200 || $saveStatus >= 300) fail(502, 'GuestPoint rejected the arrival or vehicle details. Nothing was changed.', $saveRaw);
         // The ETA and the profile values ride on the same save, so a profile
         // that did not stick still leaves the ETA changed. Saying "nothing was

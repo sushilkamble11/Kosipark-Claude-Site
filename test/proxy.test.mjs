@@ -237,6 +237,29 @@ if (process.env.HARNESS_SLOW === "1") {
     `a ${selection.length}-entry selection over a 27-extra catalogue returned ${status} / NewTotal ${body?.NewTotal}`);
 }
 
+// ------------------------------------------ call volume (H3) ----------------
+{
+  // One save used to make twenty upstream calls at a 20s timeout each, inside
+  // a single PHP request on shared hosting. Repeated reads are now memoised
+  // and dropped explicitly after every account write.
+  const token = await scenario();
+  h.resetCallLog();
+  const { status } = await h.post("/portal/extras", { ConfNum: "R1001", PortalToken: token, Acknowledged: true, Items: items(firewood(2, 40)) });
+  const log = h.callLog();
+  const counts = log.reduce((acc, line) => { const key = line.split("?")[0]; acc[key] = (acc[key] ?? 0) + 1; return acc; }, {});
+  const worst = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+  check("H3-call-volume", status === 200 && log.length <= 15, `${log.length} upstream calls for one extras save (was 20)`);
+  check("H3-no-repeated-reads", worst[1] <= 3, `most-repeated endpoint ${worst[0].replace(/^\w+ /, "")} called ${worst[1]}x`);
+}
+{
+  // The transaction memo must not hide our own writes from the verification
+  // that follows them, or a successful save would look unverified.
+  const token = await scenario();
+  const { body } = await h.post("/portal/extras", { ConfNum: "R1001", PortalToken: token, Acknowledged: true, Items: items(firewood(2, 40)) });
+  check("H3-memo-invalidated-by-writes", body?.PaymentPendingVerification === false && body?.ExtrasPendingVerification === false,
+    `pending flags after a clean save: payment=${body?.PaymentPendingVerification} extras=${body?.ExtrasPendingVerification}`);
+}
+
 // ------------------------------------------ session security ----------------
 {
   const token = await scenario();
