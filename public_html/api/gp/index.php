@@ -627,24 +627,53 @@ function pmsSavedCardUncached(string $roomAllocationId): array {
     return ['available'=>!$expired,'token'=>$token,'mask'=>$mask,'expiry'=>$expiry,'accountId'=>$accountId,'reservationNumber'=>$reservationNumber,'holder'=>$name];
 }
 
-/** Phoenix supplies the encrypted proxy-post credential on the signed-in app-user record. */
-function pmsProxyPassword(): string {
-    global $PROPERTY_ID, $PMS_USERNAME;
+/**
+ * The signed-in app-user record. Phoenix hangs two things off it that the
+ * payment path needs: the encrypted proxy-post credential, and the AppuserID
+ * that ProcessPaymentUsingProxyPost wants in its body so the payment is
+ * attributed to a user rather than to nobody.
+ */
+function pmsProxyAppuser(): array {
     // Memoised: this pulls every app user's stored credential, so doing it once
     // per request rather than once per charge keeps that exposure to a minimum.
-    return pmsMemo('proxypw', fn() => pmsProxyPasswordUncached());
+    return pmsMemo('proxyuser', fn() => pmsProxyAppuserUncached());
 }
 
-function pmsProxyPasswordUncached(): string {
+function pmsProxyAppuserUncached(): array {
     global $PROPERTY_ID, $PMS_USERNAME;
     [$status, $raw] = pmsCall('GET', 'User/GetAllAppusersByProperty?propertyID=' . rawurlencode($PROPERTY_ID));
     $users = json_decode($raw, true);
-    if ($status !== 200 || !is_array($users)) return '';
+    if ($status !== 200 || !is_array($users)) return [];
     foreach ($users as $user) {
         if (!is_array($user) || !hash_equals(strtolower($PMS_USERNAME), strtolower(trim((string)($user['Username'] ?? ''))))) continue;
-        return trim((string)($user['Password'] ?? ''));
+        return $user;
     }
-    return '';
+    return [];
+}
+
+function pmsProxyPassword(): string {
+    return trim((string)(pmsProxyAppuser()['Password'] ?? ''));
+}
+
+/** The id Phoenix stamps on the payment it posts for a successful charge. */
+function pmsProxyAppuserId(): string {
+    return trim((string)(pmsProxyAppuser()['AppuserID'] ?? ''));
+}
+
+/** Transaction accounts by lowercased id. The card's account carries the name
+ *  Phoenix uses as the payment description ("Visa"). */
+function pmsTransactionAccounts(): array {
+    global $PROPERTY_ID;
+    return pmsMemo('accounts', function () {
+        global $PROPERTY_ID;
+        [$status, $raw] = pmsCall('GET', 'Accounts/GetTransactionAccounts?propertyID=' . rawurlencode($PROPERTY_ID));
+        $rows = json_decode($raw, true);
+        $byId = [];
+        if ($status === 200 && is_array($rows)) foreach ($rows as $row) {
+            if (is_array($row) && !empty($row['TransactionAccountID'])) $byId[strtolower((string)$row['TransactionAccountID'])] = $row;
+        }
+        return $byId;
+    });
 }
 
 function pmsTransactionItems(string $reservationId): array {
@@ -1525,10 +1554,9 @@ function savePortalExtraTransactions(array $plan, bool $fatal = true): ?array {
     $roomAllocationId = (string)$plan['roomAllocationId'];
     $allocation = $plan['allocation'];
     $transactions = pmsTransactionItems($reservationId);
-    $accounts = [];
-    [$accountStatus, $accountRaw] = pmsCall('GET', 'Accounts/GetTransactionAccounts?propertyID=' . rawurlencode($PROPERTY_ID));
-    $accountRows = json_decode($accountRaw, true);
-    if ($accountStatus === 200 && is_array($accountRows)) foreach ($accountRows as $account) if (is_array($account) && !empty($account['TransactionAccountID'])) $accounts[strtolower((string)$account['TransactionAccountID'])] = $account;
+    // Memoised, so the payment path's lookup of the card account's name reuses
+    // this read rather than spending another call against the request budget.
+    $accounts = pmsTransactionAccounts();
     $now = new DateTimeImmutable('now', new DateTimeZone('Australia/Sydney'));
     foreach ($plan['items'] as $desired) {
         $addonId = (string)$desired['id'];
@@ -1600,15 +1628,39 @@ function chargePortalSavedCard(array $plan): array {
     if (empty($card['available'])) return ['charged'=>false,'outcome'=>'blocked','amount'=>$amount,'transactionId'=>null,'detail'=>'The saved card is unavailable or expired.'];
     $proxyPassword = pmsProxyPassword();
     if ($proxyPassword === '') return ['charged'=>false,'outcome'=>'blocked','amount'=>$amount,'transactionId'=>null,'detail'=>'GuestPoint did not supply the payment credential.'];
+    // Phoenix sends the amount the way JSON would ("20", "20.5"), not padded to
+    // two decimals. Matching the client GuestPoint already accepts costs nothing.
+    $amountParam = rtrim(rtrim(number_format($amount, 2, '.', ''), '0'), '.');
     $query = http_build_query([
         'username'=>$PMS_USERNAME,'password'=>$proxyPassword,'propertyID'=>$PROPERTY_ID,'sourceApplication'=>'GuestPoint',
-        'creditCardPaymentInfo.amount'=>number_format($amount, 2, '.', ''),'creditCardPaymentInfo.reservationNumber'=>$card['reservationNumber'],
+        'creditCardPaymentInfo.amount'=>$amountParam,'creditCardPaymentInfo.reservationNumber'=>$card['reservationNumber'],
         'creditCardPaymentInfo.isRefund'=>'false','creditCardPaymentInfo.isMotoRefund'=>'false','creditCardPaymentInfo.cCName'=>$card['holder'] ?? '',
         'creditCardPaymentInfo.cCPartialNumber'=>$card['mask'] ?? '','creditCardPaymentInfo.cCTransactionAccountID'=>$card['accountId'],
         'creditCardPaymentInfo.cCExpiry'=>$card['expiry'] ?? '','creditCardPaymentInfo.cCNumberToken'=>$card['token'],
         'creditCardPaymentInfo.isUSedInFutureReservation'=>'false','creditCardPaymentInfo.isEftposTerminal'=>'false','creditCardPaymentInfo.selectedEftposTerminal'=>'','saveOnServer'=>'true',
     ], '', '&', PHP_QUERY_RFC3986);
-    [$status, $raw] = pmsCall('POST', 'CreditCardVault/ProcessPaymentUsingProxyPost?' . $query);
+    // The query string says "charge this card this much". The body says which
+    // room account the money lands on. Without it GuestPoint has nothing to
+    // attach its own TransactionType 11 row to, so the charge can succeed at the
+    // gateway while the booking account never shows the payment — which is
+    // exactly what portalPaymentRowIds() below is waiting to see. Captured from
+    // the Phoenix client against this property; the WebAPI has no spec here.
+    $allocation = is_array($plan['allocation'] ?? null) ? $plan['allocation'] : [];
+    $accountId = (string)$card['accountId'];
+    $accountName = trim((string)(pmsTransactionAccounts()[strtolower($accountId)]['Name'] ?? ''));
+    $body = [
+        'CompanyID'=>'', 'PersonID'=>(string)($allocation['PersonID'] ?? ''), 'GroupID'=>'',
+        'RoomAllocationID'=>(string)($plan['roomAllocationId'] ?? ''), 'NonResidentialID'=>'',
+        'AppuserID'=>pmsProxyAppuserId(),
+        'Description'=>$accountName !== '' ? $accountName : 'Card payment',
+        'PrintDate'=>(new DateTimeImmutable('now', new DateTimeZone('Australia/Sydney')))->format('Y-m-d\T00:00:00'),
+        'Surcharge'=>0, 'SelectedTransactionAccountID'=>$accountId,
+    ];
+    if ($body['PersonID'] === '' || $body['RoomAllocationID'] === '' || $body['AppuserID'] === '') {
+        return ['charged'=>false,'outcome'=>'blocked','amount'=>$amount,'transactionId'=>null,
+                'detail'=>'GuestPoint did not supply the account details the payment has to be posted against.'];
+    }
+    [$status, $raw] = pmsCall('POST', 'CreditCardVault/ProcessPaymentUsingProxyPost?' . $query, $body);
     $result = json_decode($raw, true);
     if ($status >= 200 && $status < 300 && is_array($result) && ($result['IsPaymentProcessed'] ?? false) === true) {
         // Processed, but for a different amount than we asked for. Nobody

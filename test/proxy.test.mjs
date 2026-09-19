@@ -89,6 +89,12 @@ const feeRows = state => (state.tx ?? []).filter(t => /^Cancellation Fees?\b/i.t
   check("C1-verified", status === 200 && body?.Updated === true && body?.Charged === true, `status=${status} charged=${body?.Charged}`);
   check("C1-no-duplicate", paymentRows(state).length === 1, `${paymentRows(state).length} TransactionType 11 rows (Phoenix posts its own; the proxy must not add another)`);
   check("C1-charged-once", (state.payments ?? []).length === 1, `${(state.payments ?? []).length} gateway charges`);
+  // ProcessPaymentUsingProxyPost takes the card details in the query string but
+  // the room account in the BODY. Ship it without the body and the gateway
+  // charges the card while GuestPoint posts no payment row against the booking
+  // — money taken, account unchanged. Captured from the Phoenix client.
+  check("C1-payment-attributed", state.lastPaymentAttributed === true,
+    `payment body carried PersonID/RoomAllocationID/AppuserID/SelectedTransactionAccountID: ${state.lastPaymentAttributed}`);
 }
 {
   // Phoenix confirms the charge but the room-account row has not landed yet.

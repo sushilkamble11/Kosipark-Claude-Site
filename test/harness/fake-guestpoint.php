@@ -185,6 +185,24 @@ if (str_starts_with($path, '/pms/')) {
         if ($mode === 'declined' || $mode === 'rollback-reject') { save($s); reply(['IsPaymentProcessed' => false, 'Amount' => 0, 'ErrorMessage' => 'The card was declined.']); }
         $reference = 'GP' . str_pad((string)count($s['paymentAttempts']), 6, '0', STR_PAD_LEFT);
         $s['payments'][] = ['amount' => $amount, 'reference' => $reference];
+        // The query string authorises the card; the BODY says which room
+        // account the payment belongs to. Captured from the Phoenix client:
+        // PersonID, RoomAllocationID, AppuserID and SelectedTransactionAccountID.
+        // Without them GuestPoint has nothing to post its own payment row
+        // against, so the gateway takes the money and the booking account never
+        // shows it. The fake used to post the row regardless, which is why a
+        // bodyless ProxyPost passed every test while failing in production.
+        $payBody = json_decode((string)$raw, true);
+        $attributed = is_array($payBody)
+            && trim((string)($payBody['PersonID'] ?? '')) !== ''
+            && trim((string)($payBody['RoomAllocationID'] ?? '')) !== ''
+            && trim((string)($payBody['AppuserID'] ?? '')) !== ''
+            && trim((string)($payBody['SelectedTransactionAccountID'] ?? '')) !== '';
+        $s['lastPaymentAttributed'] = $attributed;
+        if (!$attributed) {
+            save($s);
+            reply(['IsPaymentProcessed' => true, 'Amount' => $amount, 'TransactionId' => $reference, 'AuthCode' => 'AUTH1']);
+        }
         // Phoenix posts its own payment line on the room account. The harness
         // reproduces that, because the proxy must NOT post a duplicate.
         $row = [
@@ -203,7 +221,8 @@ if (str_starts_with($path, '/pms/')) {
 
     if (str_starts_with($p, 'User/GetAllAppusersByProperty')) {
         $s['appuserFetches'] = ($s['appuserFetches'] ?? 0) + 1; save($s);
-        reply([['Username' => $s['pmsUsername'] ?? 'harness-user', 'Password' => 'ENCRYPTED-PROXY-PW']]);
+        reply([['Username' => $s['pmsUsername'] ?? 'harness-user', 'Password' => 'ENCRYPTED-PROXY-PW',
+                'AppuserID' => 'appuser-1']]);
     }
 
     if (str_starts_with($p, 'Accounts/GetTransactionItemDetailsByReservation')) {
