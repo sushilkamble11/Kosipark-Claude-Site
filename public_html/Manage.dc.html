@@ -523,7 +523,12 @@ class Component extends DCLogic {
         booking: { ...x.booking, estimatedArrival: changes.EstimatedArrival },
         confirm: { title: "Arrival details saved", body: "The ETA, car registration and vehicle dimensions have been updated directly in GuestPoint." } }));
     } catch (e) {
-      this.setState({ travelSaving: false, confirm: { title: "Arrival details not saved", body: "Nothing was changed. Please try again." } });
+      // The ETA and the vehicle fields share one GuestPoint save, so one can
+      // land without the other. Show what the server actually reports rather
+      // than a blanket "nothing was changed".
+      this.setState({ travelSaving: false, confirm: {
+        title: "Arrival details not saved",
+        body: e && e.message ? e.message : "Nothing was changed. Please try again." } });
     }
   }
 

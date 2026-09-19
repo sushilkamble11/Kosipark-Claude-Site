@@ -2056,12 +2056,25 @@ if ($endpoint === 'portal/update') {
         }
         [$saveStatus, $saveRaw] = pmsCall('POST', 'Reservation/SaveRoomAllocationEditWithVirtualRooms?propertyID=' . rawurlencode($PROPERTY_ID) . '&addChangeLogs=true', $allocation);
         if ($saveStatus < 200 || $saveStatus >= 300) fail(502, 'GuestPoint rejected the arrival or vehicle details. Nothing was changed.', $saveRaw);
+        // The ETA and the profile values ride on the same save, so a profile
+        // that did not stick still leaves the ETA changed. Saying "nothing was
+        // changed" here was simply untrue, and sent guests round again to
+        // re-enter an arrival time that had already been accepted.
+        $etaSaved = isset($changes['EstimatedArrival']);
         $verifiedProfiles = pmsReservationProfiles($reservationId);
+        $unverified = [];
         foreach ($changes['ProfileFields'] ?? [] as $field) {
             $fieldId = strtolower((string)($field['Id'] ?? $field['ExternalId'] ?? ''));
             $match = null;
             foreach ($verifiedProfiles['definitions'] as $candidate) if (strtolower((string)$candidate['Id']) === $fieldId) { $match = $candidate; break; }
-            if (!is_array($match) || (string)$match['Value'] !== trim((string)($field['Value'] ?? ''))) fail(502, 'GuestPoint saved the request but did not verify the vehicle profile values.');
+            if (!is_array($match) || (string)$match['Value'] !== trim((string)($field['Value'] ?? ''))) {
+                $unverified[] = is_array($match) ? (string)$match['Name'] : $fieldId;
+            }
+        }
+        if ($unverified) {
+            fail(502, ($etaSaved ? 'Your arrival time was saved. ' : '')
+                . 'GuestPoint did not store ' . implode(' or ', $unverified) . ', so the vehicle details are unchanged.'
+                . ' Please give them to reception on arrival.');
         }
         send(200, ['Updated'=>true,'NotificationSent'=>null,'ProfileFields'=>$verifiedProfiles['definitions']], ['Cache-Control'=>'no-store']);
     }

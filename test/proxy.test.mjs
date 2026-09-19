@@ -16,7 +16,6 @@ import { startHarness } from "./harness/server.mjs";
 import { baseState, postedExtra, FIREWOOD, DRYING_ROOM } from "./harness/fixtures.mjs";
 
 const KNOWN_BROKEN = new Set([
-  "H2-partial-write-is-honest",  // the ETA persists but the response says nothing changed
   "M1-catalogue-size",           // a catalogue over 20 entries is rejected outright
 ]);
 
