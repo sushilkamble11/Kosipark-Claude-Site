@@ -115,7 +115,7 @@
                 <h3 style="font:400 19px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:0">Arrival and vehicle details</h3>
                 <p style="font:400 14px/1.7 Figtree, sans-serif; color:#6C6862; margin:8px 0 14px">Help reception prepare keys and identify vehicles after hours.</p>
                 <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:10px">
-                  <label style="display:flex; flex-direction:column; gap:7px; padding:13px 15px; border-radius:12px; background:#F3ECE0"><span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Estimated arrival</span><input type="time" value="{{ etaValue }}" onChange="{{ onEtaChange }}" style="border:0; background:transparent; outline:none; font:500 15px/1.35 Figtree, sans-serif; color:#1D3730; width:100%" /></label>
+                  <label style="display:flex; flex-direction:column; gap:7px; padding:13px 15px; border-radius:12px; background:#F3ECE0"><span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Estimated arrival</span><select value="{{ etaValue }}" onChange="{{ onEtaChange }}" style="border:0; background:transparent; outline:none; font:500 15px/1.35 Figtree, sans-serif; color:#1D3730; width:100%"><sc-for list="{{ etaOptions }}" as="o" hint-placeholder-count="6"><option value="{{ o.value }}">{{ o.label }}</option></sc-for></select></label>
                   <label style="display:flex; flex-direction:column; gap:7px; padding:13px 15px; border-radius:12px; background:#F3ECE0"><span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Vehicle registrations</span><input value="{{ vehiclesValue }}" onChange="{{ onVehiclesChange }}" placeholder="ABC123, XYZ789" style="border:0; background:transparent; outline:none; font:500 15px/1.35 Figtree, sans-serif; color:#1D3730; width:100%" /></label>
                   <label style="display:flex; flex-direction:column; gap:7px; padding:13px 15px; border-radius:12px; background:#F3ECE0"><span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Vehicle dimensions</span><input value="{{ dimensionsValue }}" onChange="{{ onDimensionsChange }}" placeholder="7m x 5m" style="border:0; background:transparent; outline:none; font:500 15px/1.35 Figtree, sans-serif; color:#1D3730; width:100%" /></label>
                 </div>
@@ -310,6 +310,50 @@ class Component extends DCLogic {
   static vehicleLine(text) { const m = String(text || "").match(/(?:^|\n)Vehicle registrations:\s*([^\n]*)/i); return m ? m[1].trim() : ""; }
   static withoutVehicleLine(text) { return String(text || "").replace(/(?:^|\n)Vehicle registrations:\s*[^\n]*/i, "").trim(); }
   static withVehicleLine(text, vehicles) { return [Component.withoutVehicleLine(text), vehicles ? "Vehicle registrations: " + vehicles : ""].filter(Boolean).join("\n"); }
+  /**
+   * GuestPoint stores the ETA as "04:30 PM" and the manage endpoint wants
+   * "16:30", so a value read back from a booking never matched the field that
+   * was supposed to show it. Accepts either, plus "15:00:00" as the Booking
+   * Engine returns it, and answers in the 24-hour form the server parses.
+   */
+  static toTimeValue(raw) {
+    const v = String(raw == null ? "" : raw).trim();
+    if (!v) return "";
+    const m = v.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])?$/);
+    if (!m) return "";
+    let hour = Number(m[1]);
+    const minute = Number(m[2]);
+    const suffix = (m[3] || "").toUpperCase();
+    if (suffix === "PM" && hour < 12) hour += 12;
+    if (suffix === "AM" && hour === 12) hour = 0;
+    if (hour > 23 || minute > 59) return "";
+    return String(hour).padStart(2, "0") + ":" + String(minute).padStart(2, "0");
+  }
+
+  /** "16:30" -> "4:30 PM", the way reception and the guest's booking read it. */
+  static toTimeLabel(value) {
+    const [h, m] = String(value).split(":").map(Number);
+    const suffix = h < 12 ? "AM" : "PM";
+    const hour = h % 12 === 0 ? 12 : h % 12;
+    return hour + ":" + String(m).padStart(2, "0") + " " + suffix;
+  }
+
+  /**
+   * Half-hourly for the whole day. A typed time let guests enter anything and
+   * left the field blank whenever GuestPoint's stored value did not happen to
+   * match the input's format; a fixed list always round-trips. The full day is
+   * offered deliberately — late arrivals are normal at a park, and an option
+   * missing from the list would be an arrival time nobody could record.
+   */
+  static etaChoices() {
+    const out = [{ value: "", label: "Not supplied" }];
+    for (let minutes = 0; minutes < 24 * 60; minutes += 30) {
+      const value = String(Math.floor(minutes / 60)).padStart(2, "0") + ":" + String(minutes % 60).padStart(2, "0");
+      out.push({ value, label: Component.toTimeLabel(value) });
+    }
+    return out;
+  }
+
   static profileValue(fields, matcher) {
     const row = (Array.isArray(fields) ? fields : []).find(f => matcher.test(String(f.Name || f.FieldName || "")));
     return row ? String(row.Value || "") : "";
@@ -350,7 +394,7 @@ class Component extends DCLogic {
     const profileFields = (b.raw && b.raw.ProfileFields) || [];
     this.setState({ booking: b, error: "", mode: null, confirm: null, loading: false, selectedExtras: {}, initialExtras: {}, extrasQuote: null, extrasAccepted: false, partyQuote: null, policyAccepted: false,
       adults: b.adults, children: b.children, infants: b.infants,
-      note: "", eta: b.estimatedArrival || "", vehicles: Component.profileValue(profileFields, /(?:car|vehicle).*(?:registration|rego)|rego/i), dimensions: Component.profileValue(profileFields, /dimentions|dimensions?/i),
+      note: "", eta: Component.toTimeValue(b.estimatedArrival), vehicles: Component.profileValue(profileFields, /(?:car|vehicle).*(?:registration|rego)|rego/i), dimensions: Component.profileValue(profileFields, /dimentions|dimensions?/i),
       guestFirst: lead.FirstName || "", guestLast: lead.LastName || "", guestEmail: lead.Email || "", guestMobile: lead.Mobile || lead.Phone || "" });
   }
 
@@ -650,7 +694,9 @@ class Component extends DCLogic {
           { k: "Rate", v: b.rate },
           { k: "Booking total", v: Component.money(b.total) },
           { k: "Payments", v: Component.money(b.paid) + " paid · " + Component.money(b.balance) + " remaining" },
-          { k: "Estimated arrival", v: b.estimatedArrival || "Not supplied" },
+          // GuestPoint hands this back as "04:30 PM" and the manage save sends
+          // "16:30"; show one wording whichever the booking is carrying.
+          { k: "Estimated arrival", v: Component.toTimeValue(b.estimatedArrival) ? Component.toTimeLabel(Component.toTimeValue(b.estimatedArrival)) : "Not supplied" },
           { k: "Arrival", v: p.days > 0 ? "In " + p.days + " days · check-in from 3pm" : "Stay has begun or passed" }
         ]
       } : { ref: "", room: "", status: "", rows: [] },
@@ -752,9 +798,26 @@ class Component extends DCLogic {
         try {
           const result = await this.gp.amendManagedReservation(b.ref, { ...q.proposal, adults: b.adults, children: b.children, infants: b.infants, quotedTotal: q.newTotal }, b.portalToken, true);
           if (!result || result.Updated !== true) throw new Error("not-confirmed");
-          this.setState(x => ({ requestSaving: false, mode: null, policyAccepted: false,
+          // The transfer fee the guest accepted is posted to the room account
+          // and charged when a card is on file. Say which happened — a fee
+          // that appears on their account unannounced is the complaint.
+          const fee = Number(result.AmendmentFee || 0);
+          const feeAtReception = Number(result.PayableAtReception || 0);
+          const feeWord = fee <= 0 ? ""
+            : result.AmendmentFeeCharged === true
+              ? " The " + Component.money(fee) + " transfer fee has been charged to your saved card."
+                + (result.PaymentPendingVerification === true ? " Reception's copy of the account may take a few minutes to catch up. Do not pay again." : "")
+              : " The " + Component.money(feeAtReception || fee) + " transfer fee has been added to your booking account and is payable at reception.";
+          // A per-night extra priced for the old stay length is now wrong: a
+          // Drying Room bought for four nights is still posted at four after
+          // the stay becomes seven. Guest numbers already prompted for this;
+          // changing the dates has exactly the same effect and did not.
+          const mustReviewExtras = Array.isArray(b.currentExtras) && b.currentExtras.length > 0;
+          this.setState(x => ({ requestSaving: false, mode: mustReviewExtras ? "extras" : null, policyAccepted: false,
             booking: { ...x.booking, checkIn: q.proposal.checkIn, checkOut: q.proposal.checkOut },
-            confirm: { title: "Dates changed in GuestPoint", body: "GuestPoint PMS confirmed the new arrival date and stay length. The room account remains visible for payment and reconciliation." } }));
+            confirm: { title: "Dates changed in GuestPoint", body: "GuestPoint PMS confirmed the new arrival date and stay length." + feeWord
+              + (mustReviewExtras ? " Review the extras below now: per-night and per-person items are repriced for the new stay." : " The room account remains visible for payment and reconciliation.") } }));
+          if (mustReviewExtras) setTimeout(() => this.loadExtras(), 0);
         } catch (e) { this.setState({ requestSaving: false, confirm: { title: "Dates not changed", body: e && e.message ? e.message : "GuestPoint did not verify the amendment. Nothing has been claimed as complete." } }); }
       },
 
@@ -808,6 +871,7 @@ class Component extends DCLogic {
       guestSaveLabel: s.guestSaving ? "Saving…" : "Save guest details",
 
       etaValue: s.eta,
+      etaOptions: Component.etaChoices(),
       vehiclesValue: s.vehicles,
       dimensionsValue: s.dimensions,
       onEtaChange: e => this.setState({ eta: e.target.value, confirm: null }),

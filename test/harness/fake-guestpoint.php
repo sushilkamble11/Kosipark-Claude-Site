@@ -117,6 +117,37 @@ if (preg_match('#^/be/properties/[^/]+/reservations/manage$#', $path)) {
 }
 if (preg_match('#^/be/properties/[^/]+/extras$#', $path)) reply($s['catalog'] ?? []);
 
+// Availability and nightly rates for the booked room type. The amend path asks
+// for these before it will move a booking's dates, so without them no amendment
+// test could run at all. Shapes follow booking-engine-api-v2.yaml: one entry
+// per night, numerics as strings.
+if (preg_match('#^/be/properties/[^/]+/availabilities$#', $path)) {
+    $q = query();
+    $from = (string)($q['arrivalDate'] ?? '');
+    $to = (string)($q['departureDate'] ?? '');
+    $nightlyRate = (string)($s['nightlyRate'] ?? 100);
+    $nights = [];
+    $rates = [];
+    try {
+        $cursor = new DateTimeImmutable($from);
+        $end = new DateTimeImmutable($to);
+        while ($cursor < $end) {
+            $date = $cursor->format('Y-m-d');
+            $nights[] = ['Date' => $date, 'ForSale' => (string)($s['forSale'] ?? 3), 'Closed' => !empty($s['closed'])];
+            $rates[] = ['Date' => $date, 'SellRate' => $nightlyRate, 'Closed' => !empty($s['rateClosed'])];
+            $cursor = $cursor->modify('+1 day');
+        }
+    } catch (Throwable $e) { reply(['Message' => 'bad dates'], 400); }
+    reply(['data' => ['Properties' => [[
+        'Id' => $s['propertyId'] ?? 'PROP-HARNESS',
+        'RoomTypes' => [[
+            'Id' => 'RT1', 'Name' => 'Cedar Cabin', 'MaxGuests' => (int)($s['maxGuests'] ?? 6),
+            'Availabilities' => $nights,
+            'RatePlans' => [['Id' => 'RP1', 'Name' => 'Standard rate', 'Rates' => $rates]],
+        ]],
+    ]]]]);
+}
+
 // ---------------------------------------------------------- Phoenix WebAPI ---
 if (str_starts_with($path, '/pms/')) {
     $p = substr($path, 5);
@@ -125,11 +156,53 @@ if (str_starts_with($path, '/pms/')) {
 
     if (str_starts_with($p, 'Reservation/GetRoomAllocationAddons')) reply($s['futureAddons'] ?? []);
 
-    if (str_starts_with($p, 'Reservation/GetRoomAllocationChargesForReservationByRoomAllocationID'))
-        reply([['Room' => $s['roomTotal'] ?? 300, 'ExtraPersons' => 0, 'Discount' => 0]]);
+    if (str_starts_with($p, 'Reservation/GetRoomAllocationChargesForReservationByRoomAllocationID')) {
+        // One row per night, each dated: the amend path rewrites these in place
+        // and appends from the first as a template, so a single undated row
+        // could never exercise it.
+        $rows = [];
+        $perNight = round((float)($s['roomTotal'] ?? 300) / max(1, (int)($s['nights'] ?? 1)), 2);
+        try {
+            $cursor = new DateTimeImmutable((string)$s['arrival']);
+            for ($i = 0; $i < max(1, (int)($s['nights'] ?? 1)); $i++) {
+                $rows[] = ['RoomAllocationChargeID' => 'CHG-' . $i, 'RoomAllocationID' => $RA,
+                           'Date' => $cursor->format('Y-m-d') . 'T00:00:00', 'Room' => $perNight,
+                           'ExtraPersons' => 0, 'Discount' => 0];
+                $cursor = $cursor->modify('+1 day');
+            }
+        } catch (Throwable $e) { $rows = [['RoomAllocationChargeID' => 'CHG-0', 'Room' => $perNight, 'ExtraPersons' => 0, 'Discount' => 0]]; }
+        reply($rows);
+    }
+
+    if (str_starts_with($p, 'Reservation/SaveRoomAllocationCharges')) {
+        $s['savedCharges'] = json_decode((string)$raw, true) ?: [];
+        save($s);
+        reply($s['savedCharges']);
+    }
+
+    if (str_starts_with($p, 'Reservation/SaveRoomAllocationDetail2sWithVirtualRooms')) {
+        $sent = json_decode((string)$raw, true);
+        if (is_array($sent) && is_array($sent[0] ?? null)) {
+            // Phoenix persists the amended stay; later reads must show it, or
+            // the proxy's own verification step would pass on stale data.
+            if (isset($sent[0]['ArrivalDate'])) $s['arrival'] = substr((string)$sent[0]['ArrivalDate'], 0, 10);
+            if (isset($sent[0]['NumberOfNights'])) $s['nights'] = (int)$sent[0]['NumberOfNights'];
+            if (isset($sent[0]['NumberAdults'])) $s['adults'] = (int)$sent[0]['NumberAdults'];
+            if (isset($sent[0]['NumberChildren'])) $s['children'] = (int)$sent[0]['NumberChildren'];
+            try {
+                $s['departure'] = (new DateTimeImmutable((string)$s['arrival']))->modify('+' . max(1, (int)$s['nights']) . ' days')->format('Y-m-d');
+            } catch (Throwable $e) { /* leave as-is */ }
+            save($s);
+        }
+        reply($sent ?: []);
+    }
 
     if (str_starts_with($p, 'Reservation/GetRoomAllocationDetail2sByReservation'))
-        reply([[ 'ArrivalDate' => $s['arrival'], 'NumberOfNights' => $s['nights'], 'RoomTypeID' => 'RT1',
+        // RoomAllocationID and Status are what the amend path checks before it
+        // will touch a booking. Leaving them out meant no amend test could get
+        // past the first guard, so that whole flow went untested.
+        reply([[ 'RoomAllocationID' => $RA, 'Status' => !empty($s['cancelled']) ? 4 : 1,
+                 'ArrivalDate' => $s['arrival'], 'NumberOfNights' => $s['nights'], 'RoomTypeID' => 'RT1',
                  'PackageID' => 'RP1', 'NumberAdults' => $s['adults'], 'NumberChildren' => $s['children'], 'NumberInfants' => 0 ]]);
 
     if (str_starts_with($p, 'Reservation/GetRoomAllocationDetail') || str_starts_with($p, 'Reservation/GetRoomAllocation'))

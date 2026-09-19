@@ -36,6 +36,7 @@ for (const section of ["Amend booking", "Guest numbers", "Guest details", "Arriv
 
 await page.getByRole("button", { name: "Amend booking" }).click();
 pass(await page.getByRole("button", { name: "Change dates" }).isEnabled(), "amendment choice comes before acceptance");
+
 pass(await page.getByRole("button", { name: "Guest numbers" }).isVisible(), "guest numbers is a separate portal action");
 pass(await page.getByRole("button", { name: "Change guest numbers" }).count() === 0, "guest numbers is not inside Amend booking");
 
@@ -83,6 +84,20 @@ pass(await page.getByText(/charged \$30/).isVisible(), "accepted extras charge i
 await page.getByRole("button", { name: "Arrival & vehicles" }).click();
 pass(await page.getByPlaceholder("7m x 5m").isVisible(), "vehicle dimensions are captured alongside car registration");
 
+// Arrival time is a dropdown, and it has to show the time GuestPoint already
+// holds. GuestPoint stores "03:00 PM" while the old <input type="time"> needed
+// "15:00", so a booking with an ETA opened the field blank and any save that
+// followed silently replaced a real arrival time with whatever was picked.
+{
+  const etaSelect = page.locator("select").first();
+  pass(await etaSelect.count() > 0, "estimated arrival is chosen from a list, not typed");
+  pass(await etaSelect.inputValue() === "15:00", `the ETA GuestPoint holds ("03:00 PM") is preselected, got ${JSON.stringify(await etaSelect.inputValue())}`);
+  const optionCount = await etaSelect.locator("option").count();
+  pass(optionCount === 49, `half-hourly for the whole day plus "Not supplied" (${optionCount} options)`);
+  await etaSelect.selectOption("16:30");
+  pass(await etaSelect.inputValue() === "16:30", "a different arrival time can be selected");
+}
+
 await page.getByRole("button", { name: "Add another stay" }).click();
 pass(await page.getByText("Go to the booking page?").isVisible(), "adding another stay warns before leaving");
 await page.screenshot({ path: "/tmp/kosipark-manage-leave-warning.png", fullPage: false });
@@ -129,6 +144,29 @@ pass(await page.getByText(/Extras already on booking/i).isVisible(), "the repric
 const acceptExtras = page.getByRole("button", { name: /Charge card and update extras|Confirm extra changes/i }).first();
 pass(!(await acceptExtras.isEnabled()), "the extras charge stays locked until the guest accepts it");
 pass(pageErrors.length === 0, "the extras reprice flow has no page errors");
+
+// The calendar used to open on the current month whatever the booking's dates
+// were, so a guest amending a November stay in September saw September, with
+// their own dates off-screen and no clue they had to page forward to reach them.
+await page.getByRole("button", { name: "Look up another booking" }).click();
+await page.getByRole("button", { name: "Continue" }).click();
+await page.getByPlaceholder("Reservation number or channel booking ref").fill("1");
+await page.getByPlaceholder("Nguyen").fill("1");
+await page.getByRole("button", { name: "Find my booking" }).click();
+await page.getByText("Booking reference: 1").waitFor({ timeout: 5000 });
+await page.getByRole("button", { name: "Amend booking" }).click();
+await page.getByRole("button", { name: "Change dates" }).click();
+const checkInField = page.getByText("Check in").first();
+const checkInLabel = (await checkInField.locator("..").innerText()).trim();
+await checkInField.click();
+const monthTitle = (await page.locator("text=/^[A-Z][a-z]+ \\d{4}$/").first().innerText()).trim();
+// The field reads "Tue, 10 Nov" and the calendar "November 2026", so compare on
+// the month name the two share.
+const stayMonthAbbr = (checkInLabel.match(/\b[A-Z][a-z]{2}\b/g) || []).pop();
+pass(!!stayMonthAbbr && monthTitle.startsWith(stayMonthAbbr),
+  `calendar opens on the stay's month, not today's: check-in "${checkInLabel.replace(/\n/g, " ")}" -> calendar "${monthTitle}"`);
+pass(pageErrors.length === 0, "opening the amendment calendar has no page errors");
+
 
 await browser.close();
 server.kill();

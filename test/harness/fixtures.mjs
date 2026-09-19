@@ -35,15 +35,20 @@ export function baseState(overrides = {}) {
       { AddonID: FIREWOOD, Name: "Firewood", TransactionAccountID: "ACCT-1", IsPerNight: false },
       { AddonID: DRYING_ROOM, Name: "Drying room", TransactionAccountID: "ACCT-1", IsPerNight: true },
     ],
+    // The Booking Engine catalogue carries the WEB fields, and live they are
+    // not the add-on's name: Firewood comes back as "Firewood Desc" (its web
+    // description) and Drying Room with Name and Description both empty. The
+    // real names live on the Phoenix add-on master above, so the proxy has to
+    // overlay them. Fixtures that spelled the names correctly here hid that.
     catalog: [
       {
-        Id: FIREWOOD, Name: "Firewood", Description: "A bag of dry hardwood.",
+        Id: FIREWOOD, Name: "Firewood Desc", Description: "A bag of dry hardwood.",
         ExtraType: "checkout", CheckoutType: "quantity", MaxItems: 6,
         PriceType: "perBooking", DisplayOrder: 1, Images: null,
         Prices: [{ Id: "p1", Name: "", Price: 20 }], RatePlans: [],
       },
       {
-        Id: DRYING_ROOM, Name: "Drying room", Description: "Somewhere warm for boots.",
+        Id: DRYING_ROOM, Name: "", Description: "",
         ExtraType: "checkout", CheckoutType: "service", MaxItems: 1,
         PriceType: "perPersonPerNight", DisplayOrder: 2, Images: null,
         Prices: [{ Id: "p1", Name: "Adult", Price: 5 }, { Id: "p2", Name: "Child", Price: 3 }],

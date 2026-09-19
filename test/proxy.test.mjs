@@ -51,6 +51,121 @@ const netAddonTotal = state => (state.tx ?? []).filter(t => t.AddonID).reduce((s
 const paymentRows = state => (state.tx ?? []).filter(t => Number(t.TransactionType) === 11);
 const feeRows = state => (state.tx ?? []).filter(t => /^Cancellation Fees?\b/i.test(String(t.Description || "")) && !t.IsReversed && !t.ReversedTransactionItemID);
 
+// ------------------------------------------------ amendment (transfer) fee --
+// The conditions attach a transfer fee to a date change inside 15 days, and to
+// any snow-season move. It was shown to the guest and never reached GuestPoint:
+// the booking moved and the fee was simply lost. It now posts to the room
+// account like an extra, and is charged when a card is on file.
+const dayOffset = n => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+const feeStay = (n) => ({ arrival: dayOffset(n), departure: dayOffset(n + 3), nights: 3 });
+// Snow season (Jun-Sep) forbids a change inside 14 days, so an arrival 12 days
+// out carries a fee only off-peak. Asserting the right one keeps this stable
+// whatever today's date is.
+const snowAt = iso => { const m = Number(iso.slice(5, 7)); return m >= 6 && m <= 9; };
+const amendFeeRows = state => (state.tx ?? []).filter(t => /^Amendment Fee\b/i.test(String(t.Description || "")) && !t.IsReversed && !t.ReversedTransactionItemID);
+{
+  const stay = feeStay(12);
+  const expectFee = !snowAt(stay.arrival);
+  const token = await scenario(stay);
+  const { status, body } = await h.post("/portal/amend", {
+    ConfNum: "R1001", PortalToken: token, Acknowledged: true,
+    Proposal: { checkIn: dayOffset(20), checkOut: dayOffset(23), adults: 2, children: 0, infants: 0 },
+  });
+  const state = h.readState();
+  // roomTotal 300 over 3 nights: max($50, 10% of 300, one night 100) = 100.
+  check("amend-fee-posted", status === 200 && Number(body?.AmendmentFee || 0) === (expectFee ? 100 : 0),
+    `arrival ${stay.arrival} (${expectFee ? "off-peak" : "snow, change not permitted inside 14 days"}) fee=${body?.AmendmentFee}`);
+  check("amend-fee-on-account", amendFeeRows(state).length === (expectFee ? 1 : 0),
+    `${amendFeeRows(state).length} unreversed "Amendment Fee" rows on the account`);
+  if (expectFee) {
+    check("amend-fee-charged", body?.AmendmentFeeCharged === true && (state.payments ?? []).length === 1,
+      `charged=${body?.AmendmentFeeCharged} gatewayCharges=${(state.payments ?? []).length}`);
+    check("amend-fee-not-double-posted", paymentRows(state).length === 1,
+      `${paymentRows(state).length} payment rows (GuestPoint posts its own; the proxy must not add another)`);
+  }
+}
+{
+  // No card: the fee still belongs on the account, and the guest is told it is
+  // payable at reception rather than being refused the change.
+  const stay = feeStay(12);
+  const expectFee = !snowAt(stay.arrival);
+  const token = await scenario(stay, "no-card");
+  const { status, body } = await h.post("/portal/amend", {
+    ConfNum: "R1001", PortalToken: token, Acknowledged: true,
+    Proposal: { checkIn: dayOffset(20), checkOut: dayOffset(23), adults: 2, children: 0, infants: 0 },
+  });
+  const state = h.readState();
+  check("amend-fee-no-card-posted", status === 200 && amendFeeRows(state).length === (expectFee ? 1 : 0),
+    `status=${status} rows=${amendFeeRows(state).length}`);
+  check("amend-fee-no-card-not-charged", body?.AmendmentFeeCharged !== true && (state.payments ?? []).length === 0,
+    `charged=${body?.AmendmentFeeCharged} gatewayCharges=${(state.payments ?? []).length}`);
+  check("amend-fee-no-card-payable", Number(body?.PayableAtReception || 0) === (expectFee ? 100 : 0),
+    `payableAtReception=${body?.PayableAtReception}`);
+}
+{
+  // Inside 8 days no change is permitted, so no fee may be invented for one.
+  const token = await scenario(feeStay(3));
+  const { body } = await h.post("/portal/amend", {
+    ConfNum: "R1001", PortalToken: token, Acknowledged: true,
+    Proposal: { adults: 2, children: 0, infants: 0 },
+  });
+  const state = h.readState();
+  check("amend-fee-none-inside-8-days", Number(body?.AmendmentFee || 0) === 0 && amendFeeRows(state).length === 0,
+    `fee=${body?.AmendmentFee} rows=${amendFeeRows(state).length}`);
+}
+
+// ------------------------- per-person extras follow the party they are for --
+// Drying Room is per person per night. A booking that adds or drops guests has
+// to reprice it: 2 guests over 3 nights is not the same money as 4, and leaving
+// the old figure posted either short-changes the park or overcharges the guest.
+{
+  const token = await scenario({ adults: 2, children: 0 });
+  const { body } = await h.post("/portal/extras/quote", { ConfNum: "R1001", PortalToken: token, Items: items(dryingRoom(true)) });
+  // service + perPersonPerNight: 2 adults x 3 nights x $5.
+  check("per-person-priced-for-party", Number(body?.NewTotal) === 30, `2 adults, 3 nights, $5 each = $30, got ${body?.NewTotal}`);
+}
+{
+  const token = await scenario({ adults: 4, children: 0 });
+  const { body } = await h.post("/portal/extras/quote", { ConfNum: "R1001", PortalToken: token, Items: items(dryingRoom(true)) });
+  check("per-person-follows-more-guests", Number(body?.NewTotal) === 60, `4 adults, 3 nights, $5 each = $60, got ${body?.NewTotal}`);
+}
+{
+  // Children are priced on their own rate, not the adult one.
+  const token = await scenario({ adults: 2, children: 2 });
+  const { body } = await h.post("/portal/extras/quote", { ConfNum: "R1001", PortalToken: token, Items: items(dryingRoom(true)) });
+  check("per-person-uses-child-rate", Number(body?.NewTotal) === 48, `(2 x $5 + 2 x $3) x 3 nights = $48, got ${body?.NewTotal}`);
+}
+{
+  // A longer stay costs more per head: the "per night" half of the rule.
+  const token = await scenario({ adults: 2, children: 0, nights: 5, departure: "2026-12-06" });
+  const { body } = await h.post("/portal/extras/quote", { ConfNum: "R1001", PortalToken: token, Items: items(dryingRoom(true)) });
+  check("per-person-follows-nights", Number(body?.NewTotal) === 50, `2 adults, 5 nights, $5 each = $50, got ${body?.NewTotal}`);
+}
+{
+  // Dropping guests must reprice down, and the difference is a credit rather
+  // than a new charge.
+  const token = await scenario({ adults: 2, children: 0, tx: [postedExtra(DRYING_ROOM, { amount: 60, quantity: 4, description: "Drying room" })] });
+  const { body } = await h.post("/portal/extras/quote", { ConfNum: "R1001", PortalToken: token, Items: items(dryingRoom(true)) });
+  check("per-person-reprices-down", Number(body?.NewTotal) === 30 && Number(body?.CreditAmount) === 30 && Number(body?.ChargeAmount) === 0,
+    `posted $60 for 4, party is now 2: new=${body?.NewTotal} credit=${body?.CreditAmount} charge=${body?.ChargeAmount}`);
+}
+
+// ------------------------------------- extras are named as GuestPoint names --
+// The Booking Engine catalogue carries the web fields, which live are a
+// description ("Firewood Desc") or nothing at all. Reception, the room account
+// and the guest's invoice all use the Phoenix add-on name, so the catalogue the
+// site renders has to say the same thing.
+{
+  await scenario();
+  const { status, body } = await h.post("/extras", { RoomStays: [{ Arrival: "2026-07-01", Departure: "2026-07-03", RoomTypeId: "RT1", RatePlanId: "RP1" }] });
+  const rows = Array.isArray(body) ? body : (body?.data ?? body?.Extras ?? []);
+  const byId = Object.fromEntries(rows.map(r => [String(r.Id).toLowerCase(), r]));
+  check("extras-name-from-pms", status === 200 && byId[FIREWOOD.toLowerCase()]?.Name === "Firewood",
+    `catalogue said "Firewood Desc", GuestPoint says "Firewood", site shows ${JSON.stringify(byId[FIREWOOD.toLowerCase()]?.Name)}`);
+  check("extras-blank-name-replaced", byId[DRYING_ROOM.toLowerCase()]?.Name === "Drying room",
+    `catalogue name was empty, site shows ${JSON.stringify(byId[DRYING_ROOM.toLowerCase()]?.Name)}`);
+}
+
 // -------------------------------------- no saved card: post to the account --
 // Plenty of bookings have no card. Refusing the extra outright was a dead end;
 // the charge belongs on the room account, settled at reception. What must never
