@@ -114,9 +114,10 @@
               <div style="margin-top:20px; border-top:1px solid rgba(29,55,48,0.10); padding-top:22px">
                 <h3 style="font:400 19px/1.25 Petrona, Georgia, serif; color:#1D3730; margin:0">Arrival and vehicle details</h3>
                 <p style="font:400 14px/1.7 Figtree, sans-serif; color:#6C6862; margin:8px 0 14px">Help reception prepare keys and identify vehicles after hours.</p>
-                <div style="display:grid; grid-template-columns:minmax(150px,.6fr) minmax(220px,1.4fr); gap:10px">
+                <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:10px">
                   <label style="display:flex; flex-direction:column; gap:7px; padding:13px 15px; border-radius:12px; background:#F3ECE0"><span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Estimated arrival</span><input type="time" value="{{ etaValue }}" onChange="{{ onEtaChange }}" style="border:0; background:transparent; outline:none; font:500 15px/1.35 Figtree, sans-serif; color:#1D3730; width:100%" /></label>
                   <label style="display:flex; flex-direction:column; gap:7px; padding:13px 15px; border-radius:12px; background:#F3ECE0"><span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Vehicle registrations</span><input value="{{ vehiclesValue }}" onChange="{{ onVehiclesChange }}" placeholder="ABC123, XYZ789" style="border:0; background:transparent; outline:none; font:500 15px/1.35 Figtree, sans-serif; color:#1D3730; width:100%" /></label>
+                  <label style="display:flex; flex-direction:column; gap:7px; padding:13px 15px; border-radius:12px; background:#F3ECE0"><span style="font:700 10px/1 Figtree, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#74836A">Vehicle dimensions</span><input value="{{ dimensionsValue }}" onChange="{{ onDimensionsChange }}" placeholder="7m x 5m" style="border:0; background:transparent; outline:none; font:500 15px/1.35 Figtree, sans-serif; color:#1D3730; width:100%" /></label>
                 </div>
                 <button type="button" onClick="{{ saveTravel }}" disabled="{{ travelSaving }}" style="margin-top:16px; border:0; border-radius:14px; background:#1D3730; color:#FCFAF6; font:700 12.5px/1 Figtree, sans-serif; letter-spacing:.1em; text-transform:uppercase; cursor:pointer; padding:17px 26px">{{ travelSaveLabel }}</button>
               </div>
@@ -140,9 +141,18 @@
                   </sc-for>
                 </div>
                 <div style="{{ extrasReviewStyle }}">
-                  <strong style="font:600 15px/1.5 Figtree,sans-serif; color:#1D3730">Selected future extras: {{ extrasTotalLabel }}</strong>
-                  <p style="font:400 13.5px/1.6 Figtree,sans-serif; color:#6C6862; margin:5px 0 0">Review the new quantities. Saving will add, amend or remove future extra charges in GuestPoint; charges already delivered are protected.</p>
-                  <button type="button" onClick="{{ reviewExtras }}" disabled="{{ extrasSaving }}" style="margin-top:12px; border:0; border-radius:12px; background:#1D3730; color:#FCFAF6; font:700 11.5px/1 Figtree,sans-serif; letter-spacing:.08em; text-transform:uppercase; padding:14px 18px; cursor:pointer">{{ extrasSaveLabel }}</button>
+                  <strong style="font:600 15px/1.5 Figtree,sans-serif; color:#1D3730">Selected extras: {{ extrasTotalLabel }}</strong>
+                  <p style="font:400 13.5px/1.6 Figtree,sans-serif; color:#6C6862; margin:5px 0 0">GuestPoint will recalculate service extras from the stay dates and guest numbers. Review the exact account and card change before accepting it.</p>
+                  <button type="button" onClick="{{ reviewExtras }}" disabled="{{ extrasSaving }}" style="margin-top:12px; border:0; border-radius:12px; background:#96592A; color:#FCFAF6; font:700 11.5px/1 Figtree,sans-serif; letter-spacing:.08em; text-transform:uppercase; padding:14px 18px; cursor:pointer">{{ extrasReviewLabel }}</button>
+                  <div style="{{ extrasQuoteStyle }}">
+                    <p style="font:600 15px/1.5 Figtree,sans-serif; color:#1D3730; margin:0">{{ extrasQuoteTitle }}</p>
+                    <dl style="display:grid; gap:8px; margin:13px 0 0; padding-top:12px; border-top:1px solid rgba(29,55,48,.12)">
+                      <sc-for list="{{ extrasQuoteRows }}" as="r" hint-placeholder-count="3"><div style="display:flex; justify-content:space-between; gap:18px"><dt style="font:500 13.5px/1.5 Figtree,sans-serif; color:#6C6862">{{ r.k }}</dt><dd style="margin:0; font:600 13.5px/1.5 Figtree,sans-serif; color:#292724">{{ r.v }}</dd></div></sc-for>
+                    </dl>
+                    <p style="font:400 13.5px/1.6 Figtree,sans-serif; color:#56534C; margin:12px 0 0">{{ extrasPaymentText }}</p>
+                    <label style="display:flex; align-items:flex-start; gap:10px; margin-top:14px; cursor:pointer"><input type="checkbox" checked="{{ extrasAccepted }}" onChange="{{ onExtrasAccepted }}" style="width:19px; height:19px; margin-top:2px; accent-color:#1D3730" /><span style="font:500 14px/1.55 Figtree,sans-serif; color:#1D3730">I accept this extra total and authorise the displayed charge to the saved card.</span></label>
+                    <button type="button" onClick="{{ saveExtras }}" disabled="{{ extrasFinalLocked }}" style="{{ extrasFinalStyle }}">{{ extrasSaveLabel }}</button>
+                  </div>
                 </div>
               </div>
             </sc-if>
@@ -287,7 +297,7 @@
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{}">
 class Component extends DCLogic {
-  state = { refInput: "", nameInput: "", booking: null, error: "", mode: null, adults: 0, children: 0, infants: 0, note: "", confirm: null, loading: false, saving: false, requestSaving: false, cancelSaving: false, dateQuote: null, dateLoading: false, partyQuote: null, partyLoading: false, guestFirst: "", guestLast: "", guestEmail: "", guestMobile: "", guestSaving: false, eta: "", vehicles: "", travelSaving: false, extras: [], extrasLoading: false, selectedExtras: {}, initialExtras: {}, vehicleField: null, policyAccepted: false, leaveAction: "" };
+  state = { refInput: "", nameInput: "", booking: null, error: "", mode: null, adults: 0, children: 0, infants: 0, note: "", confirm: null, loading: false, saving: false, requestSaving: false, cancelSaving: false, dateQuote: null, dateLoading: false, partyQuote: null, partyLoading: false, guestFirst: "", guestLast: "", guestEmail: "", guestMobile: "", guestSaving: false, eta: "", vehicles: "", dimensions: "", travelSaving: false, extras: [], extrasLoading: false, selectedExtras: {}, initialExtras: {}, extrasQuote: null, extrasAccepted: false, vehicleField: null, dimensionsField: null, policyAccepted: false, leaveAction: "" };
 
   async componentDidMount() {
     try { this.gp = await import("./guestpoint.js"); }
@@ -300,6 +310,10 @@ class Component extends DCLogic {
   static vehicleLine(text) { const m = String(text || "").match(/(?:^|\n)Vehicle registrations:\s*([^\n]*)/i); return m ? m[1].trim() : ""; }
   static withoutVehicleLine(text) { return String(text || "").replace(/(?:^|\n)Vehicle registrations:\s*[^\n]*/i, "").trim(); }
   static withVehicleLine(text, vehicles) { return [Component.withoutVehicleLine(text), vehicles ? "Vehicle registrations: " + vehicles : ""].filter(Boolean).join("\n"); }
+  static profileValue(fields, matcher) {
+    const row = (Array.isArray(fields) ? fields : []).find(f => matcher.test(String(f.Name || f.FieldName || "")));
+    return row ? String(row.Value || "") : "";
+  }
 
   async find() {
     const r = this.state.refInput.trim().toUpperCase();
@@ -333,9 +347,10 @@ class Component extends DCLogic {
     const b = this.gp.normaliseManagedReservation(found);
     if (!b.ref || !b.permissions.ViewReservation) throw new Error("not-viewable");
     const lead = (b.guests || []).find(g => b.bookingContact && g.ID === b.bookingContact.ID) || (b.guests || [])[0] || b.bookingContact || {};
-    this.setState({ booking: b, error: "", mode: null, confirm: null, loading: false, selectedExtras: {}, initialExtras: {}, partyQuote: null, policyAccepted: false,
+    const profileFields = (b.raw && b.raw.ProfileFields) || [];
+    this.setState({ booking: b, error: "", mode: null, confirm: null, loading: false, selectedExtras: {}, initialExtras: {}, extrasQuote: null, extrasAccepted: false, partyQuote: null, policyAccepted: false,
       adults: b.adults, children: b.children, infants: b.infants,
-      note: "", eta: b.estimatedArrival || "", vehicles: "",
+      note: "", eta: b.estimatedArrival || "", vehicles: Component.profileValue(profileFields, /(?:car|vehicle).*(?:registration|rego)|rego/i), dimensions: Component.profileValue(profileFields, /dimentions|dimensions?/i),
       guestFirst: lead.FirstName || "", guestLast: lead.LastName || "", guestEmail: lead.Email || "", guestMobile: lead.Mobile || lead.Phone || "" });
   }
 
@@ -467,45 +482,59 @@ class Component extends DCLogic {
   }
 
   async loadTravelFields() {
-    if (this.state.vehicleField) return;
+    if (this.state.vehicleField && this.state.dimensionsField) return;
     try {
-      const fields = await this.gp.getProfileFields({ includeInactive: false });
+      const embedded = (this.state.booking && this.state.booking.profileFieldDefinitions) || [];
+      const fields = embedded.length ? embedded : await this.gp.getProfileFields({ includeInactive: false });
       const vehicleField = (Array.isArray(fields) ? fields : []).find(f => /vehicle.*(registration|rego)|rego/i.test(String(f.Name || "")));
-      if (vehicleField) this.setState({ vehicleField });
-    } catch (e) { /* ExtraInfo remains the documented fallback. */ }
+      const dimensionsField = (Array.isArray(fields) ? fields : []).find(f => /dimentions|dimensions?/i.test(String(f.Name || "")));
+      this.setState({ vehicleField: vehicleField || null, dimensionsField: dimensionsField || null });
+    } catch (e) { /* The save below fails visibly when GuestPoint fields are unavailable. */ }
   }
 
   async saveTravelDetails() {
     const s = this.state;
     const eta = s.eta.trim();
     const vehicles = s.vehicles.toUpperCase().replace(/[^A-Z0-9, .-]/g, "").replace(/\s+/g, " ").trim();
+    const dimensions = s.dimensions.replace(/[^0-9A-Za-z .xX×-]/g, "").replace(/\s+/g, " ").trim();
     if (eta && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(eta)) {
       this.setState({ confirm: { title: "Check the arrival time", body: "Enter a valid estimated arrival time." } });
       return;
     }
-    const changes = { EstimatedArrival: eta || "15:00" };
-    if (s.vehicleField) {
-      const id = s.vehicleField.Id || s.vehicleField.ExternalId;
-      const existing = Array.isArray(s.booking.raw.ProfileFields) ? s.booking.raw.ProfileFields : [];
-      changes.ProfileFields = existing.filter(f => String(f.Id || f.ExternalId) !== String(id)).concat([{ Id: id, Name: s.vehicleField.Name, Type: s.vehicleField.FieldType, Value: vehicles }]);
-    } else {
-      if (vehicles) changes.AppendExtraInfo = "Vehicle registrations: " + vehicles;
+    if (!s.vehicleField || !s.dimensionsField) {
+      this.setState({ confirm: { title: "Vehicle details not saved", body: "GuestPoint did not return the Car Rego and Dimentions profile fields. Nothing was changed." } });
+      return;
     }
+    const changes = { EstimatedArrival: eta || "15:00" };
+    const existing = Array.isArray(s.booking.raw.ProfileFields) ? s.booking.raw.ProfileFields : [];
+    const vehicleId = s.vehicleField.Id || s.vehicleField.ExternalId;
+    const dimensionsId = s.dimensionsField.Id || s.dimensionsField.ExternalId;
+    changes.ProfileFields = existing
+      .filter(f => ![String(vehicleId), String(dimensionsId)].includes(String(f.Id || f.ExternalId)))
+      .concat([
+        { Id: vehicleId, Name: s.vehicleField.Name, Type: s.vehicleField.FieldType || s.vehicleField.Type || "text", Value: vehicles },
+        { Id: dimensionsId, Name: s.dimensionsField.Name, Type: s.dimensionsField.FieldType || s.dimensionsField.Type || "text", Value: dimensions }
+      ]);
     this.setState({ travelSaving: true, confirm: null });
     try {
       const result = await this.gp.modifyReservation(s.booking.ref, changes, s.booking.portalToken);
       if (!result || result.Updated !== true) throw new Error("not-confirmed");
-      this.setState(x => ({ travelSaving: false, mode: null, vehicles,
+      this.setState(x => ({ travelSaving: false, mode: null, vehicles, dimensions,
         booking: { ...x.booking, estimatedArrival: changes.EstimatedArrival },
-        confirm: { title: "Arrival details saved", body: "The ETA and vehicle registrations have been updated directly in GuestPoint." } }));
+        confirm: { title: "Arrival details saved", body: "The ETA, car registration and vehicle dimensions have been updated directly in GuestPoint." } }));
     } catch (e) {
-      this.setState({ travelSaving: false, confirm: { title: "Arrival details not saved", body: "Nothing was changed. Please try again." } });
+      // The ETA and the vehicle fields share one GuestPoint save, so one can
+      // land without the other. Show what the server actually reports rather
+      // than a blanket "nothing was changed".
+      this.setState({ travelSaving: false, confirm: {
+        title: "Arrival details not saved",
+        body: e && e.message ? e.message : "Nothing was changed. Please try again." } });
     }
   }
 
   async loadExtras() {
     const b = this.state.booking;
-    this.setState({ extrasLoading: true, extras: [], selectedExtras: {}, initialExtras: {}, confirm: null });
+    this.setState({ extrasLoading: true, extras: [], selectedExtras: {}, initialExtras: {}, extrasQuote: null, extrasAccepted: false, confirm: null });
     try {
       const stays = ((b.raw && b.raw.RoomStays) || []).map(st => ({
         Arrival: st.Arrival, Departure: st.Departure, RoomTypeId: st.RoomTypeId,
@@ -513,23 +542,54 @@ class Component extends DCLogic {
       }));
       const raw = await this.gp.getExtras(stays);
       const extras = this.gp.normaliseExtras(raw, { nights: this.nights(b), adults: b.adults, children: b.children, ratePlanId: b.ratePlanId });
+      // Two different things, and conflating them was the bug: `posted` is what
+      // GuestPoint actually holds, `desired` is what the selection should be
+      // for the party currently on the booking. Deriving both from the new
+      // party size made them identical, so after a guest-number change
+      // extrasChanged was false, the review panel stayed hidden, and a
+      // per-person extra could never be repriced — the portal told the guest to
+      // review extras and then offered no way to do it.
       const selected = {};
+      const posted = {};
       const current = Object.fromEntries((b.currentExtras || []).map(x => [String(x.Id || "").toLowerCase(), x]));
       extras.forEach(extra => {
         const existing = current[String(extra.id || "").toLowerCase()];
         if (!existing) return;
         if (String(existing.Name || "").trim()) extra.name = String(existing.Name).trim();
-        const counts = {};
+        const onBooking = {};
+        const forThisParty = {};
         extra.prices.forEach(pr => {
-          const quantity = /child/i.test(pr.name || "") ? Number(existing.ChildQuantity || 0) : Number(existing.Quantity || 0);
-          if (quantity > 0) counts[pr.id] = quantity;
+          const postedCount = /child/i.test(pr.name || "")
+            ? Number(existing.ChildQuantity || 0)
+            : Number(existing.Quantity || 0);
+          if (postedCount > 0) onBooking[pr.id] = postedCount;
+          const wanted = extra.isService
+            ? (extra.perPerson ? Number(pr.suggested || 0) : 1)
+            : postedCount;
+          if (wanted > 0) forThisParty[pr.id] = wanted;
         });
-        if (Object.values(counts).some(Number)) selected[extra.id] = counts;
+        if (Object.values(forThisParty).some(Number)) selected[extra.id] = forThisParty;
+        if (Object.values(onBooking).some(Number)) posted[extra.id] = onBooking;
       });
-      this.setState({ extrasLoading: false, extras, selectedExtras: selected, initialExtras: JSON.parse(JSON.stringify(selected)) });
+      this.setState({ extrasLoading: false, extras, selectedExtras: selected, initialExtras: posted, extrasQuote: null, extrasAccepted: false });
     } catch (e) {
       this.setState({ extrasLoading: false, extras: [] });
     }
+  }
+
+  extrasItems() {
+    const s = this.state;
+    const nights = s.booking ? Math.max(1, this.nights(s.booking)) : 1;
+    return (s.extras || []).map(x => {
+      const counts = s.selectedExtras[x.id] || {};
+      let quantity = 0, childQuantity = 0;
+      x.prices.forEach(pr => {
+        const count = Math.max(0, Number(counts[pr.id]) || 0);
+        if (/child/i.test(pr.name || "")) childQuantity += count;
+        else quantity += count;
+      });
+      return { id: x.id, quantity, childQuantity, total: this.gp.extraCost(x, counts, nights) };
+    });
   }
 
   renderVals() {
@@ -727,9 +787,13 @@ class Component extends DCLogic {
         try {
           const result = await this.gp.amendManagedReservation(b.ref, { adults: s.adults, children: s.children, infants: s.infants, quotedTotal: s.partyQuote.newTotal }, b.portalToken, true);
           if (!result || result.Updated !== true) throw new Error("not-confirmed");
-          this.setState(x => ({ requestSaving: false, mode: null, policyAccepted: false,
+          const mustReviewExtras = Array.isArray(b.currentExtras) && b.currentExtras.length > 0;
+          this.setState(x => ({ requestSaving: false, mode: mustReviewExtras ? "extras" : null, policyAccepted: false,
             booking: { ...x.booking, adults: s.adults, children: s.children, infants: s.infants },
-            confirm: { title: "Guest numbers changed in GuestPoint", body: "GuestPoint PMS confirmed the revised adults, children and infants for this room." } }));
+            confirm: { title: "Guest numbers changed in GuestPoint", body: mustReviewExtras
+              ? "GuestPoint PMS confirmed the new guest numbers. Review the extras below now because per-person items are recalculated for the revised party."
+              : "GuestPoint PMS confirmed the revised adults, children and infants for this room." } }));
+          if (mustReviewExtras) setTimeout(() => this.loadExtras(), 0);
         } catch (e) { this.setState({ requestSaving: false, confirm: { title: "Guest numbers not changed", body: e && e.message ? e.message : "GuestPoint did not verify the amendment. Nothing has been claimed as complete." } }); }
       },
 
@@ -745,8 +809,10 @@ class Component extends DCLogic {
 
       etaValue: s.eta,
       vehiclesValue: s.vehicles,
+      dimensionsValue: s.dimensions,
       onEtaChange: e => this.setState({ eta: e.target.value, confirm: null }),
       onVehiclesChange: e => this.setState({ vehicles: e.target.value, confirm: null }),
+      onDimensionsChange: e => this.setState({ dimensions: e.target.value, confirm: null }),
       saveTravel: () => this.saveTravelDetails(),
       travelSaving: s.travelSaving,
       travelSaveLabel: s.travelSaving ? "Saving…" : "Save arrival details",
@@ -765,7 +831,17 @@ class Component extends DCLogic {
           else delete extraCounts[priceId];
           if (Object.values(extraCounts).some(value => Number(value) > 0)) chosen[x.id] = extraCounts;
           else delete chosen[x.id];
-          return { selectedExtras: chosen, confirm: null };
+          return { selectedExtras: chosen, extrasQuote: null, extrasAccepted: false, confirm: null };
+        });
+        const setService = selected => this.setState(old => {
+          const chosen = JSON.parse(JSON.stringify(old.selectedExtras || {}));
+          if (!selected) delete chosen[x.id];
+          else {
+            const derived = {};
+            x.prices.forEach(pr => { const count = x.perPerson ? Math.max(0, Number(pr.suggested) || 0) : 1; if (count > 0) derived[pr.id] = count; });
+            if (Object.values(derived).some(Number)) chosen[x.id] = derived;
+          }
+          return { selectedExtras: chosen, extrasQuote: null, extrasAccepted: false, confirm: null };
         });
         return {
         name: x.name,
@@ -775,7 +851,16 @@ class Component extends DCLogic {
         currentText: currentRecord
           ? "Already on booking: " + (Number(currentRecord.Quantity || 0) + Number(currentRecord.ChildQuantity || 0)) + " · " + Component.money(currentRecord.Total)
           : "Not currently on booking",
-        controls: x.prices.map(pr => {
+        controls: x.isService ? [{
+          label: x.perPerson ? "All booked guests" : "Full stay",
+          decreaseLabel: "Remove " + x.name,
+          increaseLabel: "Add " + x.name,
+          quantity: quantity > 0 ? 1 : 0,
+          atMin: quantity < 1,
+          atMax: quantity > 0,
+          decrease: () => setService(false),
+          increase: () => setService(true)
+        }] : x.prices.map(pr => {
           const count = Math.max(0, Number(counts[pr.id]) || 0);
           return {
             label: pr.name || "Quantity",
@@ -789,30 +874,64 @@ class Component extends DCLogic {
           };
         }),
         empty: quantity < 1,
-        remove: () => this.setState(old => { const chosen = { ...old.selectedExtras }; delete chosen[x.id]; return { selectedExtras: chosen, confirm: null }; })
+        remove: () => this.setState(old => { const chosen = { ...old.selectedExtras }; delete chosen[x.id]; return { selectedExtras: chosen, extrasQuote: null, extrasAccepted: false, confirm: null }; })
       }}),
-      extrasTotalLabel: Component.money(this.gp ? this.gp.extrasTotal(s.extras, s.selectedExtras, b ? Math.max(1, Math.round((Component.parse(b.checkOut) - new Date(Math.max(Component.parse(b.checkIn), new Date().setHours(0,0,0,0)))) / 86400000)) : 1) : 0),
+      extrasTotalLabel: Component.money(this.gp ? this.gp.extrasTotal(s.extras, s.selectedExtras, b ? Math.max(1, this.nights(b)) : 1) : 0),
       extrasReviewStyle: extrasChanged ? "margin-top:14px; background:#E9EEE3; border-radius:14px; padding:18px" : "display:none",
       extrasSaving: s.requestSaving,
-      extrasSaveLabel: s.requestSaving ? "Saving in GuestPoint…" : "Save extra changes",
+      extrasReviewLabel: s.requestSaving ? "Checking GuestPoint…" : "Review price and payment",
+      extrasSaveLabel: s.requestSaving ? "Processing in GuestPoint…" : (s.extrasQuote && Number(s.extrasQuote.ChargeAmount) > 0 ? "Charge card and update extras" : "Confirm extra changes"),
+      extrasQuoteStyle: s.extrasQuote ? "margin-top:14px; border-top:1px solid rgba(29,55,48,.12); padding-top:15px" : "display:none",
+      extrasQuoteTitle: s.extrasQuote ? "GuestPoint has confirmed this change" : "",
+      extrasQuoteRows: s.extrasQuote ? [
+        { k: "Extras already on booking", v: Component.money(s.extrasQuote.CurrentTotal) },
+        { k: "New extras total", v: Component.money(s.extrasQuote.NewTotal) },
+        { k: Number(s.extrasQuote.Difference) >= 0 ? "Additional charge" : "Account credit", v: Component.money(Math.abs(Number(s.extrasQuote.Difference) || 0)) }
+      ] : [],
+      extrasPaymentText: !s.extrasQuote ? "" : Number(s.extrasQuote.ChargeAmount) > 0
+        ? (s.extrasQuote.Card && s.extrasQuote.Card.Available ? "The additional " + Component.money(s.extrasQuote.ChargeAmount) + " will be charged to the saved card " + (s.extrasQuote.Card.Mask || "") + "." : "GuestPoint did not return a valid saved card. This change cannot be completed online.")
+        : Number(s.extrasQuote.CreditAmount) > 0 ? "GuestPoint will place a " + Component.money(s.extrasQuote.CreditAmount) + " credit on the booking account. A card refund is not included in this step." : "No card charge is required.",
+      extrasAccepted: s.extrasAccepted,
+      onExtrasAccepted: e => this.setState({ extrasAccepted: !!e.target.checked, confirm: null }),
+      extrasFinalLocked: !s.extrasAccepted || s.requestSaving || !!(s.extrasQuote && s.extrasQuote.CanComplete === false),
+      extrasFinalStyle: "margin-top:13px; border:0; border-radius:12px; background:#1D3730; color:#FCFAF6; font:700 11.5px/1 Figtree,sans-serif; letter-spacing:.08em; text-transform:uppercase; padding:14px 18px; cursor:" + (s.extrasAccepted ? "pointer" : "not-allowed") + "; opacity:" + (s.extrasAccepted ? "1" : ".45"),
       reviewExtras: async () => {
-        if (b.sample) {
-          this.setState({ confirm: { title: "Demo extras selected", body: "Your selected extras are ready for review. No real booking has been changed in demo mode." } });
-          return;
-        }
         if (!pms.Extras) { this.setState({ confirm: { title: "Extra not added", body: "Existing-booking extras are not enabled for this property." } }); return; }
-        const items = s.extras.map(x => {
-          const counts = s.selectedExtras[x.id] || {};
-          let quantity = 0, childQuantity = 0, rate = 0, childRate = 0;
-          x.prices.forEach(pr => { const count = Math.max(0, Number(counts[pr.id]) || 0); if (/child/i.test(pr.name || "")) { childQuantity += count; childRate = Number(pr.price || 0); } else { quantity += count; rate = Number(pr.price || 0); } });
-          return { id: x.id, quantity, childQuantity, rate, childRate: childRate || rate, perNight: !!x.perNight };
-        });
         this.setState({ requestSaving: true, confirm: null });
         try {
-          const result = await this.gp.addManagedExtras(b.ref, items, b.portalToken, true);
+          const quote = await this.gp.quoteManagedExtras(b.ref, this.extrasItems(), b.portalToken);
+          this.setState({ requestSaving: false, extrasQuote: quote, extrasAccepted: false });
+        } catch (e) { this.setState({ requestSaving: false, extrasQuote: null, extrasAccepted: false, confirm: { title: "Extras could not be priced", body: e && e.message ? e.message : "GuestPoint did not confirm the extra pricing. Nothing was changed." } }); }
+      },
+      saveExtras: async () => {
+        if (!s.extrasAccepted || !s.extrasQuote || s.requestSaving) return;
+        this.setState({ requestSaving: true, confirm: null });
+        try {
+          const result = await this.gp.addManagedExtras(b.ref, this.extrasItems(), b.portalToken, true);
           if (!result || result.Updated !== true) throw new Error("not-confirmed");
-          this.setState(x => ({ requestSaving: false, initialExtras: JSON.parse(JSON.stringify(x.selectedExtras)), confirm: { title: "Extras updated in GuestPoint", body: "GuestPoint PMS confirmed the new extra quantities on this room allocation." } }));
-        } catch (e) { this.setState({ requestSaving: false, confirm: { title: "Extras not updated", body: "GuestPoint did not verify the extras. Nothing has been claimed as complete." } }); }
+          const charged = Number(result.ChargeAmount || 0);
+          // A charge GuestPoint has confirmed but not yet shown on the room
+          // account is a reporting delay. Say so plainly rather than implying
+          // the guest needs to do anything about it.
+          const pending = result.PaymentPendingVerification === true || result.ExtrasPendingVerification === true;
+          const body = charged > 0
+            ? "GuestPoint added the extras and charged " + Component.money(charged) + " to the saved card."
+              + (pending ? " Reception's copy of the account may take a few minutes to catch up. Do not pay again." : "")
+            : "GuestPoint confirmed the revised extras on this booking."
+              + (pending ? " Reception's copy of the account may take a few minutes to catch up." : "");
+          this.setState(x => ({ requestSaving: false, extrasQuote: null, extrasAccepted: false,
+            booking: { ...x.booking, currentExtras: Array.isArray(result.CurrentExtras) ? result.CurrentExtras : x.booking.currentExtras },
+            initialExtras: JSON.parse(JSON.stringify(x.selectedExtras)),
+            confirm: { title: "Extras updated in GuestPoint", body } }));
+        } catch (e) {
+          // 402 means the card was declined and the booking was put back as it
+          // was. Anything else may have moved money, so the title must not
+          // imply it is safe to simply try again.
+          const declined = e && e.status === 402;
+          this.setState({ requestSaving: false, extrasAccepted: false, confirm: {
+            title: declined ? "Card declined — nothing changed" : "Extras not updated",
+            body: e && e.message ? e.message : "GuestPoint did not verify the extras or payment. Do not retry until the booking account has been checked." } });
+        }
       },
       addStayUrl,
       openAddStayWarning: () => this.setState({ leaveAction: "add-stay" }),
