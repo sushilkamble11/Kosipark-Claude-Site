@@ -51,6 +51,41 @@ const netAddonTotal = state => (state.tx ?? []).filter(t => t.AddonID).reduce((s
 const paymentRows = state => (state.tx ?? []).filter(t => Number(t.TransactionType) === 11);
 const feeRows = state => (state.tx ?? []).filter(t => /^Cancellation Fees?\b/i.test(String(t.Description || "")) && !t.IsReversed && !t.ReversedTransactionItemID);
 
+// -------------------------------------- no saved card: post to the account --
+// Plenty of bookings have no card. Refusing the extra outright was a dead end;
+// the charge belongs on the room account, settled at reception. What must never
+// happen is the site claiming a card was charged when there is no card.
+{
+  const token = await scenario({}, "no-card");
+  const { status, body } = await h.post("/portal/extras/quote", { ConfNum: "R1001", PortalToken: token, Items: items(firewood(2, 40)) });
+  check("no-card-quote-completable", status === 200 && body?.CanComplete === true && body?.PaymentMethod === "account",
+    `status=${status} method=${body?.PaymentMethod} canComplete=${body?.CanComplete}`);
+  check("no-card-quote-names-reception", Number(body?.PayableAtReception) === Number(body?.ChargeAmount) && Number(body?.ChargeAmount) > 0,
+    `payableAtReception=${body?.PayableAtReception} of charge=${body?.ChargeAmount}`);
+}
+{
+  const token = await scenario({}, "no-card");
+  const { status, body } = await h.post("/portal/extras", { ConfNum: "R1001", PortalToken: token, Acknowledged: true, PaymentMethod: "account", Items: items(firewood(2, 40)) });
+  const state = h.readState();
+  check("no-card-extras-posted", status === 200 && body?.Updated === true && activeExtras(state).length > 0,
+    `status=${status} updated=${body?.Updated} activeExtras=${activeExtras(state).length}`);
+  check("no-card-not-charged", body?.Charged === false && (state.payments ?? []).length === 0,
+    `charged=${body?.Charged} gatewayCharges=${(state.payments ?? []).length}`);
+  check("no-card-payable-at-reception", Number(body?.PayableAtReception) === 40 && body?.PaymentMethod === "account",
+    `payableAtReception=${body?.PayableAtReception} method=${body?.PaymentMethod}`);
+  check("no-card-no-invented-payment-row", paymentRows(state).length === 0,
+    `${paymentRows(state).length} payment rows — nothing was paid, so nothing may look paid`);
+}
+{
+  // The guest accepted a card charge; by save time the card is gone. Applying
+  // it on the account anyway would change the deal they agreed to.
+  const token = await scenario({}, "no-card");
+  const { status, body } = await h.post("/portal/extras", { ConfNum: "R1001", PortalToken: token, Acknowledged: true, PaymentMethod: "card", Items: items(firewood(2, 40)) });
+  const state = h.readState();
+  check("payment-method-change-refused", status === 409 && activeExtras(state).length === 0,
+    `status=${status} activeExtras=${activeExtras(state).length}`);
+}
+
 // ---------------------------------------------------------------- lookup ----
 {
   const token = await scenario();

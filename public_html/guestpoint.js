@@ -600,10 +600,16 @@ export function amendManagedReservation(confNum, proposal, portalToken, acknowle
 }
 
 /** Add the guest's selected live extras to the existing PMS room allocation. */
-export function addManagedExtras(confNum, items, portalToken, acknowledged = true) {
-  return request("POST", "/portal/extras", {
-    body: { ConfNum: confNum, Items: items, PortalToken: portalToken, Acknowledged: acknowledged === true }
-  });
+/**
+ * paymentMethod is the one the guest was shown and accepted ("card" or
+ * "account"). The server refuses the save if it no longer matches, so a card
+ * that appeared or expired between quoting and saving cannot silently change
+ * the deal.
+ */
+export function addManagedExtras(confNum, items, portalToken, acknowledged = true, paymentMethod = "") {
+  const body = { ConfNum: confNum, Items: items, PortalToken: portalToken, Acknowledged: acknowledged === true };
+  if (paymentMethod) body.PaymentMethod = paymentMethod;
+  return request("POST", "/portal/extras", { body });
 }
 
 /** Recalculate an extras change entirely in GuestPoint before showing consent. */
@@ -1433,12 +1439,18 @@ async function mockResponse(method, path, params, body) {
   if (path === "/portal/extras/quote") {
     const items = Array.isArray(body && body.Items) ? body.Items : [];
     const total = items.reduce((sum, item) => sum + Math.max(0, Number(item.total) || 0), 0);
+    // Mirrors the live shape: the proxy always returns PaymentMethod, and
+    // PayableAtReception whenever the booking has no card to charge.
+    const charge = Math.max(0, total - 40);
     return {
       CurrentTotal: 40,
       NewTotal: total,
       Difference: total - 40,
-      ChargeAmount: Math.max(0, total - 40),
+      ChargeAmount: charge,
       CreditAmount: Math.max(0, 40 - total),
+      CanComplete: true,
+      PaymentMethod: charge > 0 ? "card" : "none",
+      PayableAtReception: 0,
       Card: { Available: true, Mask: "4111******1111", Expiry: "12/30", Name: "Visa" }
     };
   }

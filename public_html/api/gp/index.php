@@ -1514,7 +1514,19 @@ function portalExtrasPlan(string $confNum, array $tokenPayload, array $identity,
     $card = pmsSavedCard($roomAllocationId);
     return ['roomAllocationId'=>$roomAllocationId,'reservationId'=>$reservationId,'allocation'=>$allocation,'items'=>$planItems,
         'CurrentTotal'=>$currentTotal,'NewTotal'=>$newTotal,'Difference'=>$difference,'ChargeAmount'=>max(0.0,$difference),'CreditAmount'=>max(0.0,-$difference),
-        'card'=>$card,'CanComplete'=>$difference <= 0 || !empty($card['available'])];
+        // How the extra gets paid for, decided once here so the quote the guest
+        // accepts and the save that follows can never disagree:
+        //   none    — nothing more to pay (a removal, or no change)
+        //   card    — a usable saved card, charged when they save
+        //   account — no usable card, so the charge is posted to the room
+        //             account and settled at reception. Plenty of bookings
+        //             have no card; refusing them the extra entirely was a
+        //             dead end, not a safeguard.
+        'card'=>$card,
+        'PaymentMethod'=>$difference <= 0 ? 'none' : (!empty($card['available']) ? 'card' : 'account'),
+        // Kept for the browser contract. Every priced change can now be
+        // applied; only the way it is paid for varies.
+        'CanComplete'=>true];
 }
 
 /**
@@ -1536,8 +1548,13 @@ function portalExtrasRestorePlan(array $plan): array {
 
 function portalExtrasPublicQuote(array $plan): array {
     $card = is_array($plan['card'] ?? null) ? $plan['card'] : [];
+    $method = (string)($plan['PaymentMethod'] ?? 'none');
     return ['CurrentTotal'=>$plan['CurrentTotal'],'NewTotal'=>$plan['NewTotal'],'Difference'=>$plan['Difference'],'ChargeAmount'=>$plan['ChargeAmount'],'CreditAmount'=>$plan['CreditAmount'],
-        'CanComplete'=>$plan['CanComplete'],'Card'=>['Available'=>!empty($card['available']),'Mask'=>(string)($card['mask'] ?? ''),'Expiry'=>(string)($card['expiry'] ?? ''),'Name'=>(string)($card['holder'] ?? '')]];
+        'CanComplete'=>$plan['CanComplete'],'PaymentMethod'=>$method,
+        // The guest has to know which of the two they are agreeing to before
+        // they accept, not after the account has already moved.
+        'PayableAtReception'=>$method === 'account' ? $plan['ChargeAmount'] : 0.0,
+        'Card'=>['Available'=>!empty($card['available']),'Mask'=>(string)($card['mask'] ?? ''),'Expiry'=>(string)($card['expiry'] ?? ''),'Name'=>(string)($card['holder'] ?? '')]];
 }
 
 /**
@@ -1875,7 +1892,7 @@ if ($endpoint === 'portal/extras/quote' || $endpoint === 'portal/extras') {
         $plan = portalExtrasPlan($confNum, $tokenPayload, $identity, $items);
         send(200, portalExtrasPublicQuote($plan), ['Cache-Control'=>'no-store']);
     }
-    if (($input['Acknowledged'] ?? false) !== true) fail(400, 'Accept the displayed extra total and card charge before continuing.');
+    if (($input['Acknowledged'] ?? false) !== true) fail(400, 'Accept the displayed extra total before continuing.');
     $lockPath = $CACHE_DIR . '/portal-extra-' . hash('sha256', (string)$identity['reservationId']) . '.lock';
     $lock = @fopen($lockPath, 'c+');
     if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) {
@@ -1883,9 +1900,14 @@ if ($endpoint === 'portal/extras/quote' || $endpoint === 'portal/extras') {
         fail(409, 'Another extra or payment update is already being processed. Wait a moment and refresh the booking.');
     }
     $plan = portalExtrasPlan($confNum, $tokenPayload, $identity, $items);
-    if (($plan['CanComplete'] ?? false) !== true) {
+    $payOnAccount = ($plan['PaymentMethod'] ?? 'none') === 'account';
+    // The quote the guest accepted must be the deal they get. If a card
+    // appeared or disappeared between quoting and saving, the amount is right
+    // but the way it is paid is not what they agreed to.
+    $acceptedMethod = trim((string)($input['PaymentMethod'] ?? ''));
+    if ($acceptedMethod !== '' && $acceptedMethod !== (string)$plan['PaymentMethod']) {
         flock($lock, LOCK_UN); fclose($lock);
-        fail(409, 'GuestPoint did not return a valid saved card for the additional amount. Nothing was changed.');
+        fail(409, 'The way this extra would be paid for has changed since this page was opened. Nothing has been changed or charged. Please look up the booking again.');
     }
     $saved = savePortalExtraTransactions($plan);
     // The rows already on the account before we charge. GuestPoint posts its
@@ -1896,7 +1918,7 @@ if ($endpoint === 'portal/extras/quote' || $endpoint === 'portal/extras') {
     // Shared hosting stops a long request without warning, and being stopped
     // between the gateway call and the room-account read is the one state
     // nobody can reconstruct afterwards.
-    if (round((float)($plan['ChargeAmount'] ?? 0), 2) > 0 && portalTimeLeft() < PAYMENT_VERIFY_BUDGET + 8.0) {
+    if (!$payOnAccount && round((float)($plan['ChargeAmount'] ?? 0), 2) > 0 && portalTimeLeft() < PAYMENT_VERIFY_BUDGET + 8.0) {
         $restored = savePortalExtraTransactions(portalExtrasRestorePlan($plan), false) !== null;
         flock($lock, LOCK_UN); fclose($lock);
         fail(503, $restored
@@ -1904,7 +1926,12 @@ if ($endpoint === 'portal/extras/quote' || $endpoint === 'portal/extras') {
             : 'GuestPoint is responding too slowly to complete this safely. No payment was taken, but please call reception on 02 6456 2224 to confirm the booking extras.');
     }
 
-    $payment = chargePortalSavedCard($plan);
+    // No usable card: the extra is on the room account and that is the whole
+    // transaction. Nothing is charged, nothing is pending, and the guest is
+    // told the amount is payable at reception.
+    $payment = $payOnAccount
+        ? ['charged'=>false,'outcome'=>'on-account','amount'=>0.0,'transactionId'=>null,'detail'=>null]
+        : chargePortalSavedCard($plan);
 
     // The extras are on the account by now. If the charge definitively did not
     // happen, put the account back before answering — otherwise the guest keeps
@@ -1955,6 +1982,8 @@ if ($endpoint === 'portal/extras/quote' || $endpoint === 'portal/extras') {
         'Updated'=>true, 'ConfNum'=>$confNum,
         'ChargeAmount'=>$payment['amount'], 'CreditAmount'=>$plan['CreditAmount'],
         'Charged'=>$payment['charged'], 'TransactionId'=>$payment['transactionId'],
+        'PaymentMethod'=>$plan['PaymentMethod'],
+        'PayableAtReception'=>$payOnAccount ? $plan['ChargeAmount'] : 0.0,
         'PaymentPendingVerification'=>$paymentPending,
         'ExtrasPendingVerification'=>$extrasPending,
         'CurrentExtras'=>$fresh,

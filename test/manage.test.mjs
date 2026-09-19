@@ -70,7 +70,11 @@ pass(await page.getByText(/Selected extras: \$70/).isVisible(), "per-person-per-
 await page.getByRole("button", { name: "Review price and payment" }).click();
 await page.getByText("GuestPoint has confirmed this change").waitFor({ timeout: 3000 });
 pass(await page.getByText(/saved card 4111\*+1111/).isVisible(), "the exact saved-card charge is shown before consent");
-const extrasCheckbox = page.getByText(/authorise the displayed charge/i).locator("..").getByRole("checkbox");
+// Matched through the <label> rather than the text node's parent: the consent
+// wording is now a binding (it changes when the booking has no saved card), and
+// the renderer wraps interpolated text in its own element. Asserting that one
+// label carries both the wording and the checkbox is the guarantee that matters.
+const extrasCheckbox = page.locator("label").filter({ hasText: /authorise the displayed charge/i }).getByRole("checkbox");
 await extrasCheckbox.check();
 await page.getByRole("button", { name: "Charge card and update extras" }).click();
 await page.getByText("Extras updated in GuestPoint").waitFor({ timeout: 3000 });
